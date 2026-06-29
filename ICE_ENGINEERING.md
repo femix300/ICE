@@ -12,16 +12,21 @@ This document covers the operational standards every developer and AI agent must
 
 ### 1.1 Branching
 
-Trunk-based development with short-lived feature branches.
+Trunk-based development with short-lived feature branches, utilizing a dual-branch structure during the hackathon.
 
 ```
 main                 production-ready, always green
-├── feat/<scope>     one branch per feature (e.g. feat/scaffold)
-├── fix/<scope>      bug fix
-└── chore/<scope>    tooling, deps, docs
+├── dev              active integration branch (acts as 'main' during dev)
+    ├── feat/<scope> one branch per feature (e.g. feat/scaffold)
+    ├── fix/<scope>  bug fix
+    └── chore/<scope> tooling, deps, docs
 ```
 
-Branches live no more than a few days. If a branch is open longer, rebase on `main` daily.
+**Workflow:**
+- All feature branches branch off `dev`.
+- All feature PRs merge into `dev`.
+- At the end of the day, if `dev` is stable and tested, it is merged into `main`.
+- Branches live no more than a few days. Rebase on `dev` daily if open longer.
 
 ### 1.2 Commits
 

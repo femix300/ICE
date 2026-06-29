@@ -166,6 +166,8 @@ P01 was expanded to include setup for:
 ### 10. Repository & GitHub
 - Initialized local git repository.
 - Created private GitHub repository: `https://github.com/femix300/ICE`
+- Renamed default branch from `master` to `main`.
+- Created `dev` branch as the active integration branch.
 - Pushed root-level documentation files (`README.md`, `ICE_PRD.md`, `ICE_ENGINEERING.md`, `HANDOFF.md`).
 - Sent repository invites to the rest of the team:
   - Marvelous (`MK-Bills`)
