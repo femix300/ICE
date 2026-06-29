@@ -1,0 +1,331 @@
+# ICE — Engineering Guide
+
+> **Companion to:** [ICE_PRD.md](./ICE_PRD.md)
+> **Last Updated:** June 29, 2026
+
+This document covers the operational standards every developer and AI agent must follow when building ICE. The PRD covers _what_ to build; this covers _how_ to build it.
+
+---
+
+
+## 1. Git Workflow
+
+### 1.1 Branching
+
+Trunk-based development with short-lived feature branches.
+
+```
+main                 production-ready, always green
+├── feat/<scope>     one branch per feature (e.g. feat/scaffold)
+├── fix/<scope>      bug fix
+└── chore/<scope>    tooling, deps, docs
+```
+
+Branches live no more than a few days. If a branch is open longer, rebase on `main` daily.
+
+### 1.2 Commits
+
+Conventional Commits format. Imperative mood. Explain the _why_, not the _what_.
+
+```
+feat(merchants): add vendor onboarding endpoint
+fix(reconciliation): handle duplicate transactionId correctly
+chore(deps): add bullmq and ioredis
+docs(api): document webhook payload format
+test(invoices): add state machine transition tests
+refactor(auth): extract key verification into shared module
+```
+
+| Type | When to Use |
+|------|-------------|
+| `feat` | New endpoint, new feature, new business logic |
+| `fix` | Bug fix in existing behaviour |
+| `chore` | Dependency updates, config changes, tooling |
+| `docs` | README, API docs, code comments |
+| `test` | Adding or updating tests |
+| `refactor` | Code restructure with no behaviour change |
+
+### 1.3 No AI Co-Author Trailers
+
+Never add `Co-Authored-By: Claude ...`, `Co-Authored-By: GitHub Copilot ...`, or any other AI assistant as a co-author on a commit, PR description, or squash-merge message.
+
+The author is the human who decided to land the change and is accountable for it. AI assistance is a tool, not a contributor. Strip the trailer your tool may have inserted before you commit.
+
+### 1.4 Pull Requests
+
+A PR must have:
+
+- A short title in the same style as a commit message
+- A description explaining the problem and the approach
+- A `## Test Plan` section showing what you verified
+- All checks passing locally: `npm run typecheck && npm run lint && npm test`
+- Self-review against the [Definition of Done](#3-definition-of-done) checklist
+- **Peter's review and approval** before merging
+
+Squash-merge into `main`. The squash message becomes the commit on trunk — edit it to read well.
+
+### 1.5 Branch Protection
+
+- Never push directly to `main`
+- Never force-push `main`
+- All changes via PR
+
+---
+
+## 2. Coding Standards
+
+### 2.1 TypeScript
+
+- `strict: true`, `noUncheckedIndexedAccess: true` — already set in `tsconfig.json`. Don't relax.
+- ESM only (`"type": "module"`)
+- **Never use `any`**. Use `unknown` and narrow. If you genuinely need `any`, add a one-line comment explaining why.
+- **No non-null assertions (`!`)** on values that came from outside the process. Parse with Zod and trust the parsed type.
+- Prefer `type` aliases over `interface` unless you need declaration merging.
+- Use `as const` and union helpers for enums; do not export TypeScript `enum`s:
+
+```ts
+export const InvoiceStatus = {
+  DRAFT: 'draft',
+  ISSUED: 'issued',
+  PARTIALLY_PAID: 'partially_paid',
+  PAID: 'paid',
+  OVERPAID: 'overpaid',
+  REFUNDED: 'refunded',
+} as const;
+
+export type InvoiceStatus = (typeof InvoiceStatus)[keyof typeof InvoiceStatus];
+```
+
+- Use `z.infer<typeof schema>` to derive types from Zod schemas — never write the type separately.
+
+### 2.2 File and Module Layout
+
+- One concept per file
+- Filenames are **kebab-case**: `merchants.service.ts`, `api-key.ts`, `webhook-delivery.worker.ts`
+- Exported symbols: PascalCase for types, `createX` for factories
+- Tests live under `tests/unit/` and `tests/integration/`
+
+### 2.3 Naming Conventions
+
+| Layer | Pattern | Example Methods |
+|-------|---------|-----------------|
+| Repositories | `createXRepo` | `byId`, `bySlug`, `listAll`, `create`, `update` |
+| Services | `createXService` | `register`, `reconcile`, `processRefund` |
+| Controllers | `createXController` | `create`, `list`, `getById`, `update`, `remove` |
+| Zod Schemas | Descriptive names | `createMerchantBody`, `updateVendorBody`, `invoiceListQuery`, `idParam` |
+
+### 2.4 Comments
+
+Default to **no comments**. Names and types are the documentation.
+
+Comment only when:
+- The _why_ is non-obvious (a hidden constraint, an external bug, a workaround)
+- The code looks wrong at a glance but is correct
+- A regex, bit fiddle, or algorithm is dense enough that the next reader needs a hand
+
+Do not comment what the code already says. Do not reference issue numbers or PRs — that's what git history is for.
+
+### 2.5 Imports
+
+- Sort by source: node built-ins → third-party → internal → relative
+- Use named imports
+- Type-only imports use `import type { ... }`
+
+```ts
+import crypto from 'node:crypto';
+
+import { Queue } from 'bullmq';
+import { z } from 'zod';
+
+import type { NombaClient } from '../lib/nomba.ts';
+import { createLogger } from '../lib/logger.ts';
+import { AppError } from '../lib/errors.ts';
+```
+
+### 2.6 Errors
+
+- Throw `AppError(code, message)` from services and controllers. The error middleware maps it to the correct HTTP status and response envelope.
+- Never `try { ... } catch {}` to silence an error. If you genuinely want to ignore a failure, add a one-line comment explaining why and log it.
+
+### 2.7 Logging
+
+Use the pino logger created from `createLogger(serviceName)`:
+
+```ts
+import { createLogger } from '../lib/logger.ts';
+
+const log = createLogger('reconciliation');
+
+// First arg is fields object, second is message string
+log.info({ transactionId, status: 'EXACT_MATCH' }, 'invoice reconciled');
+log.error({ err, transactionId }, 'reconciliation failed');
+```
+
+**Rules:**
+- Never use `console.log` — always use `createLogger`
+- First argument is always a fields object, second is the message string
+- Never interpolate values into the message string
+- Never log sensitive fields (passwords, tokens, API keys, full request bodies)
+
+### 2.8 Environment Access
+
+- Read env exclusively through `config.ts` (validated by Zod at startup)
+- No direct `process.env.*` access anywhere else in the codebase
+- New env vars must be added to `.env.example`
+
+### 2.9 Formatting
+
+Prettier owns formatting. Run `npm run format` before pushing. Don't argue with the formatter — if you don't like the output, change the rule, not the file.
+
+---
+
+## 3. Definition of Done
+
+Before opening a PR, the developer (or their AI agent) must verify **ALL** of the following. Then request **Peter's review and approval** — PRs require two-layer verification before merging.
+
+### 3.1 Task Completeness
+
+- [ ] All endpoints / features described in the Linear task are implemented
+- [ ] All files listed in the task's "Files" section have been created or modified
+- [ ] Implementation matches the code patterns shown in the task description
+
+### 3.2 Type Safety
+
+- [ ] No `any` types — use `unknown` and narrow, or define proper types
+- [ ] No non-null assertions (`!`) on external data — parse with Zod instead
+- [ ] `z.infer<typeof schema>` used to derive types from Zod schemas — never write types twice
+- [ ] `as const` used for enum-like objects (invoice states, roles, error codes)
+- [ ] Array/object index access handles `undefined` (`noUncheckedIndexedAccess` is enabled)
+
+### 3.3 Tests
+
+- [ ] Unit tests written in `tests/unit/<name>.test.ts`
+- [ ] Integration tests (if applicable) written in `tests/integration/<name>.test.ts`
+- [ ] All tests pass: `npm test`
+- [ ] TypeScript compiles cleanly: `npm run typecheck`
+- [ ] Linting passes: `npm run lint`
+
+### 3.4 Coding Standards
+
+- [ ] Filenames are kebab-case (`merchants.service.ts`, not `MerchantsService.ts`)
+- [ ] Factory pattern: `createXRepo`, `createXService`, `createXController`
+- [ ] Zod schemas named: `createXBody`, `updateXBody`, `xListQuery`, `idParam`
+- [ ] Errors thrown as `AppError(code, message)` — never raw `throw new Error()`
+- [ ] Logging uses `createLogger(serviceName)` (pino) — never `console.log`
+- [ ] No comments unless explaining a non-obvious _why_
+- [ ] Imports sorted: node built-ins → third-party → internal → relative
+- [ ] `import type` used for type-only imports
+- [ ] No `process.env` access outside `config.ts`
+- [ ] No silenced errors (`catch {}`) without a comment explaining why
+- [ ] Prettier formatting applied (run `npm run format`)
+
+### 3.5 Git & PR
+
+- [ ] Branch named: `feat/<scope>`, `fix/<scope>`, or `chore/<scope>`
+- [ ] Commit message: `feat(scope): imperative description` (Conventional Commits)
+- [ ] Commit explains the _why_, not the _what_ — the diff shows the what
+- [ ] **No `Co-Authored-By` trailers for AI assistants** (strip before committing)
+- [ ] PR title matches commit message format
+- [ ] PR description includes: problem statement, approach taken, any trade-offs
+- [ ] PR includes a `## Test Plan` section listing what was verified
+- [ ] Squash-merge into `main` — one clean commit per task
+
+### 3.6 Integration Safety
+
+- [ ] Pulled latest `main` and rebased — no merge conflicts
+- [ ] Existing tests still pass after rebase: `npm test`
+- [ ] App starts without errors: `npm run dev`
+- [ ] `/healthz` still returns 200 (if app is bootable at this stage)
+- [ ] No regressions in previously working features
+
+### 3.7 Security
+
+- [ ] No hardcoded secrets, API keys, or tokens in source code
+- [ ] All secrets read from environment variables via `config.ts`
+- [ ] `.env` is in `.gitignore` — only `.env.example` is committed
+- [ ] API key hashing uses bcrypt (never plaintext storage)
+- [ ] Webhook verification uses `crypto.timingSafeEqual` (never `===`)
+- [ ] No sensitive data logged (passwords, tokens, full request bodies)
+- [ ] New env vars added to `.env.example`
+
+### 3.8 Handoff
+
+- [ ] Updated `HANDOFF.md` with: what was built, files changed, decisions made
+- [ ] If any task requirements changed during implementation, noted in HANDOFF.md
+
+> **Review flow:** Self-review with this checklist → Open PR → Request Peter's review → Merge after approval.
+
+---
+
+## 4. Task Breakdown
+
+All 36 tasks are tracked in Linear under the ICE project. Each task has a unique ID, assignee, dependencies, and the full DoD checklist.
+
+### 4.1 Task Assignment
+
+| Dev | Task Series | Linear Issues | Count |
+|-----|-------------|---------------|-------|
+| **Peter Ajimoti** (Lead) | P01–P10 | ICE-29 to ICE-38 | 10 |
+| **Marvelous** (Payments) | M01–M08 | ICE-39 to ICE-46 | 8 |
+| **Emmanuel** (Async) | E01–E08 | ICE-47 to ICE-54 | 8 |
+| **Samkiel** (Frontend) | S01–S10 | ICE-55 to ICE-64 | 10 |
+
+### 4.2 Day 1 Parallelism
+
+All 4 devs start Day 1 independently — nobody waits:
+
+| Dev | Day 1 Task | Dependencies |
+|-----|-----------|--------------|
+| Peter | P01 — Express scaffold | None |
+| Marvelous | M01 — DB schema (prepares SQL, merges after P01) | P01 |
+| Emmanuel | E01 — Redis + BullMQ setup | None |
+| Samkiel | S01 — Next.js scaffold | None |
+
+### 4.3 Phase Timeline
+
+| Phase | Milestone | Tasks |
+|-------|-----------|-------|
+| **Phase 1 — Foundation** (Day 1) | Scaffold, DB, Redis, Auth | P01, M01, E01, S01 |
+| **Phase 2 — Core Entities** (Day 2-3) | Merchants, Vendors, Customers | P02–P08, S02, S03 |
+| **Phase 3 — Payments Core** (Day 3-4) | Webhooks, Reconciliation, Invoices | M02–M05, E02, E03, S04–S06 |
+| **Phase 4 — Extended** (Day 5-6) | Misdirected, Refunds, Statements | M06–M08, E04–E08, S07–S10 |
+| **Phase 5 — Polish & Demo** (Day 6-7) | Swagger, Deploy, E2E Test | P09, P10 |
+
+### 4.4 Dependency Map
+
+```
+Day 1 (Foundation — all parallel):
+  P01 ─────────────────────────────────────┐
+  M01 (needs P01) ─────────────────────────┤
+  E01 (independent) ───────────────────────┤
+  S01 (independent) ───────────────────────┘
+
+Day 2-3 (Entities + Auth):
+  P01 → P02 → P03 → P04 → P05 → P06 → P07
+  P01 → P08 (Nomba client, parallel with P02-P04)
+  M01 → M02 (webhook receiver)
+  P05 → M03 (invoices need vendors)
+  S01 → S02 → S03
+
+Day 3-4 (Payments Core):
+  M02 + M03 → M04 (reconciliation exact match)
+  M04 → M05 (overpayment/underpayment)
+  E01 + P04 → E02 (webhook delivery)
+  E02 → E03 (dead-letter)
+  S03 + M08 → S04 (reconciliation feed)
+
+Day 5-6 (Extended):
+  M02 + E02 → M06 (misdirected detection)
+  M06 → M07 → M08 (misdirected actions + audit)
+  E01 + M05 → E04 (auto-refund engine)
+  M08 → E05, E06 (statements, summary)
+  S04 → S05, S06, S07, S08, S09, S10
+
+Day 6-7 (Polish):
+  P06 + M08 → P09 (Swagger + health check)
+  P09 → P10 (deployment + E2E)
+```
+
+---
+
+_ICE Engineering Guide — v1.0 | June 29, 2026_
