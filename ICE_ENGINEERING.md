@@ -177,6 +177,10 @@ log.error({ err, transactionId }, 'reconciliation failed');
 
 Prettier owns formatting. Run `npm run format` before pushing. Don't argue with the formatter — if you don't like the output, change the rule, not the file.
 
+### 2.10 No Emojis
+
+Never use emojis in the codebase, commit messages, documentation, or anywhere in the repository. Stick strictly to plain text and ASCII characters.
+
 ---
 
 ## 3. Definition of Done
@@ -217,6 +221,7 @@ Before opening a PR, the developer (or their AI agent) must verify **ALL** of th
 - [ ] `import type` used for type-only imports
 - [ ] No `process.env` access outside `config.ts`
 - [ ] No silenced errors (`catch {}`) without a comment explaining why
+- [ ] No emojis anywhere (code, comments, documentation, commit messages)
 - [ ] Prettier formatting applied (run `npm run format`)
 
 ### 3.5 Git & PR

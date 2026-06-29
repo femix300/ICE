@@ -1,7 +1,6 @@
 # ICE — Nomba Hackathon: Session Handoff
 
 > **Session Date:** June 28–29, 2026  
-> **Agent:** Antigravity (Gemini)  
 > **User:** Peter Ajimoti (Team Lead)
 
 ---
@@ -157,10 +156,21 @@ P01 was expanded to include setup for:
 | `switch-to-typescript.mjs` | Migrated all 36 issues from JS to TypeScript |
 | `add-dod.mjs` | Added initial DoD to P01 (superseded by cleanup) |
 | `cleanup-dod.py` | Replaced inline DoD in tasks with reference to `ICE_ENGINEERING.md` |
+| `update-p01-webhook.py` | Appended the webhook tunneling test to P01 |
 | `ICE_PRD.md` | Updated PRD with v1.2 stack details and team assignments |
 | `ICE_ENGINEERING.md` | Companion doc containing Git workflow, coding standards, and DoD |
+| `README.md` | Root repo readme containing quick links |
 | `verify-migration.py` | Verification script for TS migration integrity |
 | `generateRef.js` | Pre-existing file (not modified) |
+
+### 10. Repository & GitHub
+- Initialized local git repository.
+- Created private GitHub repository: `https://github.com/femix300/ICE`
+- Pushed root-level documentation files (`README.md`, `ICE_PRD.md`, `ICE_ENGINEERING.md`, `HANDOFF.md`).
+- Sent repository invites to the rest of the team:
+  - Marvelous (`MK-Bills`)
+  - Emmanuel (`Qwertyemma`)
+  - Samkiel (`samkiell`)
 
 ---
 
