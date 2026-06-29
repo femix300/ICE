@@ -1,10 +1,10 @@
 # ICE — Nomba Hackathon: Session Handoff
 
-> **Session Date:** June 28–29, 2026  
-> **User:** Peter Ajimoti (Team Lead)
+> **User/Owner:** Peter Ajimoti (Team Lead)
+> **Focus:** P01-P10 (Auth, Entities, API Gateway, Deploy)
 
-> **Important Note on Handoffs:** To prevent merge conflicts, each team member has their own personal handoff log (`HANDOFF_PETER.md`, `HANDOFF_MARVELOUS.md`, `HANDOFF_EMMANUEL.md`, `HANDOFF_SAMKIEL.md`).
-> You should document your daily work in your respective file. This main `HANDOFF.md` acts as the root project log — read it periodically to stay updated on overarching architectural or project-wide changes.
+> **Important Note on Handoffs:** All handoff logs live in the `handoffs/` directory to prevent merge conflicts.
+> This `HANDOFF.md` serves as the primary log and Peter's personal log. Marvelous, Emmanuel, and Samkiel should use their respective `HANDOFF_<NAME>.md` files in this same directory.
 
 ---
 
@@ -176,7 +176,7 @@ P01 was expanded to include setup for:
   - Marvelous (`MK-Bills`)
   - Emmanuel (`Qwertyemma`)
   - Samkiel (`samkiell`)
-- Created personal handoff files for each team member (`HANDOFF_PETER.md`, `HANDOFF_MARVELOUS.md`, `HANDOFF_EMMANUEL.md`, `HANDOFF_SAMKIEL.md`) to avoid merge conflicts with the main handoff log.
+- Consolidated all handoff files into the `handoffs/` directory. Peter uses the main `HANDOFF.md`, while others use their respective personal files.
 
 ---
 
