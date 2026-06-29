@@ -260,8 +260,8 @@ Before opening a PR, the developer (or their AI agent) must verify **ALL** of th
 
 ### 3.8 Handoff
 
-- [ ] Updated `HANDOFF.md` with: what was built, files changed, decisions made
-- [ ] If any task requirements changed during implementation, noted in HANDOFF.md
+- [ ] Updated your personal handoff file (e.g., `HANDOFF_PETER.md`) with: what was built, files changed, decisions made
+- [ ] If any task requirements changed during implementation, noted in your personal handoff file
 
 > **Review flow:** Self-review with this checklist → Open PR → Request Peter's review → Merge after approval.
 

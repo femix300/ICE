@@ -3,6 +3,9 @@
 > **Session Date:** June 28–29, 2026  
 > **User:** Peter Ajimoti (Team Lead)
 
+> **Important Note on Handoffs:** To prevent merge conflicts, each team member has their own personal handoff log (`HANDOFF_PETER.md`, `HANDOFF_MARVELOUS.md`, `HANDOFF_EMMANUEL.md`, `HANDOFF_SAMKIEL.md`).
+> You should document your daily work in your respective file. This main `HANDOFF.md` acts as the root project log — read it periodically to stay updated on overarching architectural or project-wide changes.
+
 ---
 
 ## What Was Done
@@ -173,6 +176,7 @@ P01 was expanded to include setup for:
   - Marvelous (`MK-Bills`)
   - Emmanuel (`Qwertyemma`)
   - Samkiel (`samkiell`)
+- Created personal handoff files for each team member (`HANDOFF_PETER.md`, `HANDOFF_MARVELOUS.md`, `HANDOFF_EMMANUEL.md`, `HANDOFF_SAMKIEL.md`) to avoid merge conflicts with the main handoff log.
 
 ---
 
