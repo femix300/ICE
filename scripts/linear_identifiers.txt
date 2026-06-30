@@ -1,0 +1,76 @@
+ICE-100","title":"S10. [ICE-410] Refund status indicators + anomaly alerts UI"}
+ICE-99","title":"S09. [ICE-409] Statements page — vendor + customer statements"}
+ICE-98","title":"S08. [ICE-408] Platform owner dashboard — summary metrics + misdirected panel"}
+ICE-97","title":"S07. [ICE-407] Vendor dashboard — VA details, stats, customer list"}
+ICE-96","title":"S06. [ICE-406] Webhook delivery log UI + dead-letter replay"}
+ICE-95","title":"S05. [ICE-405] Transaction detail view + reconciliation status"}
+ICE-94","title":"S04. [ICE-404] Reconciliation feed — live transaction list + status badges"}
+ICE-93","title":"S03. [ICE-403] Vendor creation + management UI"}
+ICE-92","title":"S02. [ICE-402] Merchant registration UI + API key display"}
+ICE-91","title":"S01. [ICE-401] Next.js scaffold + Tailwind + API client + base layout"}
+ICE-90","title":"E08. [ICE-308] Payment anomaly detection"}
+ICE-89","title":"E07. [ICE-307] Dormant account cron job"}
+ICE-88","title":"E06. [ICE-306] Platform summary endpoint + single transaction detail"}
+ICE-87","title":"E05. [ICE-305] Vendor statement + customer statement API"}
+ICE-86","title":"E04. [ICE-304] Auto-refund engine — Nomba Transfer API integration"}
+ICE-85","title":"E03. [ICE-303] Dead-letter handling + manual replay endpoint"}
+ICE-84","title":"E02. [ICE-302] Outbound webhook delivery worker + exponential backoff retry"}
+ICE-83","title":"E01. [ICE-301] Redis connection + BullMQ setup + base queue definitions"}
+ICE-82","title":"M08. [ICE-208] Manual mark-paid override + reconciliation log API + audit logging"}
+ICE-81","title":"M07. [ICE-207] Misdirected payment refund + manual match endpoint"}
+ICE-80","title":"M06. [ICE-206] Misdirected payment detection + platform owner alert"}
+ICE-79","title":"M05. [ICE-205] Reconciliation engine — overpayment + underpayment handling"}
+ICE-78","title":"M04. [ICE-204] Reconciliation engine — exact match + duplicate rejection"}
+ICE-77","title":"M03. [ICE-203] Invoice creation + state machine"}
+ICE-76","title":"M02. [ICE-202] Nomba webhook receiver + HMAC-SHA256 verification + idempotency"}
+ICE-75","title":"M01. [ICE-201] Full database schema — all 10 tables + migrations"}
+ICE-74","title":"P10. [ICE-110] Deployment config (Render) + E2E integration test"}
+ICE-73","title":"P09. [ICE-109] Swagger/OpenAPI docs + deep health check"}
+ICE-72","title":"P08. [ICE-108] Nomba API client module (shared lib)"}
+ICE-71","title":"P07. [ICE-107] Customer creation + optional DVA provisioning"}
+ICE-70","title":"P06. [ICE-106] Vendor management — scoped keys, suspension, listing, update"}
+ICE-69","title":"P05. [ICE-105] Vendor onboarding + Nomba DVA provisioning"}
+ICE-68","title":"P04. [ICE-104] Merchant webhook URL config + API key rotation"}
+ICE-67","title":"P03. [ICE-103] Merchant registration + profile endpoint"}
+ICE-66","title":"P02. [ICE-102] Auth middleware — API key hashing, verification, tier scoping"}
+ICE-65","title":"P01. [ICE-101] Project scaffold + Express app + middleware wiring"}
+ICE-64","title":"S10. [ICE-410] Refund status indicators + anomaly alerts UI"}
+ICE-63","title":"S09. [ICE-409] Statements page — vendor + customer statements"}
+ICE-62","title":"S08. [ICE-408] Platform owner dashboard — summary metrics + misdirected panel"}
+ICE-61","title":"S07. [ICE-407] Vendor dashboard — VA details, stats, customer list"}
+ICE-60","title":"S06. [ICE-406] Webhook delivery log UI + dead-letter replay"}
+ICE-59","title":"S05. [ICE-405] Transaction detail view + reconciliation status"}
+ICE-58","title":"S04. [ICE-404] Reconciliation feed — live transaction list + status badges"}
+ICE-57","title":"S03. [ICE-403] Vendor creation + management UI"}
+ICE-56","title":"S02. [ICE-402] Merchant registration UI + API key display"}
+ICE-55","title":"S01. [ICE-401] Next.js scaffold + Tailwind + API client + base layout"}
+ICE-54","title":"E03. [ICE-308] Payment anomaly detection"}
+ICE-53","title":"E02. [ICE-307] Dormant account cron job"}
+ICE-52","title":"E08. [ICE-306] Platform summary endpoint + single transaction detail"}
+ICE-51","title":"E07. [ICE-305] Vendor statement + customer statement API"}
+ICE-50","title":"E06. [ICE-304] Auto-refund engine — Nomba Transfer API integration"}
+ICE-49","title":"E05. [ICE-303] Dead-letter handling + manual replay endpoint"}
+ICE-48","title":"E04. [ICE-302] Outbound webhook delivery worker + exponential backoff retry"}
+ICE-47","title":"E01. [ICE-301] Redis connection + BullMQ setup + base queue definitions"}
+ICE-46","title":"M08. [ICE-208] Manual mark-paid override + reconciliation log API + audit logging"}
+ICE-45","title":"M06. [ICE-207] Misdirected payment refund + manual match endpoint"}
+ICE-44","title":"M04. [ICE-206] Misdirected payment detection + platform owner alert"}
+ICE-43","title":"M07. [ICE-205] Reconciliation engine — overpayment + underpayment handling"}
+ICE-42","title":"M05. [ICE-204] Reconciliation engine — exact match + duplicate rejection"}
+ICE-41","title":"M03. [ICE-203] Invoice creation + state machine"}
+ICE-40","title":"M02. [ICE-202] Nomba webhook receiver + HMAC-SHA256 verification + idempotency"}
+ICE-39","title":"M01. [ICE-201] Full database schema — all 10 tables + migrations"}
+ICE-38","title":"P10. [ICE-110] Deployment config (Render) + E2E integration test"}
+ICE-37","title":"P09. [ICE-109] Swagger/OpenAPI docs + deep health check"}
+ICE-36","title":"P02. [ICE-108] Nomba API client module (shared lib)"}
+ICE-35","title":"P08. [ICE-107] Customer creation + optional DVA provisioning"}
+ICE-34","title":"P07. [ICE-106] Vendor management — scoped keys, suspension, listing, update"}
+ICE-33","title":"P06. [ICE-105] Vendor onboarding + Nomba DVA provisioning"}
+ICE-32","title":"P05. [ICE-104] Merchant webhook URL config + API key rotation"}
+ICE-31","title":"P04. [ICE-103] Merchant registration + profile endpoint"}
+ICE-30","title":"P03. [ICE-102] Auth middleware — API key hashing, verification, tier scoping"}
+ICE-29","title":"P01. [ICE-101] Project scaffold + Express app + middleware wiring"}
+ICE-3","title":"Connect your tools"}
+ICE-1","title":"Get familiar with Linear"}
+ICE-2","title":"Set up your teams"}
+ICE-4","title":"Import your data"}
