@@ -338,4 +338,26 @@ Day 6-7 (Polish):
 
 ---
 
+## 5. Nomba Developer Cheat Sheet (Certification Golden Rules)
+
+To ensure our integration meets the standard required by the hackathon judges (matching the Nomba Certification), strictly follow these rules:
+
+### Core Environment
+- **Sandbox Base URL:** `https://sandbox.api.nomba.com/v1` (Use this for all hackathon work)
+- **Production Base URL:** `https://api.nomba.com/v1` (Do not use until post-hackathon KYC)
+- **Secrets Management:** `clientSecret` and webhook secrets must **never** be committed to source code. Always load from environment variables (e.g., `process.env.NOMBA_CLIENT_SECRET`).
+
+### Test Instruments
+- **Test Card (Success):** `5060 6666 6666 6666 666` (Any future expiry, any CVV)
+- **Test Card (Insufficient Funds):** `5060 6666 6666 6666 674`
+- **Test Bank (Virtual Account Inbound):** Wema Bank, account `0000000000` (Use this to simulate inbound transfers to Virtual Accounts for webhook testing)
+
+### The 4 Golden Rules
+1. **Always use Kobo:** All monetary amounts MUST be sent and stored in Kobo (e.g., ₦1,500 = `150000`). Never use floats or decimals.
+2. **The 55-Minute Token Cache:** Do **not** request a new token per API call. Server-to-server OAuth `client_credentials` tokens last 60 minutes. Cache them in memory/Redis and refresh automatically at the 55-minute mark.
+3. **Webhook Verification & Idempotency:** Webhook signatures MUST be verified using HMAC-SHA256 (`nomba-signature` header). Furthermore, Nomba may send the same event twice; you must use `event.requestId` as an idempotency key to reject duplicates.
+4. **Always Lookup Before Transfers:** Never blindly hit `/transfers/bank`. You MUST call `/transfers/bank/lookup` to verify the recipient `accountName` first to prevent irreversible loss.
+
+---
+
 _ICE Engineering Guide — v1.0 | June 29, 2026_

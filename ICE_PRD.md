@@ -601,7 +601,7 @@ _All monetary values stored in kobo (smallest NGN unit) as integers to avoid flo
 |---|---|---|---|
 | 1 | **Peter Ajimoti** | Team Lead | Project setup, auth layer, merchant & vendor onboarding API, API key system, Nomba client module, `app.ts` composition root, deployment |
 | 2 | **Marvelous** | Backend — Payments Core | DB schema, Nomba webhook receiver, reconciliation engine, invoice state machine, misdirected payment handling, audit logging |
-| 3 | **Emmanuel** | Backend — Async & Reporting | Redis + BullMQ setup, webhook delivery worker, dead-letter handling, refund engine, statement & reporting API, anomaly detection, dormant cron |
+| 3 | **Emmanuel** | Backend — Async & Reporting | Redis + BullMQ setup, webhook delivery worker, dead-letter handling, refund engine, statement & reporting API, anomaly detection, dormant cron, nightly reconciliation diff |
 | 4 | **Samkiel** | Frontend Lead | Next.js dashboard (platform + vendor views), API client, reconciliation feed, webhook logs, statements UI, refund status indicators |
 
 ### **11.2 Build Timeline (7 Days)**
@@ -613,7 +613,7 @@ _All monetary values stored in kobo (smallest NGN unit) as integers to avoid flo
 | Day 3 | DVA & Webhooks | Vendor onboarding + DVA provisioning, vendor management, Nomba webhook receiver, HMAC verification, invoice creation |
 | Day 4 | Reconciliation | Reconciliation engine (all 5 scenarios), overpayment/underpayment handling, webhook delivery worker, dead-letter handling, reconciliation feed UI |
 | Day 5 | Extended | Misdirected payments, auto-refund engine, statements API, platform summary, vendor dashboard UI |
-| Day 6 | Polish | Swagger/OpenAPI docs, deep health check, anomaly detection, dormant cron, platform owner dashboard, remaining UI pages |
+| Day 6 | Polish | Swagger/OpenAPI docs, deep health check, anomaly detection, dormant cron, nightly reconciliation diff, platform owner dashboard, remaining UI pages |
 | Day 7 | Deploy & Demo | Deployment to Render, E2E integration test, demo script rehearsal, bug fixes |
 
 ---

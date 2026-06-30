@@ -27,7 +27,7 @@ Peter shared a 14-section PRD for **ICE (Infrastructure for Collections & Exchan
 |-----|------|------|-------------|-------|
 | 1 | **Peter** | Team Lead | P01–P10 (ICE-29 to ICE-38) | Scaffold, Auth, Merchants, Vendors, Customers, Deployment |
 | 2 | **Marvelous** | Backend | M01–M08 (ICE-39 to ICE-46) | DB Schema, Webhooks, Invoices, Reconciliation, Misdirected |
-| 3 | **Emmanuel** | Backend | E01–E08 (ICE-47 to ICE-54) | Redis, BullMQ, Webhook Delivery, Refunds, Statements, Cron |
+| 3 | **Emmanuel** | Backend | E01–E09 (ICE-47 to ICE-54, ICE-309) | Redis, BullMQ, Webhook Delivery, Refunds, Statements, Cron |
 | 4 | **Samkiel** | Frontend | S01–S10 (ICE-55 to ICE-64) | Next.js Dashboard — all UI pages and components |
 
 ### 3. Linear Workspace Setup
@@ -41,7 +41,7 @@ Peter shared a 14-section PRD for **ICE (Infrastructure for Collections & Exchan
 - **1 Project:** "ICE — Nomba Hackathon Build"
 - **5 Milestones:** Phase 1–5 (Foundation → Polish & Demo)
 - **9 Labels:** backend, frontend, payments, async, phase-1 through phase-5
-- **36 Issues** (ICE-29 to ICE-64) — with full descriptions including:
+- **37 Issues** (ICE-29 to ICE-64, ICE-309) — with full descriptions including:
   - Goal, Files, Implementation code, Tests, Acceptance Criteria, PR info
   - Correctly formatted markdown (no escaping artifacts)
 - **52 Dependency Relations** — blocking chains wired between all tasks
@@ -71,7 +71,7 @@ MARVELOUS (8 tasks):
   M07 → ICE-45  Misdirected payment refund + manual match endpoint
   M08 → ICE-46  Manual mark-paid override + reconciliation log API + audit logging
 
-EMMANUEL (8 tasks):
+EMMANUEL (9 tasks):
   E01 → ICE-47  Redis connection + BullMQ setup + base queue definitions
   E02 → ICE-48  Outbound webhook delivery worker + exponential backoff retry
   E03 → ICE-49  Dead-letter handling + manual replay endpoint
@@ -80,6 +80,7 @@ EMMANUEL (8 tasks):
   E06 → ICE-52  Platform summary endpoint + single transaction detail
   E07 → ICE-53  Dormant account cron job
   E08 → ICE-54  Payment anomaly detection
+  E09 → ICE-309 Nightly Reconciliation Diff Cron
 
 SAMKIEL (10 tasks):
   S01 → ICE-55  Next.js scaffold + Tailwind + API client + base layout
@@ -121,11 +122,11 @@ The first version (24 tasks, ICE-5 to ICE-28) had:
 - **5 missing PRD endpoints** — customer creation, vendor update, misdirected refund, transaction detail
 - **Day 1 bottleneck** — only Peter could start; everyone else was blocked by E01
 
-All issues were fixed in the rebuilt 36-task version.
+All issues were fixed in the rebuilt 37-task version.
 
 ### 7. TypeScript Migration
 
-All 36 tasks switched from JavaScript to TypeScript:
+All 37 tasks switched from JavaScript to TypeScript:
 - 129 file extension changes (`.js` → `.ts`, `.jsx` → `.tsx`)
 - 19 code block language hints (`js` → `ts`)
 - P01 updated with `tsconfig.json` (strict + `noUncheckedIndexedAccess`) and `tsx` runner
@@ -155,8 +156,8 @@ P01 was expanded to include setup for:
 | File | Purpose |
 |------|---------|
 | `create-linear-issues.mjs` | Original 24-issue creation script (superseded) |
-| `rebuild-linear-issues.mjs` | Final 36-issue rebuild script with retry logic |
-| `switch-to-typescript.mjs` | Migrated all 36 issues from JS to TypeScript |
+| `rebuild-linear-issues.mjs` | Final 37-issue rebuild script with retry logic |
+| `switch-to-typescript.mjs` | Migrated all 37 issues from JS to TypeScript |
 | `add-dod.mjs` | Added initial DoD to P01 (superseded by cleanup) |
 | `cleanup-dod.py` | Replaced inline DoD in tasks with reference to `ICE_ENGINEERING.md` |
 | `update-p01-webhook.py` | Appended the webhook tunneling test to P01 |
@@ -198,7 +199,7 @@ P01 was expanded to include setup for:
 
 ## Technical Notes
 
-- **Language:** TypeScript (switched from JavaScript during this session). All 36 issues updated: 129 file extension changes (.js → .ts, .jsx → .tsx), 19 code block hints (```js → ```ts). P01 includes full tsconfig.json + tsx setup.
+- **Language:** TypeScript (switched from JavaScript during this session). All 37 issues updated: 129 file extension changes (.js → .ts, .jsx → .tsx), 19 code block hints (```js → ```ts). P01 includes full tsconfig.json + tsx setup.
 - **Dev Runner:** `tsx` (TypeScript Execute) — zero-config, fast. `npm run dev` uses `tsx watch src/server.ts`.
 - **Type Patterns:** Use `z.infer<typeof schema>` to derive types from Zod schemas. Shared types in `src/types/index.ts`.
 - **Linear API:** GraphQL endpoint at `https://api.linear.app/graphql`. Auth via `Authorization: <api_key>` header (no Bearer prefix).
@@ -207,3 +208,24 @@ P01 was expanded to include setup for:
 - **Issue numbering:** ICE-1 to ICE-4 are Linear onboarding issues (pre-existing). ICE-5 to ICE-28 were the first iteration (deleted). ICE-29 to ICE-64 are the current live issues.
 - **Frontend framework:** Next.js + Tailwind CSS (PRD originally said React, team confirmed Next.js).
 - **State ID:** TODO state is `0d3e4f4f-d6bb-4533-a908-adc0c9fac10d` (used for all new issues).
+
+---
+
+## 11. Trials & Tribulations (Lessons Learned)
+To avoid repeating past mistakes, any future agents or team members must strictly observe the following:
+
+### 11.1 Modifying Linear Issues
+- **Do NOT use regex or `sed` to edit Linear descriptions programmatically**. The markdown formatting and API parsing are highly sensitive. We caused severe data corruption and duplication trying to edit descriptions on the fly.
+- **The Golden Script**: If issues need to be purged and rebuilt, **only** use `rebuild-linear-issues.mjs` (Claude Code's original implementation) as the source of truth for the task data.
+
+### 11.2 Linear API "Blocks" Relationships
+- We discovered a critical logic flaw in how Linear interprets relationships: The GraphQL mutation `issueRelationCreate(issueId, relatedIssueId, type: "blocks")` means that `issueId` **BLOCKS** `relatedIssueId`.
+- In the original script, it was passing the *task* as `issueId` and the *dependency* as `relatedIssueId`, essentially telling Linear that the task blocked its own dependency!
+- **Fix Applied**: We ran `flip-deps.py` to reverse all 52 relationships. **P01** is now correctly the root blocker (blocked by 0 tasks, blocks 4 downstream tasks).
+
+### 11.3 Definition of Done (DoD) Formatting
+- Originally, we appended a massive 8-point checklist to the bottom of every task.
+- **Decision**: It was far too long and redundant. We removed it and replaced it with a single concise line in all tasks pointing to the engineering guide.
+
+### 11.4 M01 Database Schema Snippets
+- For M01 (Database Schema), we confirmed that we did **not** inject raw `CREATE TABLE` SQL snippets into the issue description; it remains a simple bulleted list of 10 tables pointing to PRD section 10. Marvelous's agent will handle the actual SQL generation.
