@@ -200,7 +200,7 @@ Never use emojis in the codebase, commit messages, documentation, or anywhere in
 
 ### 2.12 Dependency Security
 
-- Mandate that all new npm packages must be vetted/scanned for vulnerabilities before being added to `package.json` (e.g. via `scan_dependencies` skill).
+- Mandate that all new npm packages must be vetted/scanned for vulnerabilities before being added to `package.json` (e.g. `npm audit`, OSV Scanner, and/or reviewing GitHub Dependabot alerts).
 
 ---
 
