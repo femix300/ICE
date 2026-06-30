@@ -58,14 +58,20 @@ The author is the human who decided to land the change and is accountable for it
 
 ### 1.4 Pull Requests
 
-A PR must have:
+A PR must follow this exact template and structure:
 
-- A short title in the same style as a commit message
-- A description explaining the problem and the approach
-- A `## Test Plan` section showing what you verified
-- All checks passing locally: `npm run typecheck && npm run lint && npm test`
-- Self-review against the [Definition of Done](#3-definition-of-done) checklist
-- **Peter's review and approval** before merging
+1. **Summary:** A clear explanation of what the PR accomplishes and what it changes.
+2. **Closes:** Link directly to the Linear issue when applicable (e.g., `Closes ICE-101`); otherwise `Closes: N/A`.
+3. **Scope:** Confirm no feature drift, list any new environment variables, and highlight deliberate architectural choices or structure notes.
+4. **Test Plan:** List what was tested/verified; if not applicable (e.g., docs-only), state why, and note lint/typecheck/tests status as applicable.
+5. **Risk:** Assess the risk level (Low/Medium/High) and point the reviewer to the most critical parts of the code.
+
+Additionally:
+- A short title in the same style as a commit message.
+- All checks passing locally: `npm run typecheck && npm run lint && npm test`.
+- Self-review against the [Definition of Done](#3-definition-of-done) checklist.
+- **Peter's review and approval** before merging.
+- **Auto-Review:** You MUST leave a follow-up comment on your PR tagging `@copilot` to trigger an automated AI code review immediately after opening it.
 
 Squash-merge into `main`. The squash message becomes the commit on trunk — edit it to read well.
 
