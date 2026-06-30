@@ -229,3 +229,11 @@ To avoid repeating past mistakes, any future agents or team members must strictl
 
 ### 11.4 M01 Database Schema Snippets
 - For M01 (Database Schema), we confirmed that we did **not** inject raw `CREATE TABLE` SQL snippets into the issue description; it remains a simple bulleted list of 10 tables pointing to PRD section 10. Marvelous's agent will handle the actual SQL generation.
+
+### 11.5 Branching & Pull Request Workflow
+- **CRITICAL:** Do not push directly to the `dev` branch.
+- For every task, a new branch MUST be created off `dev` using the correct conventional prefix (e.g., `feat/P01-project-scaffold`, `fix/login-bug`, `chore/deps`, `docs/update-readme`).
+- Commits are pushed to this branch on the remote.
+- A Pull Request must be opened targeting the `dev` branch.
+- Execution stops until the Pull Request is reviewed, approved, and merged by the Team Lead (Peter).
+- Eventually, the `dev` branch will be tested and merged into `main` for production.
