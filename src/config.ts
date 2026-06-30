@@ -15,10 +15,14 @@ const envSchema = z.object({
   REDIS_URL: z.string().optional(),
 });
 
+import { createLogger } from './lib/logger.js';
+
+const log = createLogger('config');
+
 const _env = envSchema.safeParse(process.env);
 
 if (!_env.success) {
-  console.error('❌ Invalid environment variables:', _env.error.format());
+  log.error({ errors: _env.error.format() }, 'Invalid environment variables');
   process.exit(1);
 }
 

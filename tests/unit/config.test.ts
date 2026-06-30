@@ -8,7 +8,7 @@ describe('Config Validation', () => {
   it('Missing required env var causes process to exit on startup', async () => {
     // We isolate the module to test side-effects
     const originalEnv = process.env;
-    const mockExit = vi.spyOn(process, 'exit').mockImplementation((code?: any) => {
+    const mockExit = vi.spyOn(process, 'exit').mockImplementation((code?: string | number | null | undefined) => {
       throw new Error(`Process exited with code ${code}`);
     });
     const mockConsoleError = vi.spyOn(console, 'error').mockImplementation(() => {});

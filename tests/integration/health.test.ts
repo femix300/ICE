@@ -1,8 +1,10 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import request from 'supertest';
 
+import type { Express } from 'express';
+
 describe('GET /healthz', () => {
-  let app: any;
+  let app: Express;
 
   beforeAll(async () => {
     process.env.CORS_ORIGIN = 'http://localhost';

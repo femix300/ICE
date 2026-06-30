@@ -1,15 +1,11 @@
 import type { Request, Response, NextFunction } from 'express';
 import { createLogger } from '../lib/logger.js';
+import { appError } from '../lib/respond.js';
 
 const log = createLogger('error-handler');
 
 export function notFoundHandler(req: Request, res: Response) {
-  res.status(404).json({
-    ok: false,
-    errorCode: 'NOT_FOUND',
-    message: `Cannot ${req.method} ${req.path}`,
-    requestId: res.locals.requestId,
-  });
+  appError(res, 'NOT_FOUND', `Cannot ${req.method} ${req.path}`, 404);
 }
 
 export function errorHandler(
@@ -26,10 +22,10 @@ export function errorHandler(
       : 500;
   const message = err instanceof Error ? err.message : 'Internal Server Error';
 
-  res.status(status as number).json({
-    ok: false,
-    errorCode: status === 500 ? 'INTERNAL_ERROR' : 'APP_ERROR',
+  appError(
+    res,
+    status === 500 ? 'INTERNAL_ERROR' : 'APP_ERROR',
     message,
-    requestId: res.locals.requestId,
-  });
+    status as number
+  );
 }
