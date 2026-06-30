@@ -252,3 +252,19 @@ To avoid repeating past mistakes, any future agents or team members must strictl
 - Updated `ICE_ENGINEERING.md` to include explicit Frontend Security (Section 2.11) and Dependency Security (Section 2.12) standards.
 - Updated `ICE_PRD.md` Security Model table to include Frontend Security and Dependency Security rows.
 - Expanded the Definition of Done (DoD) in `ICE_ENGINEERING.md` to include security checks for frontend and dependencies.
+
+---
+
+## 13. Session Transition: Preparing for P02 (Auth Middleware)
+
+**Status at Handoff:**
+- **P01 (Project Scaffold)** is complete and pushed to GitHub via PR #4 (`feat/P01-scaffold`).
+- The Express app is fully configured with TypeScript, `pino`, `zod`, and `vitest`.
+- We are now ready to begin **P02: Auth middleware — API key hashing, verification, tier scoping (ICE-102)**.
+
+**Next steps for the incoming agent:**
+1. Pull the latest `dev` branch to ensure P01's changes are present.
+2. Checkout a new branch `feat/P02-auth-middleware` from `dev`.
+3. Implement the auth middleware in `src/middleware/auth.ts`.
+4. Ensure the implementation adheres strictly to the `ICE_ENGINEERING.md` DoD (e.g., use `crypto.timingSafeEqual`, no `any` types, etc).
+5. Write unit tests for the auth middleware before opening the PR.
