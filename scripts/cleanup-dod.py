@@ -1,3 +1,4 @@
+import os
 #!/usr/bin/env python3
 """
 ICE — Replace inline DoD with reference to ICE_ENGINEERING.md
@@ -5,7 +6,7 @@ Uses urllib (not node fetch) to avoid DNS resolution issues.
 """
 import json, urllib.request, time, sys
 
-API_KEY = "lin_api_FEzO08T6B8exsBs618DoskFIChEsHqBNX9ITInxE"
+API_KEY = os.environ.get("LINEAR_API_KEY")
 ENDPOINT = "https://api.linear.app/graphql"
 
 DOD_REFERENCE = "\n---\n\n> **Before opening a PR:** Complete all checks in the [Definition of Done](./ICE_ENGINEERING.md#3-definition-of-done) (`ICE_ENGINEERING.md` section 3). Self-review first, then request Peter's approval."

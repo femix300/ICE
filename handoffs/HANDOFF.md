@@ -187,7 +187,7 @@ P01 was expanded to include setup for:
    Peter needs to invite Marvelous, Emmanuel, and Samkiel to the Linear workspace via **Settings → Members → Invite**. Once invited, their issues can be assigned to them.
 
 2. **API Key:**  
-   The Linear API key used (`lin_api_FEzO08T6B8exsBs618DoskFIChEsHqBNX9ITInxE`) is Peter's personal key. It's hardcoded in the scripts — **rotate it after setup is complete** or store it as an env variable.
+   The Linear API key used (`REDACTED_API_KEY`) is Peter's personal key. It's hardcoded in the scripts — **rotate it after setup is complete** or store it as an env variable.
 
 3. **Start coding:**  
    Day 1 tasks (P01, M01, E01, S01) have no blocking dependencies. The team can begin immediately.

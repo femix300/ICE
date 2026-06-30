@@ -1,8 +1,15 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vitest';
 import request from 'supertest';
-import { app } from '../../src/app.js';
 
 describe('GET /healthz', () => {
+  let app: any;
+
+  beforeAll(async () => {
+    process.env.CORS_ORIGIN = 'http://localhost';
+    const mod = await import('../../src/app.js');
+    app = mod.app;
+  });
+
   it('returns { ok: true } with status 200', async () => {
     const res = await request(app).get('/healthz');
     expect(res.status).toBe(200);

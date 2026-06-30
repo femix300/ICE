@@ -6,8 +6,9 @@ const log = createLogger('error-handler');
 export function notFoundHandler(req: Request, res: Response) {
   res.status(404).json({
     ok: false,
-    error_code: 'NOT_FOUND',
+    errorCode: 'NOT_FOUND',
     message: `Cannot ${req.method} ${req.path}`,
+    requestId: res.locals.requestId,
   });
 }
 
@@ -27,7 +28,7 @@ export function errorHandler(
 
   res.status(status as number).json({
     ok: false,
-    error_code: status === 500 ? 'INTERNAL_ERROR' : 'APP_ERROR',
+    errorCode: status === 500 ? 'INTERNAL_ERROR' : 'APP_ERROR',
     message,
     requestId: res.locals.requestId,
   });

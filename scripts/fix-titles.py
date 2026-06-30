@@ -1,8 +1,9 @@
+import os
 #!/usr/bin/env python3
 import json, urllib.request, re, time
 from collections import defaultdict, deque
 
-API_KEY = "lin_api_FEzO08T6B8exsBs618DoskFIChEsHqBNX9ITInxE"
+API_KEY = os.environ.get("LINEAR_API_KEY")
 ENDPOINT = "https://api.linear.app/graphql"
 
 def gql(query, variables=None, retries=5):

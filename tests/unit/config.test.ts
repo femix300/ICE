@@ -17,8 +17,8 @@ describe('Config Validation', () => {
     process.env = {};
 
     try {
-      // Re-importing config dynamically to trigger top-level validation
-      await expect(import('../../src/config.js?mock=' + Date.now())).rejects.toThrow(
+      vi.resetModules();
+      await expect(import('../../src/config.js')).rejects.toThrow(
         'Process exited with code 1'
       );
     } finally {

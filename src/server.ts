@@ -4,9 +4,9 @@ import { createLogger } from './lib/logger.js';
 
 const log = createLogger('server');
 
-const port = parseInt(config.PORT, 10);
+const port = config.PORT;
 
-const server = app.listen(port, '127.0.0.1', () => {
+const server = app.listen(port, '0.0.0.0', () => {
   log.info({ port }, 'Server listening');
 });
 

@@ -2,7 +2,7 @@
   "name": "nomba_hackathon",
   "version": "1.0.0",
   "description": "> Built for the Nomba Hackathon 2026 — Infrastructure Track",
-  "main": "generateRef.js",
+  "main": "dist/server.js",
   "scripts": {
     "test": "vitest",
     "dev": "tsx watch src/server.ts",

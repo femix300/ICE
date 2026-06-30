@@ -11,7 +11,7 @@ import { notFoundHandler, errorHandler } from './middleware/errors.js';
 const app = express();
 
 // Assign a request ID for tracing
-app.use((req, res, next) => {
+app.use((_req, res, next) => {
   res.locals.requestId = crypto.randomUUID();
   next();
 });
