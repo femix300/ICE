@@ -196,7 +196,7 @@ Never use emojis in the codebase, commit messages, documentation, or anywhere in
 
 - Enforce native auto-escaping for React/Next.js.
 - Strictly prohibit `dangerouslySetInnerHTML` unless explicitly approved and sanitized via `DOMPurify`.
-- Mandate that authentication tokens (like JWTs or Session IDs) must be stored in `HttpOnly`, `Secure`, `SameSite=Lax/Strict` cookies, and **never** in `localStorage` or `sessionStorage`.
+- Mandate that authentication tokens (like JWTs or Session IDs) must be stored in `HttpOnly`, `Secure`, `SameSite=Lax` or `SameSite=Strict` cookies, and **never** in `localStorage` or `sessionStorage`.
 
 ### 2.12 Dependency Security
 
