@@ -192,6 +192,16 @@ Prettier owns formatting. Run `npm run format` before pushing. Don't argue with 
 
 Never use emojis in the codebase, commit messages, documentation, or anywhere in the repository. Stick strictly to plain text and ASCII characters.
 
+### 2.11 Frontend Security Standards
+
+- Enforce native auto-escaping for React/Next.js.
+- Strictly prohibit `dangerouslySetInnerHTML` unless explicitly approved and sanitized via `DOMPurify`.
+- Mandate that authentication tokens (like JWTs or Session IDs) must be stored in `HttpOnly`, `Secure`, `SameSite=Lax/Strict` cookies, and **never** in `localStorage` or `sessionStorage`.
+
+### 2.12 Dependency Security
+
+- Mandate that all new npm packages must be vetted/scanned for vulnerabilities before being added to `package.json` (e.g. via `scan_dependencies` skill).
+
 ---
 
 ## 3. Definition of Done
@@ -264,6 +274,8 @@ Before opening a PR, the developer (or their AI agent) must verify **ALL** of th
 - [ ] Webhook verification uses `crypto.timingSafeEqual` (never `===`)
 - [ ] No sensitive data logged (passwords, tokens, full request bodies)
 - [ ] New env vars added to `.env.example`
+- [ ] **Frontend**: Native escaping used, no `dangerouslySetInnerHTML` bypasses, tokens stored in secure cookies (not `localStorage`).
+- [ ] **Dependencies**: No new packages added without explicit vulnerability scanning.
 
 ### 3.8 Handoff
 
