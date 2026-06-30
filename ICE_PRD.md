@@ -571,6 +571,8 @@ ICE handles financial data. Security is non-negotiable at every layer.
 | Audit Logging | All financial mutations logged with actor, timestamp, IP, old/new values |
 | Secrets Management | All secrets in environment variables; never committed; Render secret management in production |
 | Security Headers | `helmet()` sets HSTS, X-Frame-Options, X-Content-Type-Options on all responses |
+| Frontend Security | Native escaping (no `dangerouslySetInnerHTML`), CSP enforcement, tokens stored in `HttpOnly` cookies (never `localStorage`) |
+| Dependency Security | Strict vulnerability scanning prior to package adoption |
 
 ---
 

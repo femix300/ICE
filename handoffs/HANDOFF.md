@@ -237,3 +237,8 @@ To avoid repeating past mistakes, any future agents or team members must strictl
 - A Pull Request must be opened targeting the `dev` branch.
 - Execution stops until the Pull Request is reviewed, approved, and merged by the Team Lead (Peter).
 - Eventually, the `dev` branch will be tested and merged into `main` for production.
+
+### 11.6 Security Documentation Updates
+- Updated `ICE_ENGINEERING.md` to include explicit Frontend Security (Section 2.11) and Dependency Security (Section 2.12) standards.
+- Updated `ICE_PRD.md` Security Model table to include Frontend Security and Dependency Security rows.
+- Expanded the Definition of Done (DoD) in `ICE_ENGINEERING.md` to include security checks for frontend and dependencies.
