@@ -242,11 +242,12 @@ Before opening a PR, the developer (or their AI agent) must verify **ALL** of th
 
 ### 3.6 Integration Safety
 
-- [ ] Pulled latest `main` and rebased — no merge conflicts
+- [ ] Pulled latest `dev` and rebased your branch on `dev` — no merge conflicts
 - [ ] Existing tests still pass after rebase: `npm test`
 - [ ] App starts without errors: `npm run dev`
 - [ ] `/healthz` still returns 200 (if app is bootable at this stage)
 - [ ] No regressions in previously working features
+- [ ] PR targets `dev` (not `main`) during active development
 
 ### 3.7 Security
 
@@ -354,8 +355,8 @@ To ensure our integration meets the standard required by the hackathon judges (m
 
 ### The 4 Golden Rules
 1. **Always use Kobo:** All monetary amounts MUST be sent and stored in Kobo (e.g., ₦1,500 = `150000`). Never use floats or decimals.
-2. **The 55-Minute Token Cache:** Do **not** request a new token per API call. Server-to-server OAuth `client_credentials` tokens last 60 minutes. Cache them in memory/Redis and refresh automatically at the 55-minute mark.
-3. **Webhook Verification & Idempotency:** Webhook signatures MUST be verified using HMAC-SHA256 (`nomba-signature` header). Furthermore, Nomba may send the same event twice; you must use `event.requestId` as an idempotency key to reject duplicates.
+2. **The 55-Minute Token Cache:** Do **not** request a new token per API call. Server-to-server OAuth `client_credentials` tokens last 60 minutes. Cache them in memory/Redis and refresh automatically [...]
+3. **Webhook Verification & Idempotency:** Webhook signatures MUST be verified using HMAC-SHA256 (`nomba-signature` header). Furthermore, Nomba may send the same event twice; you must use `event.reque[...]
 4. **Always Lookup Before Transfers:** Never blindly hit `/transfers/bank`. You MUST call `/transfers/bank/lookup` to verify the recipient `accountName` first to prevent irreversible loss.
 
 ---
