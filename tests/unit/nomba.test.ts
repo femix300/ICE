@@ -64,10 +64,9 @@ describe('NombaClient', () => {
   });
 
   it('transferToBank looks up account and sends correct kobo amount', async () => {
-    // Mock lookup success
     fetchMock.mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ success: true, accountName: 'Test Account' }),
+      json: async () => ({ data: { accountName: 'John Doe' } }),
     });
     // Mock transfer success
     fetchMock.mockResolvedValueOnce({
@@ -75,10 +74,17 @@ describe('NombaClient', () => {
       json: async () => ({ success: true }),
     });
 
-    await client.transferToBank({ amount: 50000, accountNumber: '1234567890', bankCode: '044', narration: 'Test' });
+    await client.transferToBank({
+      amount: 50000,
+      accountNumber: '1234567890',
+      bankCode: '044',
+      merchantTxRef: 'txn_123',
+      senderName: 'ICE Platform',
+      narration: 'Test',
+    });
 
     // Lookup
-    expect(fetchMock).toHaveBeenNthCalledWith(1, 'https://sandbox.nomba.com/v2/transfers/bank/lookup', {
+    expect(fetchMock).toHaveBeenNthCalledWith(1, 'https://sandbox.nomba.com/v1/transfers/bank/lookup', {
       method: 'POST',
       headers: expect.objectContaining({
         Authorization: 'Bearer test_token',
@@ -92,7 +98,15 @@ describe('NombaClient', () => {
       headers: expect.objectContaining({
         Authorization: 'Bearer test_token',
       }),
-      body: JSON.stringify({ amount: 50000, accountNumber: '1234567890', bankCode: '044', narration: 'Test' }),
+      body: JSON.stringify({
+        amount: 50000,
+        accountNumber: '1234567890',
+        bankCode: '044',
+        merchantTxRef: 'txn_123',
+        senderName: 'ICE Platform',
+        accountName: 'John Doe',
+        narration: 'Test',
+      }),
     });
   });
 
