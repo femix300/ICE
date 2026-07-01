@@ -5,7 +5,7 @@ import { createLogger } from './logger.js';
 
 const log = createLogger('nomba-client');
 
-const NOMBA_BASE_URL = 'https://sandbox.api.nomba.com/v1';
+const NOMBA_BASE_URL = 'https://sandbox.nomba.com/v1';
 
 export function createNombaClient() {
   let accessToken: string | null = null;
