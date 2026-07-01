@@ -157,11 +157,15 @@ export function createNombaClient() {
       amount,
       accountNumber,
       bankCode,
+      merchantTxRef,
+      senderName,
       narration,
     }: {
       amount: number;
       accountNumber: string;
       bankCode: string;
+      merchantTxRef: string;
+      senderName: string;
       narration?: string;
     }) => {
       try {
@@ -179,11 +183,26 @@ export function createNombaClient() {
           throw new AppError(502, 'NOMBA_ERROR', 'Failed to lookup recipient account name');
         }
 
+        const lookupData = (await lookupRes.json()) as any;
+        const accountName = lookupData.data?.accountName;
+        
+        if (!accountName) {
+          throw new AppError(502, 'NOMBA_ERROR', 'Could not resolve account name from lookup');
+        }
+
         // Rule 1: Always use Kobo (amount is already in Kobo, no conversion)
         const res = await fetch(`${NOMBA_BASE_URL.replace('/v1', '')}/v2/transfers/bank`, {
           method: 'POST',
           headers: getHeaders(),
-          body: JSON.stringify({ amount, accountNumber, bankCode, narration }),
+          body: JSON.stringify({
+            amount,
+            accountNumber,
+            bankCode,
+            merchantTxRef,
+            senderName,
+            accountName,
+            narration,
+          }),
         });
 
         if (!res.ok) {
