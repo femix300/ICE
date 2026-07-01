@@ -279,8 +279,10 @@ Before opening a PR, the developer (or their AI agent) must verify **ALL** of th
 
 ### 3.8 Handoff
 
-- [ ] Updated your personal handoff file in `handoffs/` (e.g., `handoffs/HANDOFF_MARVELOUS.md`, or `handoffs/HANDOFF.md` for Peter) with: what was built, files changed, decisions made
-- [ ] If any task requirements changed during implementation, noted in your personal handoff file
+- [ ] Updated your personal handoff file in your **local scratch directory** (e.g., `handoffs/` folder inside your `.gemini/antigravity-ide/brain/<chat-id>/scratch/` directory) with: what was built, files changed, decisions made.
+- [ ] If you are working on the main documentation, append your updates to the master `HANDOFF.md` in the shared local scratch directory.
+- [ ] **NEVER** push any `handoffs/` files or `HANDOFF.md` to GitHub. They must remain strictly in local scratch directories to prevent repo clutter.
+- [ ] If any task requirements changed during implementation, noted in your personal handoff file.
 
 > **Review flow:** Self-review with this checklist → Open PR → Request Peter's review → Merge after approval.
 
