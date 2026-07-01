@@ -104,8 +104,8 @@ describe('NombaClient', () => {
 
     await client.suspendVirtualAccount('acct_123');
 
-    expect(fetchMock).toHaveBeenCalledWith('https://sandbox.nomba.com/v1/accounts/virtual/acct_123/suspend', {
-      method: 'POST',
+    expect(fetchMock).toHaveBeenCalledWith('https://sandbox.nomba.com/v1/accounts/virtual/acct_123', {
+      method: 'DELETE',
       headers: expect.objectContaining({
         Authorization: 'Bearer test_token',
         'Content-Type': 'application/json',

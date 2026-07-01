@@ -134,8 +134,8 @@ export function createNombaClient() {
 
     suspendVirtualAccount: async (accountId: string) => {
       try {
-        const res = await fetch(`${NOMBA_BASE_URL}/accounts/virtual/${accountId}/suspend`, {
-          method: 'POST',
+        const res = await fetch(`${NOMBA_BASE_URL}/accounts/virtual/${accountId}`, {
+          method: 'DELETE',
           headers: getHeaders(),
         });
 
