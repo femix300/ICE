@@ -102,7 +102,7 @@ describe('NombaClient', () => {
       json: async () => ({ success: true }),
     });
 
-    await client.suspendVirtualAccount('acct_123');
+    await client.deleteVirtualAccount('acct_123');
 
     expect(fetchMock).toHaveBeenCalledWith('https://sandbox.nomba.com/v1/accounts/virtual/acct_123', {
       method: 'DELETE',

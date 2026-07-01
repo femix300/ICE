@@ -132,7 +132,7 @@ export function createNombaClient() {
       }
     },
 
-    suspendVirtualAccount: async (accountId: string) => {
+    deleteVirtualAccount: async (accountId: string) => {
       try {
         const res = await fetch(`${NOMBA_BASE_URL}/accounts/virtual/${accountId}`, {
           method: 'DELETE',
@@ -140,7 +140,7 @@ export function createNombaClient() {
         });
 
         if (!res.ok) {
-          throw new AppError(502, 'NOMBA_ERROR', 'Failed to suspend virtual account');
+          throw new AppError(502, 'NOMBA_ERROR', 'Failed to delete virtual account');
         }
         return (await res.json()) as unknown;
       } catch (error: unknown) {
