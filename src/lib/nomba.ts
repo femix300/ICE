@@ -5,7 +5,7 @@ import { createLogger } from './logger.js';
 
 const log = createLogger('nomba-client');
 
-const NOMBA_BASE_URL = 'https://sandbox.api.nomba.com/v1';
+const NOMBA_BASE_URL = 'https://sandbox.nomba.com/v1';
 
 export function createNombaClient() {
   let accessToken: string | null = null;
@@ -132,15 +132,15 @@ export function createNombaClient() {
       }
     },
 
-    suspendVirtualAccount: async (accountId: string) => {
+    deleteVirtualAccount: async (accountId: string) => {
       try {
-        const res = await fetch(`${NOMBA_BASE_URL}/accounts/virtual/${accountId}/suspend`, {
-          method: 'POST',
+        const res = await fetch(`${NOMBA_BASE_URL}/accounts/virtual/${accountId}`, {
+          method: 'DELETE',
           headers: getHeaders(),
         });
 
         if (!res.ok) {
-          throw new AppError(502, 'NOMBA_ERROR', 'Failed to suspend virtual account');
+          throw new AppError(502, 'NOMBA_ERROR', 'Failed to delete virtual account');
         }
         return (await res.json()) as unknown;
       } catch (error: unknown) {

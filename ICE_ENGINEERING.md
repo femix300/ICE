@@ -364,7 +364,7 @@ Day 6-7 (Polish):
 To ensure our integration meets the standard required by the hackathon judges (matching the Nomba Certification), strictly follow these rules:
 
 ### Core Environment
-- **Sandbox Base URL:** `https://sandbox.api.nomba.com/v1` (Use this for all hackathon work)
+- **Sandbox Base URL:** `https://sandbox.nomba.com/v1` (Use this for all hackathon work)
 - **Production Base URL:** `https://api.nomba.com/v1` (Do not use until post-hackathon KYC)
 - **Secrets Management:** `clientSecret` and webhook secrets must **never** be committed to source code. Always load from environment variables (e.g., `process.env.NOMBA_CLIENT_SECRET`).
 
