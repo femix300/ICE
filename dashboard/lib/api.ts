@@ -3,7 +3,7 @@ const BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
 export const api = {
   get: async <T>(path: string, key?: string): Promise<T> => {
     const headers: Record<string, string> = {
-      'Accept': 'application/json',
+      Accept: 'application/json',
     };
     if (key) {
       headers['Authorization'] = `Bearer ${key}`;
@@ -51,7 +51,7 @@ export const api = {
   post: async <T>(path: string, body: unknown, key?: string): Promise<T> => {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      'Accept': 'application/json',
+      Accept: 'application/json',
     };
     if (key) {
       headers['Authorization'] = `Bearer ${key}`;

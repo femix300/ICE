@@ -12,11 +12,7 @@ export default function Layout({ variant, children }: LayoutProps) {
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-50 flex">
       {/* Navigation Sidebar (fixed on desktop, drawer on mobile) */}
-      <Sidebar
-        variant={variant}
-        isOpen={isSidebarOpen}
-        onClose={() => setIsSidebarOpen(false)}
-      />
+      <Sidebar variant={variant} isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col md:pl-64 min-w-0 transition-all duration-200">
@@ -30,7 +26,13 @@ export default function Layout({ variant, children }: LayoutProps) {
               onClick={() => setIsSidebarOpen(true)}
             >
               <span className="sr-only">Open sidebar</span>
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                viewBox="0 0 24 24"
+              >
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
