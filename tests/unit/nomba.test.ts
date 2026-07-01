@@ -78,7 +78,7 @@ describe('NombaClient', () => {
     await client.transferToBank({ amount: 50000, accountNumber: '1234567890', bankCode: '044', narration: 'Test' });
 
     // Lookup
-    expect(fetchMock).toHaveBeenNthCalledWith(1, 'https://sandbox.nomba.com/v2/transfers/bank/lookup', {
+    expect(fetchMock).toHaveBeenNthCalledWith(1, 'https://sandbox.nomba.com/v1/transfers/bank/lookup', {
       method: 'POST',
       headers: expect.objectContaining({
         Authorization: 'Bearer test_token',

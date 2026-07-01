@@ -167,7 +167,7 @@ export function createNombaClient() {
       try {
         // Rule 4: Always Lookup Before Transfers
         const lookupRes = await fetch(
-          `${NOMBA_BASE_URL.replace('/v1', '')}/v2/transfers/bank/lookup`,
+          `${NOMBA_BASE_URL}/transfers/bank/lookup`,
           {
             method: 'POST',
             headers: getHeaders(),
