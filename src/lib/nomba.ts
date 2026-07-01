@@ -183,12 +183,18 @@ export function createNombaClient() {
           throw new AppError(502, 'NOMBA_ERROR', 'Failed to lookup recipient account name');
         }
 
-        const lookupData = (await lookupRes.json()) as any;
-        const accountName = lookupData.data?.accountName;
-        
-        if (!accountName) {
+        const lookupSchema = z.object({
+          data: z.object({
+            accountName: z.string(),
+          }).optional(),
+        });
+
+        const parsedLookup = lookupSchema.safeParse(await lookupRes.json());
+        if (!parsedLookup.success || !parsedLookup.data.data?.accountName) {
           throw new AppError(502, 'NOMBA_ERROR', 'Could not resolve account name from lookup');
         }
+        
+        const accountName = parsedLookup.data.data.accountName;
 
         // Rule 1: Always use Kobo (amount is already in Kobo, no conversion)
         const res = await fetch(`${NOMBA_BASE_URL.replace('/v1', '')}/v2/transfers/bank`, {
