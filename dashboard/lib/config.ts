@@ -1,4 +1,8 @@
 import { z } from 'zod';
+import { AppError } from './errors';
+import { createLogger } from './logger';
+
+const log = createLogger('config');
 
 const envSchema = z.object({
   NEXT_PUBLIC_API_URL: z.string().url().default('http://localhost:3000'),
@@ -12,8 +16,8 @@ const _env = envSchema.safeParse({
 });
 
 if (!_env.success) {
-  console.error('Invalid environment variables:', _env.error.format());
-  throw new Error('Invalid environment variables configuration');
+  log.error({ errors: _env.error.format() }, 'Invalid environment variables');
+  throw new AppError('CONFIG_ERROR', 'Invalid environment variables configuration');
 }
 
 export const config = _env.data;
