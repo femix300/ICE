@@ -201,3 +201,13 @@ P01 was expanded to include setup for:
 - **Issue numbering:** ICE-1 to ICE-4 are Linear onboarding issues (pre-existing). ICE-5 to ICE-28 were the first iteration (deleted). ICE-29 to ICE-64 are the current live issues.
 - **Frontend framework:** Next.js + Tailwind CSS (PRD originally said React, team confirmed Next.js).
 - **State ID:** TODO state is `0d3e4f4f-d6bb-4533-a908-adc0c9fac10d` (used for all new issues).
+
+### Update (Task E01 - ICE-301)
+- **Dev:** Emmanuel
+- **Branch:** feat/queue-setup
+- **Files Created:**
+  - src/lib/redis.ts
+  - src/queues/index.ts, src/queues/webhook-delivery.queue.ts, src/queues/refund.queue.ts
+  - src/workers/webhook-delivery.worker.ts, src/workers/refund.worker.ts
+- **Notes:** Scaffolds queue structures in parallel with P01. Rebase expected.
+
