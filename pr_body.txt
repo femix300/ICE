@@ -1,0 +1,14 @@
+Closes ICE-185
+
+## Summary
+Builds the BullMQ worker for outbound webhook deliveries with an exponential backoff retry strategy. Also adds the webhook deliveries repository to log attempts.
+
+## Approach
+- Implemented `createWebhookDeliveryWorker` with fetch logic, 10-second timeout, and logging.
+- Created `webhook-deliveries.repo.ts` to log all delivery attempts.
+- Created stub unit tests in `tests/unit/webhook-delivery.worker.test.ts`.
+- Retries (30s, 2m, 10m, 30m) are inherently handled by BullMQ via queue setup in E01.
+
+## Test Plan
+- Verified against `ICE_ENGINEERING.md` (no `any`, proper logging).
+- Test execution deferred until dependencies land.

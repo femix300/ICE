@@ -211,3 +211,14 @@ P01 was expanded to include setup for:
   - src/workers/webhook-delivery.worker.ts, src/workers/refund.worker.ts
 - **Notes:** Scaffolds queue structures in parallel with P01. Rebase expected.
 
+
+### Update (Task E02 - ICE-302)
+- **Dev:** Emmanuel
+- **Branch:** feat/webhook-delivery
+- **Files Created:**
+  - src/repositories/webhook-deliveries.repo.ts
+  - tests/unit/webhook-delivery.worker.test.ts
+- **Files Modified:**
+  - src/workers/webhook-delivery.worker.ts
+- **Notes:** Webhook delivery logic implemented. Rebase expected.
+
