@@ -5,6 +5,7 @@ import rateLimit from 'express-rate-limit';
 import crypto from 'node:crypto';
 
 import { config } from './config.js';
+import { redis } from './lib/redis.js';
 import { v1Router } from './routes/v1.js';
 import { notFoundHandler, errorHandler } from './middleware/errors.js';
 
@@ -23,7 +24,12 @@ app.use(express.json({ limit: '1mb' }));
 app.use(rateLimit({ windowMs: 60_000, max: 100 }));
 
 // Health Check
-app.get('/healthz', (req, res) => res.json({ ok: true }));
+app.get('/healthz', (req, res) => {
+  if (redis.status !== 'ready') {
+    return res.status(503).json({ ok: false, error: 'Redis is not ready' });
+  }
+  return res.json({ ok: true, redis: 'ready' });
+});
 
 // API Routes
 app.use('/v1', v1Router);

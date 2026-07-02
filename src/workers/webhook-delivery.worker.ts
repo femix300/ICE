@@ -1,6 +1,6 @@
 import { Worker } from 'bullmq';
-import { redis } from '../lib/redis.ts';
-import { createLogger } from '../lib/logger.ts';
+import { redis } from '../lib/redis.js';
+import { createLogger } from '../lib/logger.js';
 
 const log = createLogger('webhook-delivery-worker');
 
@@ -8,8 +8,9 @@ export const webhookDeliveryWorker = new Worker(
   'webhook-delivery',
   async (job) => {
     // To be implemented in E02
-    log.info({ jobId: job.id }, 'Processing webhook delivery');
+    log.info({ job: job.id }, 'Processing webhook delivery');
   },
+  // @ts-expect-error type mismatch between bullmq's ioredis and the project's ioredis
   { connection: redis }
 );
 

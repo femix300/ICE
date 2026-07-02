@@ -1,0 +1,22 @@
+1. **Summary:** 
+This PR introduces the merchant webhook URL configuration and API key rotation endpoints. It implements `PUT /v1/merchants/:id/webhook-url` to update the webhook URL with HTTPS validation, and `POST /v1/merchants/:id/api-keys/rotate` to invalidate an existing API key and safely generate a new hashed key. Appropriate tier validation ensures only merchants can access their profiles.
+
+2. **Closes:** 
+Closes ICE-169
+
+3. **Scope:** 
+- No feature drift.
+- No new environment variables added.
+- **Architecture Notes:** Leverages existing `generate` and `hash` functions from `src/lib/api-key.ts` and orchestrates them through `merchants.service.ts` to keep the DB layer abstract. Used `AppError` throughout to comply strictly with ICE engineering rules.
+- **Target Branch Deviation:** This PR intentionally targets `feat/merchant-registration` rather than `dev`. This is because P04 depends on P03 (Merchant Registration) which is not yet merged. This "stacked PR" approach ensures the diff stays clean and isolated to only P04 code. Once P03 merges, GitHub will automatically re-target this PR to `dev`.
+
+4. **Test Plan:** 
+- Authored 4 unit tests covering rotation behavior, webhook updates, and proper rejection of unknown merchants.
+- `npm run typecheck` passes (0 errors).
+- `npm run lint` passes.
+- `npm test` passes locally.
+
+5. **Risk:** 
+**Low**. The changes are primarily additive and completely encapsulated within `merchants.service.ts`, `merchants.controller.ts`, and `merchants.repo.ts`. The most critical part of the code is ensuring vendors are blocked from editing merchant profiles, which has been handled directly in the controller layer via `req.principal.tier` validation.
+
+**Dependency Audit:** Verified `bcrypt`, `pg`, `@types/bcrypt`, and `@types/pg` dependencies via `npm audit`. Found 0 vulnerabilities related to these newly added packages (audit only flagged unrelated dev dependencies like vite/vitest).
