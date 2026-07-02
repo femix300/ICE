@@ -23,6 +23,11 @@ describe('API Client Utility', () => {
   });
 
   it('performs GET request and returns data', async () => {
+    const schema = z.object({
+      id: z.string(),
+      name: z.string(),
+    });
+
     const mockData = { id: '123', name: 'Test' };
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
@@ -31,7 +36,7 @@ describe('API Client Utility', () => {
     });
     vi.stubGlobal('fetch', mockFetch);
 
-    const result = await api.get('/test-route');
+    const result = await api.get('/test-route', { schema });
     expect(mockFetch).toHaveBeenCalledWith(
       'https://api.test.com/test-route',
       expect.objectContaining({
@@ -86,7 +91,7 @@ describe('API Client Utility', () => {
     });
     vi.stubGlobal('fetch', mockFetch);
 
-    await expect(api.get('/test-route')).rejects.toThrowError(AppError);
+    await expect(api.get('/test-route', { schema: z.unknown() })).rejects.toThrowError(AppError);
     expect(mockRedirect.href).toBe('/login');
   });
 
@@ -98,7 +103,7 @@ describe('API Client Utility', () => {
     });
     vi.stubGlobal('fetch', mockFetch);
 
-    await expect(api.get('/test-route')).rejects.toThrowError('Bad Request Parameter');
+    await expect(api.get('/test-route', { schema: z.unknown() })).rejects.toThrowError('Bad Request Parameter');
   });
 
   it('performs POST request with payload and returns data', async () => {
@@ -111,7 +116,12 @@ describe('API Client Utility', () => {
     });
     vi.stubGlobal('fetch', mockFetch);
 
-    const result = await api.post('/test-route', payload);
+    const schema = z.object({
+      id: z.string(),
+      businessName: z.string()
+    });
+
+    const result = await api.post('/test-route', payload, { schema });
     expect(mockFetch).toHaveBeenCalledWith(
       'https://api.test.com/test-route',
       expect.objectContaining({

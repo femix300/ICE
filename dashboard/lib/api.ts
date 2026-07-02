@@ -17,12 +17,12 @@ const apiResponseSchema = z.object({
 export type ApiResponse = z.infer<typeof apiResponseSchema>;
 
 interface ApiRequestOptions<T> {
-  schema?: z.Schema<T>;
+  schema: z.Schema<T>;
   key?: string;
 }
 
 export const api = {
-  get: async <T>(path: string, options?: ApiRequestOptions<T>): Promise<T> => {
+  get: async <T>(path: string, options: ApiRequestOptions<T>): Promise<T> => {
     const headers: Record<string, string> = {
       Accept: 'application/json',
     };
@@ -79,21 +79,14 @@ export const api = {
       if (!parsedEnvelope.data.ok) {
         throw new AppError('API_ERROR', parsedEnvelope.data.error || 'API returned ok=false');
       }
-      const rawData = parsedEnvelope.data.data;
-      if (options?.schema) {
-        return options.schema.parse(rawData);
-      }
-      return rawData as T;
+      return options.schema.parse(parsedEnvelope.data.data);
     }
 
     // Fallback if envelope does not match standard backend structure
-    if (options?.schema) {
-      return options.schema.parse(result);
-    }
-    return result as T;
+    return options.schema.parse(result);
   },
 
-  post: async <T>(path: string, body: unknown, options?: ApiRequestOptions<T>): Promise<T> => {
+  post: async <T>(path: string, body: unknown, options: ApiRequestOptions<T>): Promise<T> => {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       Accept: 'application/json',
@@ -152,17 +145,10 @@ export const api = {
       if (!parsedEnvelope.data.ok) {
         throw new AppError('API_ERROR', parsedEnvelope.data.error || 'API returned ok=false');
       }
-      const rawData = parsedEnvelope.data.data;
-      if (options?.schema) {
-        return options.schema.parse(rawData);
-      }
-      return rawData as T;
+      return options.schema.parse(parsedEnvelope.data.data);
     }
 
     // Fallback if envelope does not match standard backend structure
-    if (options?.schema) {
-      return options.schema.parse(result);
-    }
-    return result as T;
+    return options.schema.parse(result);
   },
 };
