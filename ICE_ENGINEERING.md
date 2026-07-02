@@ -296,10 +296,10 @@ All 36 tasks are tracked in Linear under the ICE project. Each task has a unique
 
 | Dev | Task Series | Linear Issues | Count |
 |-----|-------------|---------------|-------|
-| **Peter Ajimoti** (Lead) | P01–P10 | ICE-29 to ICE-38 | 10 |
-| **Marvelous** (Payments) | M01–M08 | ICE-39 to ICE-46 | 8 |
-| **Emmanuel** (Async) | E01–E08 | ICE-47 to ICE-54 | 8 |
-| **Samkiel** (Frontend) | S01–S10 | ICE-55 to ICE-64 | 10 |
+| **Peter Ajimoti** (Lead) | P01–P10 | ICE-166 to ICE-175 | 10 |
+| **Marvelous** (Payments) | M01–M08 | ICE-176 to ICE-183 | 8 |
+| **Emmanuel** (Async) | E01–E09 | ICE-184 to ICE-191, ICE-202 | 9 |
+| **Samkiel** (Frontend) | S01–S10 | ICE-192 to ICE-201 | 10 |
 
 ### 4.2 Day 1 Parallelism
 
