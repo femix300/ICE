@@ -1,13 +1,18 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/router';
 import { z } from 'zod';
-import Layout from '../components/Layout';
-import ApiKeyDisplay from '../components/ApiKeyDisplay';
+import Layout from '../components/layout';
+import ApiKeyDisplay from '../components/api-key-display';
 import { api } from '../lib/api';
+import { AppError } from '../lib/errors';
 
 // Validation Schema with Zod
 const registerSchema = z.object({
-  businessName: z.string().trim().min(1, 'Business name is required'),
+  businessName: z
+    .string()
+    .trim()
+    .min(3, 'Business name must be at least 3 characters')
+    .max(100, 'Business name must be at most 100 characters'),
   email: z.string().trim().min(1, 'Email is required').email('Invalid email address'),
   webhookUrl: z
     .string()
@@ -58,8 +63,8 @@ export default function Register() {
     setTouched((prev) => ({ ...prev, [field]: true }));
   };
 
-  const shouldShowError = (field: keyof RegisterFormValues) => {
-    return (touched[field] || submitAttempted) && inlineErrors[field];
+  const shouldShowError = (field: keyof RegisterFormValues): boolean => {
+    return !!((touched[field] || submitAttempted) && inlineErrors[field]);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -84,7 +89,7 @@ export default function Register() {
       if (generatedKey) {
         setApiKey(generatedKey);
       } else {
-        throw new Error('API key was not returned by the server');
+        throw new AppError('REGISTRATION_FAILED', 'API key was not returned by the server');
       }
     } catch (err: unknown) {
       const errorMessage =

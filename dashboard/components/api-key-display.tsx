@@ -1,4 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { createLogger } from '../lib/logger';
+
+const log = createLogger('api-key-display');
 
 interface ApiKeyDisplayProps {
   apiKey: string;
@@ -23,8 +26,8 @@ export default function ApiKeyDisplay({ apiKey, onContinue }: ApiKeyDisplayProps
     try {
       await navigator.clipboard.writeText(apiKey);
       setCopied(true);
-    } catch {
-      // Fallback
+    } catch (err) {
+      log.error({ err }, 'Failed to copy API key to clipboard');
     }
   };
 
@@ -69,7 +72,7 @@ export default function ApiKeyDisplay({ apiKey, onContinue }: ApiKeyDisplayProps
           Your Merchant API Key
         </label>
         <div className="flex items-center gap-2 bg-zinc-950 border border-zinc-800 rounded-xl p-3 font-mono text-sm tracking-tight text-white select-all">
-          <span className="flex-1 overflow-x-auto whitespace-nowrap pr-2 scrollbar-none">
+          <span className="flex-1 overflow-x-auto whitespace-nowrap pr-2">
             {isRevealed ? apiKey : getMaskedKey(apiKey)}
           </span>
           <div className="flex items-center gap-1.5 shrink-0">
@@ -79,6 +82,8 @@ export default function ApiKeyDisplay({ apiKey, onContinue }: ApiKeyDisplayProps
               className="p-1.5 rounded-lg text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900 border border-transparent transition-colors"
               onClick={() => setIsRevealed(!isRevealed)}
               title={isRevealed ? 'Hide API key' : 'Show API key'}
+              aria-label={isRevealed ? 'Hide API key' : 'Show API key'}
+              aria-pressed={isRevealed}
             >
               {isRevealed ? (
                 <svg
