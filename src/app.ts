@@ -19,7 +19,12 @@ app.use((_req, res, next) => {
 // Middleware order is fixed per engineering guidelines
 app.use(helmet());
 app.use(cors({ origin: config.CORS_ORIGIN }));
-app.use(express.json({ limit: '1mb' }));
+app.use(express.json({
+  limit: '1mb',
+  verify: (req: any, _res, buf) => {
+    req.rawBody = buf.toString();
+  }
+}));
 app.use(rateLimit({ windowMs: 60_000, max: 100 }));
 
 // Health Check
