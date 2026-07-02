@@ -14,6 +14,8 @@ const apiResponseSchema = z.object({
   error: z.string().optional(),
 });
 
+export type ApiResponse = z.infer<typeof apiResponseSchema>;
+
 interface ApiRequestOptions<T> {
   schema?: z.Schema<T>;
   key?: string;

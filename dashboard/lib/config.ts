@@ -20,4 +20,5 @@ if (!_env.success) {
   throw new AppError('CONFIG_ERROR', 'Invalid environment variables configuration');
 }
 
-export const config = _env.data;
+export type Config = z.infer<typeof envSchema>;
+export const config: Config = _env.data;
