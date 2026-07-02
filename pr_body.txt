@@ -1,13 +1,15 @@
-Closes ICE-186
+Closes ICE-187
 
 ## Summary
-Adds dead-letter handling (DLQ) for webhook deliveries that fail after 5 retry attempts, protecting against infinite loops for system DLQ alerts. Also adds a `POST /v1/webhook-deliveries/:id/replay` endpoint to manually re-queue failed jobs with reset attempts.
+Implements the auto-refund engine via BullMQ. This worker processes refunds for overpayments by verifying the recipient's bank account with Nomba, executing the transfer, updating the database, and enqueueing a webhook notification to the merchant.
 
-## Approach
-- Modified `webhook-deliveries.repo.ts` to add `markDeadLetter` and `byId`.
-- Added loop prevention checks to `webhook-delivery.worker.ts` so `system.webhook_dead_letter` events do not trigger cascading DLQs.
-- Stubbed the `webhook-deliveries.controller.ts` and `webhook-deliveries.routes.ts` ready for integration once the core Express setup merges.
+## Scope
+- `src/workers/refund.worker.ts`: Worker implementation. Parses payload with `zod`. Uses `AppError` to capture and wrap Nomba API failures gracefully. 
+- `tests/unit/refund.worker.test.ts`: Added full `vitest` suite testing account lookup, transfer execution, validation, and error handling.
+- Rebased target branch to `dev`.
 
 ## Test Plan
-- Self-reviewed against `ICE_ENGINEERING.md`.
-- Code statically verified to avoid infinite loops by checking `job.data.event_type`.
+- Unit tests verify complete happy path and failure cases (lookup failure, transfer failure, validation failure).
+
+## Risk
+Low. Worker safely handles external API failures via explicit try-catch blocks mapped to `AppError`.
