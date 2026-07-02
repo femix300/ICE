@@ -45,6 +45,33 @@ export function createStatementsRepo(db: unknown) {
       `;
       const result = await pool.query(sql, [vendorId, pagination.pageSize, offset]) as { rows: unknown[] };
       return result?.rows || [];
+    },
+    getPlatformSummary: async (merchantId: string) => {
+      const sql = `
+        SELECT
+          COALESCE(SUM(amount_kobo), 0)::bigint AS total_collected_kobo,
+          COUNT(DISTINCT vendor_id) AS total_vendors,
+          COUNT(DISTINCT CASE WHEN status = 'ACTIVE' THEN vendor_id END) AS active_vendors,
+          COUNT(CASE WHEN reconciliation_status = 'MISDIRECTED' THEN 1 END) AS misdirected_count,
+          COUNT(CASE WHEN reconciliation_status = 'OVERPAID' THEN 1 END) AS overpayment_count,
+          COUNT(CASE WHEN reconciliation_status = 'EXACT' THEN 1 END) AS exact_match_count,
+          COUNT(*) AS total_transactions,
+          COALESCE(SUM(CASE WHEN r.status = 'COMPLETED' THEN r.amount_kobo ELSE 0 END), 0)::bigint AS refunds_issued_kobo
+        FROM transactions t
+        LEFT JOIN refunds r ON r.transaction_id = t.id
+        WHERE t.merchant_id = $1
+      `;
+      const result = await pool.query(sql, [merchantId]) as { rows: Record<string, unknown>[] };
+      const row = result?.rows?.[0];
+      const exact = Number(row?.exact_match_count || 0);
+      const total = Number(row?.total_transactions || 0);
+      const reconciliation_rate_percent = total > 0 ? Math.round((exact / total) * 10000) / 100 : 0;
+      return { ...row, reconciliation_rate_percent };
+    },
+    getTransactionById: async (id: string) => {
+      const sql = `SELECT * FROM transactions WHERE id = $1`;
+      const result = await pool.query(sql, [id]) as { rows: unknown[] };
+      return result?.rows?.[0] || null;
     }
   };
 }

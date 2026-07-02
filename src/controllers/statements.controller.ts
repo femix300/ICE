@@ -1,4 +1,5 @@
 import type { Request, Response } from 'express';
+import { z } from 'zod';
 import { createLogger } from '../lib/logger.ts';
 
 const log = createLogger('statements-controller');
@@ -6,10 +7,27 @@ const log = createLogger('statements-controller');
 // Stub ok envelope
 const ok = (res: Response, data: unknown) => res.status(200).json({ ok: true, data });
 
+class AppError extends Error {
+  constructor(public code: string, message: string) {
+    super(message);
+    this.name = 'AppError';
+  }
+}
+
+export const StatementsQuerySchema = z.object({
+  page: z.coerce.number().min(1).default(1),
+  pageSize: z.coerce.number().min(1).max(100).default(50),
+  from: z.string().optional(),
+  to: z.string().optional(),
+  status: z.string().optional(),
+});
+
 export interface StatementsServiceStub {
   getVendorStatement: (authId: string | null, vId: string, f: any, p: any) => Promise<any>;
   getCustomerStatement: (authId: string | null, vId: string, cId: string, f: any, p: any) => Promise<any>;
   getTransactions: (authId: string | null, vId: string, p: any) => Promise<any>;
+  getPlatformSummary: (isMasterKey: boolean, merchantId: string) => Promise<any>;
+  getTransactionById: (authId: string | null, id: string) => Promise<any>;
 }
 
 export function createStatementsController(deps: { service: StatementsServiceStub }) {
@@ -18,31 +36,67 @@ export function createStatementsController(deps: { service: StatementsServiceStu
     return (req as any).user?.vendor_id || null;
   };
 
-  const parsePagination = (req: Request) => ({
-    page: parseInt(req.query.page as string) || 1,
-    pageSize: parseInt(req.query.pageSize as string) || 50
-  });
-
-  const parseFilters = (req: Request) => ({
-    from: req.query.from as string,
-    to: req.query.to as string,
-    status: req.query.status as string,
-  });
+  const validateQuery = (req: Request) => {
+    const parsed = StatementsQuerySchema.safeParse(req.query);
+    if (!parsed.success) {
+      throw new AppError('VALIDATION_ERROR', 'Invalid query parameters');
+    }
+    return parsed.data;
+  };
 
   return {
     getVendorStatement: async (req: Request, res: Response) => {
       const vendorId = req.params.id;
-      const data = await deps.service.getVendorStatement(getAuthVendorId(req), vendorId, parseFilters(req), parsePagination(req));
+      if (!vendorId) throw new AppError('VALIDATION_ERROR', 'Vendor ID is required');
+      const query = validateQuery(req);
+      const data = await deps.service.getVendorStatement(
+        getAuthVendorId(req), 
+        vendorId, 
+        { from: query.from, to: query.to, status: query.status }, 
+        { page: query.page, pageSize: query.pageSize }
+      );
       return ok(res, data);
     },
     getCustomerStatement: async (req: Request, res: Response) => {
       const { id: vendorId, cid: customerId } = req.params;
-      const data = await deps.service.getCustomerStatement(getAuthVendorId(req), vendorId, customerId, parseFilters(req), parsePagination(req));
+      if (!vendorId || !customerId) throw new AppError('VALIDATION_ERROR', 'Vendor ID and Customer ID are required');
+      const query = validateQuery(req);
+      const data = await deps.service.getCustomerStatement(
+        getAuthVendorId(req), 
+        vendorId, 
+        customerId, 
+        { from: query.from, to: query.to, status: query.status }, 
+        { page: query.page, pageSize: query.pageSize }
+      );
       return ok(res, data);
     },
     getTransactions: async (req: Request, res: Response) => {
       const vendorId = req.params.id;
-      const data = await deps.service.getTransactions(getAuthVendorId(req), vendorId, parsePagination(req));
+      if (!vendorId) throw new AppError('VALIDATION_ERROR', 'Vendor ID is required');
+      const query = validateQuery(req);
+      const data = await deps.service.getTransactions(
+        getAuthVendorId(req), 
+        vendorId, 
+        { page: query.page, pageSize: query.pageSize }
+      );
+      return ok(res, data);
+    },
+    getPlatformSummary: async (req: Request, res: Response) => {
+      const merchantId = req.params.id;
+      if (!merchantId) throw new AppError('VALIDATION_ERROR', 'Merchant ID is required');
+      
+      const isMasterKey = !(req as any).user?.vendor_id;
+      const data = await deps.service.getPlatformSummary(isMasterKey, merchantId);
+      return ok(res, data);
+    },
+    getTransactionById: async (req: Request, res: Response) => {
+      const { id } = req.params;
+      if (!id) throw new AppError('VALIDATION_ERROR', 'Transaction ID is required');
+      
+      const data = await deps.service.getTransactionById(getAuthVendorId(req), id);
+      if (!data) {
+        throw new AppError('NOT_FOUND', 'Transaction not found');
+      }
       return ok(res, data);
     }
   };
