@@ -1,0 +1,16 @@
+Closes ICE-188
+
+## Summary
+Implements the full statement and transaction reporting layer for vendors. Provides 3 endpoints with date range filtering, pagination, and strict vendor key scoping.
+
+## Approach
+- Created `statements.repo.ts` with `getVendorStatement`, `getCustomerStatement`, and `getTransactions`.
+- Created `statements.service.ts` with `enforceScope` to prevent cross-vendor data leakage.
+- Created `statements.controller.ts` to parse query params and delegate to the service.
+- Created `statements.routes.ts` with all 3 routes wired up.
+- Created integration test stubs in `tests/integration/statements.test.ts`.
+
+## Test Plan
+- Vendor access scoping enforced via `enforceScope` — unauthorized access throws an `AppError`.
+- All monetary values are returned in kobo (as stored in the DB).
+- Full integration tests deferred until M08 and vitest dependencies are available.

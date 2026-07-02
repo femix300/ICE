@@ -201,3 +201,15 @@ P01 was expanded to include setup for:
 - **Issue numbering:** ICE-1 to ICE-4 are Linear onboarding issues (pre-existing). ICE-5 to ICE-28 were the first iteration (deleted). ICE-29 to ICE-64 are the current live issues.
 - **Frontend framework:** Next.js + Tailwind CSS (PRD originally said React, team confirmed Next.js).
 - **State ID:** TODO state is `0d3e4f4f-d6bb-4533-a908-adc0c9fac10d` (used for all new issues).
+
+### Update (Task E05 - ICE-305)
+- **Dev:** Emmanuel
+- **Branch:** feat/statements
+- **Files Created:**
+  - src/repositories/statements.repo.ts
+  - src/services/statements.service.ts
+  - src/controllers/statements.controller.ts
+  - src/routes/statements.routes.ts
+  - tests/integration/statements.test.ts
+- **Notes:** Statement endpoints with vendor scoping. Branched from main.
+
