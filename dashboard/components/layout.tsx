@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import Sidebar from './Sidebar';
+import Sidebar from './sidebar';
 
 interface LayoutProps {
   variant: 'owner' | 'vendor';

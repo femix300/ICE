@@ -105,16 +105,36 @@ export default function Sidebar({ variant, isOpen = false, onClose }: SidebarPro
   const renderContent = () => (
     <div className="flex flex-col h-full bg-zinc-950 text-zinc-400 border-r border-zinc-800/80">
       {/* Brand Header */}
-      <div className="flex items-center gap-3 px-6 py-5 border-b border-zinc-800/60">
-        <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 font-bold text-lg">
-          I
+      <div className="flex items-center justify-between px-6 py-5 border-b border-zinc-800/60">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 font-bold text-lg">
+            I
+          </div>
+          <div>
+            <span className="font-semibold text-white tracking-wider text-sm block">NOMBA ICE</span>
+            <span className="text-[10px] text-zinc-500 uppercase tracking-widest font-medium">
+              {variant === 'owner' ? 'Platform Control' : 'Vendor Portal'}
+            </span>
+          </div>
         </div>
-        <div>
-          <span className="font-semibold text-white tracking-wider text-sm block">NOMBA ICE</span>
-          <span className="text-[10px] text-zinc-500 uppercase tracking-widest font-medium">
-            {variant === 'owner' ? 'Platform Control' : 'Vendor Portal'}
-          </span>
-        </div>
+        {onClose && (
+          <button
+            type="button"
+            className="md:hidden flex items-center justify-center p-1.5 rounded-lg text-zinc-500 hover:bg-zinc-900 hover:text-zinc-300 transition-colors"
+            onClick={onClose}
+            aria-label="Close navigation sidebar"
+          >
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        )}
       </div>
 
       {/* Nav Items */}
@@ -176,6 +196,9 @@ export default function Sidebar({ variant, isOpen = false, onClose }: SidebarPro
         />
         {/* Drawer container */}
         <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={`${variant === 'owner' ? 'Platform Control' : 'Vendor Portal'} Navigation`}
           className={`absolute inset-y-0 left-0 w-64 transform transition-transform duration-300 ease-in-out ${
             isOpen ? 'translate-x-0' : '-translate-x-full'
           }`}

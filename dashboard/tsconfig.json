@@ -18,6 +18,8 @@
         "name": "next"
       }
     ],
+    "baseUrl": ".",
+    "noUncheckedIndexedAccess": true,
     "paths": {
       "@/*": ["./*"]
     }

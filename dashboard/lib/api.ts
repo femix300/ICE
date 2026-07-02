@@ -1,12 +1,31 @@
-const BASE = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
+import { z } from 'zod';
+import { config } from './config';
+import { AppError } from './errors';
+import { createLogger } from './logger';
+
+const log = createLogger('api-client');
+
+const BASE = config.NEXT_PUBLIC_API_URL.replace(/\/$/, '');
+
+// Common response wrapper schema from the backend
+const apiResponseSchema = z.object({
+  ok: z.boolean(),
+  data: z.unknown().optional(),
+  error: z.string().optional(),
+});
+
+interface ApiRequestOptions<T> {
+  schema?: z.Schema<T>;
+  key?: string;
+}
 
 export const api = {
-  get: async <T>(path: string, key?: string): Promise<T> => {
+  get: async <T>(path: string, options?: ApiRequestOptions<T>): Promise<T> => {
     const headers: Record<string, string> = {
       Accept: 'application/json',
     };
-    if (key) {
-      headers['Authorization'] = `Bearer ${key}`;
+    if (options?.key) {
+      headers['Authorization'] = `Bearer ${options.key}`;
     }
 
     const cleanPath = path.startsWith('/') ? path : `/${path}`;
@@ -19,42 +38,66 @@ export const api = {
       if (typeof window !== 'undefined') {
         window.location.href = '/login';
       }
-      throw new Error('Unauthorized');
+      throw new AppError('UNAUTHORIZED', 'Unauthorized');
     }
 
     if (!response.ok) {
       let errorMessage = `HTTP error! Status: ${response.status}`;
       try {
         const errorData = await response.json();
-        if (errorData) {
-          if (typeof errorData.message === 'string') {
+        if (errorData && typeof errorData === 'object') {
+          if ('message' in errorData && typeof errorData.message === 'string') {
             errorMessage = errorData.message;
-          } else if (typeof errorData.error === 'string') {
+          } else if ('error' in errorData && typeof errorData.error === 'string') {
             errorMessage = errorData.error;
-          } else if (errorData.data && typeof errorData.data.message === 'string') {
+          } else if (
+            'data' in errorData &&
+            errorData.data &&
+            typeof errorData.data === 'object' &&
+            'message' in errorData.data &&
+            typeof errorData.data.message === 'string'
+          ) {
             errorMessage = errorData.data.message;
           }
         }
-      } catch {
-        // Fallback to default message
+      } catch (err) {
+        // Intentionally swallowed: the error response body may not be valid JSON
+        // (e.g. HTML error pages from a gateway). We log the failure and fall
+        // through to throw a generic HTTP_ERROR with the status code instead.
+        log.error({ err, status: response.status }, 'Failed to parse GET error response JSON');
       }
-      throw new Error(errorMessage);
+      throw new AppError('HTTP_ERROR', errorMessage);
     }
 
     const result = await response.json();
-    if (result && typeof result === 'object' && 'ok' in result && 'data' in result) {
-      return result.data as T;
+
+    // Validate the response envelope
+    const parsedEnvelope = apiResponseSchema.safeParse(result);
+    if (parsedEnvelope.success) {
+      if (!parsedEnvelope.data.ok) {
+        throw new AppError('API_ERROR', parsedEnvelope.data.error || 'API returned ok=false');
+      }
+      const rawData = parsedEnvelope.data.data;
+      if (options?.schema) {
+        return options.schema.parse(rawData);
+      }
+      return rawData as T;
+    }
+
+    // Fallback if envelope does not match standard backend structure
+    if (options?.schema) {
+      return options.schema.parse(result);
     }
     return result as T;
   },
 
-  post: async <T>(path: string, body: unknown, key?: string): Promise<T> => {
+  post: async <T>(path: string, body: unknown, options?: ApiRequestOptions<T>): Promise<T> => {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       Accept: 'application/json',
     };
-    if (key) {
-      headers['Authorization'] = `Bearer ${key}`;
+    if (options?.key) {
+      headers['Authorization'] = `Bearer ${options.key}`;
     }
 
     const cleanPath = path.startsWith('/') ? path : `/${path}`;
@@ -68,31 +111,55 @@ export const api = {
       if (typeof window !== 'undefined') {
         window.location.href = '/login';
       }
-      throw new Error('Unauthorized');
+      throw new AppError('UNAUTHORIZED', 'Unauthorized');
     }
 
     if (!response.ok) {
       let errorMessage = `HTTP error! Status: ${response.status}`;
       try {
         const errorData = await response.json();
-        if (errorData) {
-          if (typeof errorData.message === 'string') {
+        if (errorData && typeof errorData === 'object') {
+          if ('message' in errorData && typeof errorData.message === 'string') {
             errorMessage = errorData.message;
-          } else if (typeof errorData.error === 'string') {
+          } else if ('error' in errorData && typeof errorData.error === 'string') {
             errorMessage = errorData.error;
-          } else if (errorData.data && typeof errorData.data.message === 'string') {
+          } else if (
+            'data' in errorData &&
+            errorData.data &&
+            typeof errorData.data === 'object' &&
+            'message' in errorData.data &&
+            typeof errorData.data.message === 'string'
+          ) {
             errorMessage = errorData.data.message;
           }
         }
-      } catch {
-        // Fallback to default message
+      } catch (err) {
+        // Intentionally swallowed: the error response body may not be valid JSON
+        // (e.g. HTML error pages from a gateway). We log the failure and fall
+        // through to throw a generic HTTP_ERROR with the status code instead.
+        log.error({ err, status: response.status }, 'Failed to parse POST error response JSON');
       }
-      throw new Error(errorMessage);
+      throw new AppError('HTTP_ERROR', errorMessage);
     }
 
     const result = await response.json();
-    if (result && typeof result === 'object' && 'ok' in result && 'data' in result) {
-      return result.data as T;
+
+    // Validate the response envelope
+    const parsedEnvelope = apiResponseSchema.safeParse(result);
+    if (parsedEnvelope.success) {
+      if (!parsedEnvelope.data.ok) {
+        throw new AppError('API_ERROR', parsedEnvelope.data.error || 'API returned ok=false');
+      }
+      const rawData = parsedEnvelope.data.data;
+      if (options?.schema) {
+        return options.schema.parse(rawData);
+      }
+      return rawData as T;
+    }
+
+    // Fallback if envelope does not match standard backend structure
+    if (options?.schema) {
+      return options.schema.parse(result);
     }
     return result as T;
   },
