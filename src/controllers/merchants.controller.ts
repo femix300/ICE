@@ -13,6 +13,9 @@ export function createMerchantsController(service: MerchantsService) {
     register: async (req: Request, res: Response, next: NextFunction) => {
       try {
         const body = registerMerchantBody.parse(req.body);
+        if (!body.webhookUrl.startsWith('https://')) {
+          throw new AppError(400, 'INVALID_WEBHOOK_URL', 'Webhook URL must be HTTPS');
+        }
         const result = await service.register(body);
         return created(res, result);
       } catch (err) {
@@ -46,6 +49,9 @@ export function createMerchantsController(service: MerchantsService) {
         }
 
         const body = updateWebhookUrlBody.parse(req.body);
+        if (!body.webhookUrl.startsWith('https://')) {
+          throw new AppError(400, 'INVALID_WEBHOOK_URL', 'Webhook URL must be HTTPS');
+        }
         const merchant = await service.updateWebhookUrl(params.id, body.webhookUrl);
         return ok(res, merchant);
       } catch (err) {
