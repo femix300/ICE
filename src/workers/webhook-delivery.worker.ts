@@ -1,4 +1,4 @@
-import { Worker, type Job } from 'bullmq';
+import { Worker, type Job, type Queue } from 'bullmq';
 import { redis } from '../lib/redis.ts';
 import { createLogger } from '../lib/logger.ts';
 
@@ -11,11 +11,13 @@ export interface MerchantRepoStub {
 
 export interface WebhookDeliveriesRepoStub {
   log: (data: unknown) => Promise<void>;
+  markDeadLetter: (merchant_id: string, job_id: string) => Promise<void>;
 }
 
 export function createWebhookDeliveryWorker(deps: {
   merchants: MerchantRepoStub;
   deliveries: WebhookDeliveriesRepoStub;
+  webhookDeliveryQueue: Queue;
 }) {
   const worker = new Worker(
     'webhook-delivery',
@@ -51,8 +53,19 @@ export function createWebhookDeliveryWorker(deps: {
     { connection: redis }
   );
 
-  worker.on('failed', (job, err: unknown) => {
+  worker.on('failed', async (job, err: unknown) => {
     log.error({ err, jobId: job?.id }, 'Webhook delivery job failed');
+    
+    if (job && job.opts.attempts && job.attemptsMade >= job.opts.attempts) {
+      if (job.data.event_type !== 'system.webhook_dead_letter' && job.id) {
+        await deps.deliveries.markDeadLetter(job.data.merchant_id, job.id);
+        await deps.webhookDeliveryQueue.add('webhook-delivery', {
+          merchant_id: job.data.merchant_id,
+          event_type: 'system.webhook_dead_letter',
+          payload: { failed_event: job.data.event_type, attempts: job.attemptsMade },
+        });
+      }
+    }
   });
 
   return worker;
