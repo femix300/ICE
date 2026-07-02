@@ -1,0 +1,15 @@
+Closes ICE-188
+
+## Summary
+Adds API endpoints and controllers for retrieving paginated vendor statements, customer statements, and generic transaction lists.
+
+## Scope
+- `src/controllers/statements.controller.ts`: Added Zod query parameter validation with proper coercion for numbers. Replaced arbitrary errors with `AppError`.
+- `tests/integration/statements.test.ts`: Added proper `vitest` tests covering query parsing, validation logic, and routing to service stubs.
+- Rebased target branch to `dev`.
+
+## Test Plan
+- Integration tests cover query parsing and parameter injection into the mock service.
+
+## Risk
+Low. Reads only. Validates parameters before hitting the DB.
