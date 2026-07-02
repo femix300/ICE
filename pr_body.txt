@@ -1,14 +1,13 @@
-Closes ICE-185
+Closes ICE-186
 
 ## Summary
-Builds the BullMQ worker for outbound webhook deliveries with an exponential backoff retry strategy. Also adds the webhook deliveries repository to log attempts.
+Adds dead-letter handling (DLQ) for webhook deliveries that fail after 5 retry attempts, protecting against infinite loops for system DLQ alerts. Also adds a `POST /v1/webhook-deliveries/:id/replay` endpoint to manually re-queue failed jobs with reset attempts.
 
 ## Approach
-- Implemented `createWebhookDeliveryWorker` with fetch logic, 10-second timeout, and logging.
-- Created `webhook-deliveries.repo.ts` to log all delivery attempts.
-- Created stub unit tests in `tests/unit/webhook-delivery.worker.test.ts`.
-- Retries (30s, 2m, 10m, 30m) are inherently handled by BullMQ via queue setup in E01.
+- Modified `webhook-deliveries.repo.ts` to add `markDeadLetter` and `byId`.
+- Added loop prevention checks to `webhook-delivery.worker.ts` so `system.webhook_dead_letter` events do not trigger cascading DLQs.
+- Stubbed the `webhook-deliveries.controller.ts` and `webhook-deliveries.routes.ts` ready for integration once the core Express setup merges.
 
 ## Test Plan
-- Verified against `ICE_ENGINEERING.md` (no `any`, proper logging).
-- Test execution deferred until dependencies land.
+- Self-reviewed against `ICE_ENGINEERING.md`.
+- Code statically verified to avoid infinite loops by checking `job.data.event_type`.

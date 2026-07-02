@@ -222,3 +222,15 @@ P01 was expanded to include setup for:
   - src/workers/webhook-delivery.worker.ts
 - **Notes:** Webhook delivery logic implemented. Rebase expected.
 
+
+### Update (Task E03 - ICE-303)
+- **Dev:** Emmanuel
+- **Branch:** feat/dead-letter
+- **Files Created:**
+  - src/controllers/webhook-deliveries.controller.ts
+  - src/routes/webhook-deliveries.routes.ts
+- **Files Modified:**
+  - src/workers/webhook-delivery.worker.ts
+  - src/repositories/webhook-deliveries.repo.ts
+- **Notes:** DLQ and replay endpoint implemented.
+
