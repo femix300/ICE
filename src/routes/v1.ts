@@ -5,6 +5,7 @@ import { Router } from 'express';
 // or create a setup router function.
 export const v1Router = Router();
 
-export function setupV1Router(deps: { merchantsRouter: Router }) {
-  v1Router.use('/merchants', deps.merchantsRouter);
+export function setupV1Router(deps: { merchantsRouter?: Router; vendorsRouter?: Router }) {
+  if (deps.merchantsRouter) v1Router.use('/merchants', deps.merchantsRouter);
+  if (deps.vendorsRouter) v1Router.use('/vendors', deps.vendorsRouter);
 }
