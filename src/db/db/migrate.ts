@@ -2,9 +2,9 @@ import fs from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-import { config } from '../config.js';
+import { config } from '../../config.js';
 import { createDbPool } from './client.js';
-import { createLogger } from '../lib/logger.js';
+import { createLogger } from '../../lib/logger.js';
 
 const log = createLogger('db-migration');
 

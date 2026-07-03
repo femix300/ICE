@@ -3,10 +3,18 @@ import type { CreateInvoiceInput, InvoiceStatus } from '../schemas/invoices.sche
 import { TRANSITIONS, InvoiceStatus as Status } from '../schemas/invoices.schema.js';
 import { AppError } from '../lib/errors.js';
 import { createLogger } from '../lib/logger.js';
-import type { ReconciliationRepo } from '../repositories/reconciliation.repo.js';
-import type { AuditService } from './audit.service.js';
+// import type { ReconciliationRepo } from '../repositories/reconciliation.repo.js';
+// import type { AuditService } from './audit.service.js';
 
 const log = createLogger('invoices-service');
+
+interface ReconciliationRepo {
+  findByInvoiceId(id: string): Promise<unknown>;
+}
+
+interface AuditService {
+  logAction(opts: unknown): Promise<void>;
+}
 
 type InvoicesServiceDeps = {
   invoices: InvoicesRepo;

@@ -38,7 +38,7 @@ export function createWebhookInboundService(deps: WebhookInboundDeps) {
           { transactionId: payload.data.transactionId },
           'dispatching to reconciliation engine',
         );
-        // Reconciliation engine will be wired in M04
+        // TODO(M04): dispatch to reconciliation engine
       }
 
       return { duplicate: false, transactionId: transaction.transaction_id };
