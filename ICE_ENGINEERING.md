@@ -290,16 +290,16 @@ Before opening a PR, the developer (or their AI agent) must verify **ALL** of th
 
 ## 4. Task Breakdown
 
-All 36 tasks are tracked in Linear under the ICE project. Each task has a unique ID, assignee, dependencies, and the full DoD checklist.
+All 37 tasks are tracked in Linear under the ICE project. Each task has a unique ID, assignee, dependencies, and the full DoD checklist.
 
 ### 4.1 Task Assignment
 
 | Dev | Task Series | Linear Issues | Count |
 |-----|-------------|---------------|-------|
-| **Peter Ajimoti** (Lead) | P01–P10 | ICE-29 to ICE-38 | 10 |
-| **Marvelous** (Payments) | M01–M08 | ICE-39 to ICE-46 | 8 |
-| **Emmanuel** (Async) | E01–E08 | ICE-47 to ICE-54 | 8 |
-| **Samkiel** (Frontend) | S01–S10 | ICE-55 to ICE-64 | 10 |
+| **Peter Ajimoti** (Lead) | P01–P10 | ICE-166 to ICE-175 | 10 |
+| **Marvelous** (Payments) | M01–M08 | ICE-176 to ICE-183 | 8 |
+| **Emmanuel** (Async) | E01–E09 | ICE-184 to ICE-191, ICE-202 | 9 |
+| **Samkiel** (Frontend) | S01–S10 | ICE-192 to ICE-201 | 10 |
 
 ### 4.2 Day 1 Parallelism
 
@@ -319,7 +319,7 @@ All 4 devs start Day 1 independently — nobody waits:
 | **Phase 1 — Foundation** (Day 1) | Scaffold, DB, Redis, Auth | P01, M01, E01, S01 |
 | **Phase 2 — Core Entities** (Day 2-3) | Merchants, Vendors, Customers | P02–P08, S02, S03 |
 | **Phase 3 — Payments Core** (Day 3-4) | Webhooks, Reconciliation, Invoices | M02–M05, E02, E03, S04–S06 |
-| **Phase 4 — Extended** (Day 5-6) | Misdirected, Refunds, Statements | M06–M08, E04–E08, S07–S10 |
+| **Phase 4 — Extended** (Day 5-6) | Misdirected, Refunds, Statements | M06–M08, E04–E09, S07–S10 |
 | **Phase 5 — Polish & Demo** (Day 6-7) | Swagger, Deploy, E2E Test | P09, P10 |
 
 ### 4.4 Dependency Map
@@ -350,6 +350,7 @@ Day 5-6 (Extended):
   M06 → M07 → M08 (misdirected actions + audit)
   E01 + M05 → E04 (auto-refund engine)
   M08 → E05, E06 (statements, summary)
+  E06 → E09 (nightly reconciliation diff)
   S04 → S05, S06, S07, S08, S09, S10
 
 Day 6-7 (Polish):

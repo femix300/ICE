@@ -1,5 +1,5 @@
-import bcrypt from 'bcrypt';
 import crypto from 'node:crypto';
+import bcrypt from 'bcrypt';
 
 const SALT_ROUNDS = 12;
 
