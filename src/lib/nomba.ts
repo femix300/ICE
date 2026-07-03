@@ -183,6 +183,7 @@ export function createNombaClient() {
           throw new AppError(502, 'NOMBA_ERROR', 'Failed to lookup recipient account name');
         }
 
+        type LookupResponse = z.infer<typeof lookupSchema>;
         const lookupSchema = z.object({
           data: z.object({
             accountName: z.string(),
