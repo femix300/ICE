@@ -7,7 +7,6 @@ ICE is a production-grade middleware infrastructure layer built on top of Nomba'
 ## Documentation
 - **Product Requirements**: [`ICE_PRD.md`](./ICE_PRD.md)
 - **Engineering Standards & Git Workflow**: [`ICE_ENGINEERING.md`](./ICE_ENGINEERING.md)
-- **Handoff Log**: [`HANDOFF.md`](./HANDOFF.md)
 
 ## Tech Stack
 - **Language**: TypeScript (strict mode)

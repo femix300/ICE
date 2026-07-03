@@ -1,19 +1,17 @@
 import { Worker, type Job, type Queue } from 'bullmq';
 import { z } from 'zod';
-import { redis } from '../lib/redis.ts';
-import { createLogger } from '../lib/logger.ts';
-import { AppError } from '../lib/errors.ts';
-import type { createMerchantsRepo } from '../repositories/merchants.repo.ts';
-import type { createWebhookDeliveriesRepo } from '../repositories/webhook-deliveries.repo.ts';
+import { redis } from '../lib/redis.js';
+import { createLogger } from '../lib/logger.js';
+import { AppError } from '../lib/errors.js';
+import type { createMerchantsRepo } from '../repositories/merchants.repo.js';
+import type { createWebhookDeliveriesRepo } from '../repositories/webhook-deliveries.repo.js';
 
 const log = createLogger('webhook-worker');
-
-
 
 export const WebhookPayloadSchema = z.object({
   merchant_id: z.string(),
   event_type: z.string(),
-  payload: z.record(z.unknown()),
+  payload: z.record(z.string(), z.unknown()),
 });
 
 export type WebhookPayload = z.infer<typeof WebhookPayloadSchema>;
@@ -34,8 +32,8 @@ export function createWebhookDeliveryWorker(deps: {
       const { merchant_id, event_type, payload } = parsed.data;
 
       const merchant = await deps.merchants.byId(merchant_id);
-      if (!merchant.webhook_url) {
-        log.warn({ merchant_id }, 'Merchant has no webhook URL, skipping delivery');
+      if (!merchant || !merchant.webhook_url) {
+        log.warn({ merchant_id }, 'Merchant has no webhook URL or does not exist, skipping delivery');
         return;
       }
 
@@ -72,6 +70,7 @@ export function createWebhookDeliveryWorker(deps: {
       }
     },
     { 
+      // @ts-expect-error type mismatch between bullmq's ioredis and the project's ioredis
       connection: redis,
       settings: {
         backoffStrategy: (attemptsMade: number) => {

@@ -1,0 +1,60 @@
+diff --git a/tests/unit/auth.test.ts b/tests/unit/auth.test.ts
+index 1e815da..b564335 100644
+--- a/tests/unit/auth.test.ts
++++ b/tests/unit/auth.test.ts
+@@ -124,4 +124,25 @@ describe('Auth Middleware', () => {
+     const err = (next as Mock).mock.calls[0][0];
+     expect(err.errorCode).toBe('INVALID_API_KEY');
+   });
++
++  it('throws INVALID_API_KEY when trying to use an old key after rotation (prefix not found)', async () => {
++    // When a key is rotated, the old prefix is overwritten in the DB.
++    // This simulates the old key's prefix no longer existing.
++    const oldKey = 'ice_live_oldkey';
++    
++    const merchantsRepo: MerchantsRepo = {
++      // Return null because the old prefix no longer exists in the db
++      findByKeyPrefix: vi.fn().mockResolvedValue(null)
++    };
++    const vendorsRepo: VendorsRepo = { findByKeyPrefix: vi.fn().mockResolvedValue(null) };
++
++    const middleware = createAuthMiddleware({ merchants: merchantsRepo, vendors: vendorsRepo });
++
++    req.headers = { authorization: `Bearer ${oldKey}` };
++    await middleware(req as Request, res as Response, next);
++
++    expect(next).toHaveBeenCalledWith(expect.any(AppError));
++    const err = (next as Mock).mock.calls[0][0];
++    expect(err.errorCode).toBe('INVALID_API_KEY');
++  });
+ });
+diff --git a/tests/unit/merchants.controller.test.ts b/tests/unit/merchants.controller.test.ts
+index 81772b3..b013cde 100644
+--- a/tests/unit/merchants.controller.test.ts
++++ b/tests/unit/merchants.controller.test.ts
+@@ -2,6 +2,7 @@ import { describe, it, expect, vi, type Mock } from 'vitest';
+ import type { Request, Response, NextFunction } from 'express';
+ import { createMerchantsController } from '../../src/controllers/merchants.controller.js';
+ import { AppError } from '../../src/lib/errors.js';
++import type { MerchantsService } from '../../src/services/merchants.service.js';
+ 
+ describe('Merchants Controller', () => {
+   it('updateWebhookUrl throws INVALID_WEBHOOK_URL if URL is not HTTPS', async () => {
+@@ -12,7 +13,7 @@ describe('Merchants Controller', () => {
+       rotateApiKey: vi.fn(),
+     };
+ 
+-    const controller = createMerchantsController(mockService as any);
++    const controller = createMerchantsController(mockService as unknown as MerchantsService);
+ 
+     const validId = '123e4567-e89b-12d3-a456-426614174000';
+     const req = {
+@@ -24,7 +25,7 @@ describe('Merchants Controller', () => {
+     const res = {} as Response;
+     const next = vi.fn() as NextFunction;
+ 
+-    await (controller as any).updateWebhookUrl(req, res, next);
++    await controller.updateWebhookUrl(req, res, next);
+ 
+     expect(next).toHaveBeenCalledWith(expect.any(AppError));
+     const err = (next as Mock).mock.calls[0][0];
