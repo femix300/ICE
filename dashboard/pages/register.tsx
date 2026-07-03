@@ -83,6 +83,7 @@ export default function Register() {
       const response = await api.post<{ apiKey: string } | string>(
         '/v1/merchants/register',
         values,
+        { schema: z.union([z.object({ apiKey: z.string() }), z.string()]) }
       );
       const generatedKey = typeof response === 'string' ? response : response?.apiKey;
 
