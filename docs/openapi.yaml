@@ -1,0 +1,287 @@
+openapi: 3.0.0
+info:
+  title: ICE Nomba Hackathon API
+  version: 1.0.0
+  description: OpenAPI Specification for merged ICE endpoints (Merchants, Vendors, Invoices, Webhooks)
+servers:
+  - url: http://localhost:3000/v1
+    description: Local Development Server
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: http
+      scheme: bearer
+      description: API Key retrieved from merchant registration.
+  schemas:
+    RegisterMerchantInput:
+      type: object
+      required:
+        - businessName
+        - email
+        - webhookUrl
+      properties:
+        businessName:
+          type: string
+          example: "StyleHub Marketplace"
+        email:
+          type: string
+          format: email
+          example: "operations@stylehub.com"
+        webhookUrl:
+          type: string
+          format: uri
+          example: "https://stylehub.com/api/webhooks/nomba"
+    UpdateWebhookInput:
+      type: object
+      required:
+        - webhookUrl
+      properties:
+        webhookUrl:
+          type: string
+          format: uri
+          example: "https://stylehub.com/api/webhooks/nomba-v2"
+    CreateVendorInput:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          example: "Acme Vendor"
+    CreateInvoiceInput:
+      type: object
+      required:
+        - vendor_id
+        - customer_id
+        - amount_kobo
+      properties:
+        vendor_id:
+          type: string
+          format: uuid
+        customer_id:
+          type: string
+          format: uuid
+        amount_kobo:
+          type: integer
+          example: 50000
+    NombaWebhookPayload:
+      type: object
+      required:
+        - event
+        - data
+      properties:
+        event:
+          type: string
+          enum: [payment_success, payment_failed, payment_reversal]
+        data:
+          type: object
+          properties:
+            transactionId:
+              type: string
+            amount:
+              type: number
+            accountNumber:
+              type: string
+            senderName:
+              type: string
+            senderAccountNumber:
+              type: string
+            senderBankCode:
+              type: string
+            status:
+              type: string
+            currency:
+              type: string
+            timeCreated:
+              type: string
+            paymentReference:
+              type: string
+
+paths:
+  /merchants/register:
+    post:
+      summary: Register a new platform merchant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterMerchantInput'
+      responses:
+        '201':
+          description: Merchant created successfully
+  /merchants/{id}:
+    get:
+      summary: Get merchant profile
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Merchant details
+  /merchants/{id}/webhook-url:
+    put:
+      summary: Update webhook URL
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateWebhookInput'
+      responses:
+        '200':
+          description: Webhook URL updated
+  /merchants/{id}/api-keys/rotate:
+    post:
+      summary: Rotate API keys
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: New API key returned
+  /vendors:
+    post:
+      summary: Create a new vendor (with Nomba DVA provisioning)
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateVendorInput'
+      responses:
+        '201':
+          description: Vendor created with VA
+  /vendors/{id}:
+    get:
+      summary: Get vendor profile
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Vendor details
+  /webhooks/nomba:
+    post:
+      summary: Receive Nomba Webhooks
+      parameters:
+        - name: x-nomba-signature
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NombaWebhookPayload'
+      responses:
+        '200':
+          description: Webhook acknowledged
+  /invoices:
+    post:
+      summary: Create an invoice
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateInvoiceInput'
+      responses:
+        '201':
+          description: Invoice created
+  /invoices/{id}:
+    get:
+      summary: Get an invoice
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Invoice details
+  /invoices/vendor/{vendorId}:
+    get:
+      summary: List invoices by vendor
+      parameters:
+        - name: vendorId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: List of invoices
+  /invoices/{id}/issue:
+    patch:
+      summary: Issue a draft invoice
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Invoice issued
+  /invoices/{id}/mark-paid:
+    post:
+      summary: Manually mark an invoice as paid
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Invoice marked paid
+  /invoices/{id}/reconciliation:
+    get:
+      summary: Get reconciliation logs for an invoice
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Reconciliation logs

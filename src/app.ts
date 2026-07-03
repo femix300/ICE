@@ -3,6 +3,11 @@ import helmet from 'helmet';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
 import crypto from 'node:crypto';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+import swaggerUi from 'swagger-ui-express';
+import YAML from 'yamljs';
 
 import { config } from './config.js';
 import { createDbPool } from './db/client.js';
@@ -27,6 +32,9 @@ import { createInvoicesRepo } from './repositories/invoices.repo.js';
 import { createInvoicesService } from './services/invoices.service.js';
 import { createInvoicesController } from './controllers/invoices.controller.js';
 import { createInvoicesRouter } from './routes/invoices.routes.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 
@@ -69,7 +77,19 @@ app.use((_req, res, next) => {
 });
 
 // Middleware order is fixed per engineering guidelines
-app.use(helmet());
+// Wait, we need to allow inline scripts for Redoc and Swagger in Helmet CSP
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.redoc.ly"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      imgSrc: ["'self'", "data:", "https://validator.swagger.io"],
+      workerSrc: ["'self'", "blob:"],
+    },
+  },
+}));
+
 app.use(cors({ origin: config.CORS_ORIGIN }));
 app.use(express.json({ limit: '1mb' }));
 app.use(rateLimit({ windowMs: 60_000, max: 100 }));
@@ -80,6 +100,34 @@ app.get('/healthz', (req, res) => {
     return res.status(503).json({ ok: false, error: 'Redis is not ready' });
   }
   return res.json({ ok: true, redis: 'ready' });
+});
+
+// Serve API Docs
+const swaggerDocument = YAML.load(path.join(__dirname, '../docs/openapi.yaml'));
+
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+
+app.get('/openapi.yaml', (req, res) => {
+  res.sendFile(path.join(__dirname, '../docs/openapi.yaml'));
+});
+
+app.get('/redoc', (req, res) => {
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>ICE API Documentation (ReDoc)</title>
+        <meta charset="utf-8"/>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link href="https://fonts.googleapis.com/css?family=Montserrat:300,400,700|Roboto:300,400,700" rel="stylesheet">
+        <style>body { margin: 0; padding: 0; }</style>
+      </head>
+      <body>
+        <redoc spec-url='/openapi.yaml'></redoc>
+        <script src="https://cdn.redoc.ly/redoc/latest/bundles/redoc.standalone.js"></script>
+      </body>
+    </html>
+  `);
 });
 
 // Mount invoices router
