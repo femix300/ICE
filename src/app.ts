@@ -1,35 +1,39 @@
 import express from 'express';
-import helmet from 'helmet';
-import cors from 'cors';
-import rateLimit from 'express-rate-limit';
-import crypto from 'node:crypto';
 
 import { config } from './config.js';
-import { v1Router } from './routes/v1.js';
-import { notFoundHandler, errorHandler } from './middleware/errors.js';
+import { createDbPool } from './db/client.js';
+import { createTransactionsRepo } from './repositories/transactions.repo.js';
+import { createWebhookInboundService } from './services/webhook-inbound.service.js';
+import { createWebhooksController } from './controllers/webhooks.controller.js';
+import { createWebhooksRouter } from './routes/webhooks.routes.js';
+import { errorHandler } from './middleware/errors.js';
+import { ok } from './lib/respond.js';
+
+const db = createDbPool(config.DATABASE_URL);
+
+const transactionsRepo = createTransactionsRepo(db);
+
+const webhookInboundService = createWebhookInboundService({
+  transactions: transactionsRepo,
+  webhookSecret: config.NOMBA_WEBHOOK_SECRET,
+});
+
+const webhooksController = createWebhooksController(webhookInboundService);
 
 const app = express();
 
-// Assign a request ID for tracing
-app.use((_req, res, next) => {
-  res.locals.requestId = crypto.randomUUID();
-  next();
+app.get('/healthz', (_req, res) => {
+  return ok(res, { status: 'ok' });
 });
 
-// Middleware order is fixed per engineering guidelines
-app.use(helmet());
-app.use(cors({ origin: config.CORS_ORIGIN }));
-app.use(express.json({ limit: '1mb' }));
-app.use(rateLimit({ windowMs: 60_000, max: 100 }));
+const v1 = express.Router();
 
-// Health Check
-app.get('/healthz', (req, res) => res.json({ ok: true }));
+v1.use(express.text({ type: 'application/json' }));
 
-// API Routes
-app.use('/v1', v1Router);
+v1.use(createWebhooksRouter(webhooksController));
 
-// Error Handling
-app.use(notFoundHandler);
+app.use('/v1', v1);
+
 app.use(errorHandler);
 
-export { app };
+export { app, db };
