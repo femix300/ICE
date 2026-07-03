@@ -11,10 +11,13 @@ vi.mock('bullmq', () => {
 });
 
 describe('webhookDeliveryWorker', () => {
-  let mockMerchants: any;
-  let mockDeliveries: any;
-  let mockDeadLetterQueue: any;
-  let worker: any;
+  let mockMerchants: { byId: ReturnType<typeof vi.fn> };
+  let mockDeliveries: { log: ReturnType<typeof vi.fn>; markDeadLetter: ReturnType<typeof vi.fn> };
+  let mockDeadLetterQueue: { add: ReturnType<typeof vi.fn> };
+  let worker: {
+    processor: (job: unknown) => Promise<void>;
+    options: { settings: { backoffStrategy: (attemptsMade: number) => number } };
+  };
 
   beforeEach(() => {
     mockMerchants = { byId: vi.fn() };
@@ -41,7 +44,7 @@ describe('webhookDeliveryWorker', () => {
 
   it('logs successful delivery as DELIVERED', async () => {
     mockMerchants.byId.mockResolvedValue({ webhook_url: 'https://test.com' });
-    (global.fetch as any).mockResolvedValue({ ok: true, status: 200 });
+    (global.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({ ok: true, status: 200 });
     
     await worker.processor({
       attemptsMade: 1,
@@ -57,7 +60,7 @@ describe('webhookDeliveryWorker', () => {
 
   it('throws AppError and logs FAILED on unsuccessful HTTP response', async () => {
     mockMerchants.byId.mockResolvedValue({ webhook_url: 'https://test.com' });
-    (global.fetch as any).mockResolvedValue({ ok: false, status: 500 });
+    (global.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({ ok: false, status: 500 });
     
     await expect(worker.processor({
       attemptsMade: 1,

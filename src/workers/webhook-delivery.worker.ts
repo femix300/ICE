@@ -5,25 +5,22 @@ import { createLogger } from '../lib/logger.ts';
 
 const log = createLogger('webhook-worker');
 
-class AppError extends Error {
-  constructor(public code: string, message: string) {
-    super(message);
-    this.name = 'AppError';
-  }
-}
+import { AppError } from '../lib/errors.ts';
 
 export const WebhookPayloadSchema = z.object({
   merchant_id: z.string(),
   event_type: z.string(),
-  payload: z.record(z.any()),
+  payload: z.record(z.unknown()),
 });
+
+export type WebhookPayload = z.infer<typeof WebhookPayloadSchema>;
 
 export interface MerchantRepoStub {
   byId: (id: string) => Promise<{ webhook_url?: string }>;
 }
 export interface DeliveryRepoStub {
-  log: (data: any) => Promise<void>;
-  markDeadLetter: (merchant_id: string, event_type: string, payload: any) => Promise<void>;
+  log: (data: unknown) => Promise<void>;
+  markDeadLetter: (merchant_id: string, event_type: string, payload: unknown) => Promise<void>;
 }
 
 export function createWebhookDeliveryWorker(deps: {
