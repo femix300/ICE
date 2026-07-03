@@ -19,6 +19,10 @@ const webhookInboundService = createWebhookInboundService({
 });
 
 const webhooksController = createWebhooksController(webhookInboundService);
+=======
+import { redis } from './lib/redis.js';
+import { v1Router } from './routes/v1.js';
+import { notFoundHandler, errorHandler } from './middleware/errors.js';
 
 const app = express();
 
@@ -29,8 +33,15 @@ app.get('/healthz', (_req, res) => {
 const v1 = express.Router();
 
 v1.use(express.text({ type: 'application/json' }));
-
 v1.use(createWebhooksRouter(webhooksController));
+=======
+// Health Check
+app.get('/healthz', (req, res) => {
+  if (redis.status !== 'ready') {
+    return res.status(503).json({ ok: false, error: 'Redis is not ready' });
+  }
+  return res.json({ ok: true, redis: 'ready' });
+});
 
 app.use('/v1', v1);
 
