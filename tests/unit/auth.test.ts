@@ -124,4 +124,25 @@ describe('Auth Middleware', () => {
     const err = (next as Mock).mock.calls[0][0];
     expect(err.errorCode).toBe('INVALID_API_KEY');
   });
+
+  it('throws INVALID_API_KEY when trying to use an old key after rotation (prefix not found)', async () => {
+    // When a key is rotated, the old prefix is overwritten in the DB.
+    // This simulates the old key's prefix no longer existing.
+    const oldKey = 'ice_live_oldkey';
+    
+    const merchantsRepo: MerchantsRepo = {
+      // Return null because the old prefix no longer exists in the db
+      findByKeyPrefix: vi.fn().mockResolvedValue(null)
+    };
+    const vendorsRepo: VendorsRepo = { findByKeyPrefix: vi.fn().mockResolvedValue(null) };
+
+    const middleware = createAuthMiddleware({ merchants: merchantsRepo, vendors: vendorsRepo });
+
+    req.headers = { authorization: `Bearer ${oldKey}` };
+    await middleware(req as Request, res as Response, next);
+
+    expect(next).toHaveBeenCalledWith(expect.any(AppError));
+    const err = (next as Mock).mock.calls[0][0];
+    expect(err.errorCode).toBe('INVALID_API_KEY');
+  });
 });
