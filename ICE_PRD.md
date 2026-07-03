@@ -95,9 +95,9 @@ A multi-vendor marketplace amplifies every one of these problems. The platform o
 | **Without ICE** | **With ICE** |
 |---|---|
 | Nomba gives you a VA and a webhook | ICE gives you reconciliation, reliability, and reporting |
-| Overpayments stay unresolved indefinitely | ICE auto-detects and queues refunds in under 5 minutes |
-| Missed webhooks = missed revenue | ICE retries 5x with exponential backoff + dead-letter alerts |
-| Merchants build reconciliation logic themselves | ICE API integration takes under 10 minutes |
+| Overpayments stay unresolved indefinitely | ICE automatically detects and queues refunds |
+| Missed webhooks = missed revenue | ICE safely retries failed webhook deliveries |
+| Merchants build reconciliation logic themselves | ICE provides a clean, fast API integration |
 | No anomaly detection | ICE flags suspicious payment patterns before merchants notice |
 
 ---
@@ -321,33 +321,15 @@ Every response from ICE follows the same JSON shape — success or failure:
 
 ---
 
-## **7. Additional Infrastructure Features**
+## **7. V2 / Stretch Goals (Additional Infrastructure)**
 
 ### **7.1 Webhook Reliability Layer**
 
-When ICE delivers webhooks to merchant endpoints, it guarantees reliability through a multi-stage retry system built on BullMQ.
-
-| **Attempt** | **Delay** | **On Final Failure** |
-|---|---|---|
-| 1 | Immediate | |
-| 2 | 30 seconds | |
-| 3 | 2 minutes | |
-| 4 | 10 minutes | |
-| 5 | 30 minutes | Move to dead-letter queue; alert merchant |
-
-Every delivery attempt is logged: HTTP status code, response body, latency, and timestamp. Merchants can view their full webhook delivery log in the dashboard and manually replay any failed event.
+When ICE delivers webhooks to merchant endpoints, it adds reliability through a background retry system built on BullMQ. Failed deliveries are safely retried before moving to a dead-letter queue, ensuring merchants don't miss critical events.
 
 ### **7.2 Overpayment & Auto-Refund Engine**
 
-When ICE detects an overpayment, it does not leave the money sitting — it takes action automatically.
-
-1. Overpayment detected by reconciliation engine
-2. Refund job queued in BullMQ with: amount difference, sender account number, sender bank code (from Nomba webhook payload)
-3. ICE calls Nomba's `POST /v2/transfers/bank` to initiate the refund transfer
-4. Refund status tracked in `refunds` table with retry logic (max 3 attempts)
-5. Merchant notified via webhook event: `payment.overpayment.refunded`
-
-_Competitive Edge: Paystack explicitly states "no refunds on dedicated virtual accounts." ICE handles this automatically. This is one of the most tangible differentiators on demo day._
+When ICE detects an overpayment, it can automatically queue a refund job to send the excess amount back to the customer's bank account via the Nomba Transfer API, providing a seamless experience for both the merchant and the payer.
 
 ### **7.3 Payment Anomaly Detection**
 
@@ -362,12 +344,7 @@ ICE passively monitors payment patterns and flags suspicious activity before mer
 
 ### **7.4 Dormant Account Management**
 
-ICE runs a background cron job (daily, off-peak hours) to identify and clean up dormant virtual accounts.
-
-- A VA is considered dormant if it has received no payments in 90 days (configurable per merchant)
-- ICE calls Nomba's delete endpoint for dormant VAs
-- Merchant is notified with a summary report of suspended accounts
-- Suspended accounts can be reactivated via `PUT /v1/vendors/:id/account` (ICE creates a new Nomba VA since undelete is unsupported)
+ICE runs a background process to identify and clean up dormant virtual accounts based on merchant-configured inactivity periods, helping to maintain a clean operational state.
 
 ---
 
@@ -640,7 +617,7 @@ _The scenario: A Nigerian fashion marketplace called "StyleHub" uses ICE. StyleH
 
 **Step 7:** The first webhook delivery to StyleHub fails (simulated). ICE retries automatically. The webhook logs show the retry attempts and eventual delivery — live in the dashboard.
 
-_Total time from payment to fully reconciled + refunded: under 90 seconds. No manual intervention. No lost money. No confused customer._
+_The payment is seamlessly reconciled and resolved without manual intervention. No lost money. No confused customer._
 
 ### **The Closing Line**
 
@@ -665,18 +642,15 @@ _"Nomba gives you virtual accounts. ICE makes them actually work. We are not jus
 
 ## **14. Success Metrics**
 
-ICE will be evaluated against the following on demo day:
+ICE will be evaluated against the following core hackathon requirements on demo day:
 
-| **Metric** | **Target** |
+| **Hackathon Requirement** | **Success Criteria** |
 |---|---|
-| All 5 hackathon requirements demonstrated live | 100% coverage |
-| End-to-end demo flow (payment to reconciled + refunded) | Under 90 seconds |
-| Webhook retry demonstrated on simulated failure | Yes, live in demo |
-| Misdirected payment detected and flagged | Yes, live in demo |
-| API docs accessible and readable | Swagger UI live at `/docs` |
-| Deployed and accessible (not localhost) | Yes — Render deployment |
-| Nomba sandbox integration (real API calls) | Yes — real credentials |
-| Layered architecture (routes/controllers/services/repos) | Yes — consistent across all features |
+| Account provisioning flow | Seamlessly provisions platform/vendor Virtual Accounts |
+| Inbound transfer reconciliation | Accurately matches inbound payments to expected amounts/invoices |
+| Customer-level statement and reporting | Accurately generates customer-level and vendor-level statements |
+| Handling of misdirected payments | Successfully detects and flags unmatched transfers |
+| Clean developer API for downstream integration | Provides a clean, well-documented API (Swagger/OpenAPI) |
 
 ---
 
