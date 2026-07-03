@@ -1,0 +1,1561 @@
+diff --git a/ICE_ENGINEERING.md b/ICE_ENGINEERING.md
+index 4cc90fe..3b3539e 100644
+--- a/ICE_ENGINEERING.md
++++ b/ICE_ENGINEERING.md
+@@ -290,16 +290,16 @@ Before opening a PR, the developer (or their AI agent) must verify **ALL** of th
+ 
+ ## 4. Task Breakdown
+ 
+-All 37 tasks are tracked in Linear under the ICE project. Each task has a unique ID, assignee, dependencies, and the full DoD checklist.
++All 36 tasks are tracked in Linear under the ICE project. Each task has a unique ID, assignee, dependencies, and the full DoD checklist.
+ 
+ ### 4.1 Task Assignment
+ 
+ | Dev | Task Series | Linear Issues | Count |
+ |-----|-------------|---------------|-------|
+-| **Peter Ajimoti** (Lead) | P01–P10 | ICE-166 to ICE-175 | 10 |
+-| **Marvelous** (Payments) | M01–M08 | ICE-176 to ICE-183 | 8 |
+-| **Emmanuel** (Async) | E01–E09 | ICE-184 to ICE-191, ICE-202 | 9 |
+-| **Samkiel** (Frontend) | S01–S10 | ICE-192 to ICE-201 | 10 |
++| **Peter Ajimoti** (Lead) | P01–P10 | ICE-29 to ICE-38 | 10 |
++| **Marvelous** (Payments) | M01–M08 | ICE-39 to ICE-46 | 8 |
++| **Emmanuel** (Async) | E01–E08 | ICE-47 to ICE-54 | 8 |
++| **Samkiel** (Frontend) | S01–S10 | ICE-55 to ICE-64 | 10 |
+ 
+ ### 4.2 Day 1 Parallelism
+ 
+@@ -319,7 +319,7 @@ All 4 devs start Day 1 independently — nobody waits:
+ | **Phase 1 — Foundation** (Day 1) | Scaffold, DB, Redis, Auth | P01, M01, E01, S01 |
+ | **Phase 2 — Core Entities** (Day 2-3) | Merchants, Vendors, Customers | P02–P08, S02, S03 |
+ | **Phase 3 — Payments Core** (Day 3-4) | Webhooks, Reconciliation, Invoices | M02–M05, E02, E03, S04–S06 |
+-| **Phase 4 — Extended** (Day 5-6) | Misdirected, Refunds, Statements | M06–M08, E04–E09, S07–S10 |
++| **Phase 4 — Extended** (Day 5-6) | Misdirected, Refunds, Statements | M06–M08, E04–E08, S07–S10 |
+ | **Phase 5 — Polish & Demo** (Day 6-7) | Swagger, Deploy, E2E Test | P09, P10 |
+ 
+ ### 4.4 Dependency Map
+@@ -350,7 +350,6 @@ Day 5-6 (Extended):
+   M06 → M07 → M08 (misdirected actions + audit)
+   E01 + M05 → E04 (auto-refund engine)
+   M08 → E05, E06 (statements, summary)
+-  E06 → E09 (nightly reconciliation diff)
+   S04 → S05, S06, S07, S08, S09, S10
+ 
+ Day 6-7 (Polish):
+diff --git a/package-lock.json b/package-lock.json
+index 7300cd2..8f5b838 100644
+--- a/package-lock.json
++++ b/package-lock.json
+@@ -9,20 +9,24 @@
+       "version": "1.0.0",
+       "license": "ISC",
+       "dependencies": {
++        "bcrypt": "^6.0.0",
+         "cors": "^2.8.6",
+         "dotenv": "^17.4.2",
+         "express": "^5.2.1",
+         "express-rate-limit": "^8.5.2",
+         "helmet": "^8.2.0",
++        "pg": "^8.22.0",
+         "pino": "^10.3.1",
+         "pino-pretty": "^13.1.3",
+         "zod": "^4.4.3"
+       },
+       "devDependencies": {
+         "@eslint/js": "^9.39.4",
++        "@types/bcrypt": "^6.0.0",
+         "@types/cors": "^2.8.19",
+         "@types/express": "^5.0.6",
+         "@types/node": "^26.0.1",
++        "@types/pg": "^8.20.0",
+         "@types/supertest": "^7.2.0",
+         "eslint": "^9.39.4",
+         "prettier": "^3.9.4",
+@@ -1001,6 +1005,15 @@
+         "win32"
+       ]
+     },
++    "node_modules/@types/bcrypt": {
++      "version": "6.0.0",
++      "resolved": "https://registry.npmjs.org/@types/bcrypt/-/bcrypt-6.0.0.tgz",
++      "integrity": "sha512-/oJGukuH3D2+D+3H4JWLaAsJ/ji86dhRidzZ/Od7H/i8g+aCmvkeCc6Ni/f9uxGLSQVCRZkX2/lqEFG2BvWtlQ==",
++      "dev": true,
++      "dependencies": {
++        "@types/node": "*"
++      }
++    },
+     "node_modules/@types/body-parser": {
+       "version": "1.19.6",
+       "resolved": "https://registry.npmjs.org/@types/body-parser/-/body-parser-1.19.6.tgz",
+@@ -1091,6 +1104,17 @@
+         "undici-types": "~8.3.0"
+       }
+     },
++    "node_modules/@types/pg": {
++      "version": "8.20.0",
++      "resolved": "https://registry.npmjs.org/@types/pg/-/pg-8.20.0.tgz",
++      "integrity": "sha512-bEPFOaMAHTEP1EzpvHTbmwR8UsFyHSKsRisLIHVMXnpNefSbGA1bD6CVy+qKjGSqmZqNqBDV2azOBo8TgkcVow==",
++      "dev": true,
++      "dependencies": {
++        "@types/node": "*",
++        "pg-protocol": "*",
++        "pg-types": "^2.2.0"
++      }
++    },
+     "node_modules/@types/qs": {
+       "version": "6.15.1",
+       "resolved": "https://registry.npmjs.org/@types/qs/-/qs-6.15.1.tgz",
+@@ -1622,6 +1646,19 @@
+       "integrity": "sha512-3oSeUO0TMV67hN1AmbXsK4yaqU7tjiHlbxRDZOpH0KW9+CeX4bRAaX0Anxt0tx2MrpRpWwQaPwIlISEJhYU5Pw==",
+       "dev": true
+     },
++    "node_modules/bcrypt": {
++      "version": "6.0.0",
++      "resolved": "https://registry.npmjs.org/bcrypt/-/bcrypt-6.0.0.tgz",
++      "integrity": "sha512-cU8v/EGSrnH+HnxV2z0J7/blxH8gq7Xh2JFT6Aroax7UohdmiJJlxApMxtKfuI7z68NvvVcmR78k2LbT6efhRg==",
++      "hasInstallScript": true,
++      "dependencies": {
++        "node-addon-api": "^8.3.0",
++        "node-gyp-build": "^4.8.4"
++      },
++      "engines": {
++        "node": ">= 18"
++      }
++    },
+     "node_modules/body-parser": {
+       "version": "2.3.0",
+       "resolved": "https://registry.npmjs.org/body-parser/-/body-parser-2.3.0.tgz",
+@@ -3022,6 +3059,24 @@
+         "node": ">= 0.6"
+       }
+     },
++    "node_modules/node-addon-api": {
++      "version": "8.9.0",
++      "resolved": "https://registry.npmjs.org/node-addon-api/-/node-addon-api-8.9.0.tgz",
++      "integrity": "sha512-ekZMeaaIzSQTSpr7X2X3iJM7lTzgnx8ahAG9pJfT/7+14mlEM8ZYQ9cgCDvSSRbReFK0oHli3WrZdCiRsgAT9Q==",
++      "engines": {
++        "node": "^18 || ^20 || >= 21"
++      }
++    },
++    "node_modules/node-gyp-build": {
++      "version": "4.8.4",
++      "resolved": "https://registry.npmjs.org/node-gyp-build/-/node-gyp-build-4.8.4.tgz",
++      "integrity": "sha512-LA4ZjwlnUblHVgq0oBF3Jl/6h/Nvs5fzBLwdEF4nuxnFdsfajde4WfxtJr3CaiH+F6ewcIB/q4jQ4UzPyid+CQ==",
++      "bin": {
++        "node-gyp-build": "bin.js",
++        "node-gyp-build-optional": "optional.js",
++        "node-gyp-build-test": "build-test.js"
++      }
++    },
+     "node_modules/object-assign": {
+       "version": "4.1.1",
+       "resolved": "https://registry.npmjs.org/object-assign/-/object-assign-4.1.1.tgz",
+@@ -3177,6 +3232,87 @@
+         "node": ">= 14.16"
+       }
+     },
++    "node_modules/pg": {
++      "version": "8.22.0",
++      "resolved": "https://registry.npmjs.org/pg/-/pg-8.22.0.tgz",
++      "integrity": "sha512-8wih1vVIBMxoUM2oB4soJsD9tDnDpLv4OXBJ+EJzFsvycD+lfyIreC2gGHq78f8jbLLt+bvlPTFdFZfJkOuzAA==",
++      "dependencies": {
++        "pg-connection-string": "^2.14.0",
++        "pg-pool": "^3.14.0",
++        "pg-protocol": "^1.15.0",
++        "pg-types": "2.2.0",
++        "pgpass": "1.0.5"
++      },
++      "engines": {
++        "node": ">= 16.0.0"
++      },
++      "optionalDependencies": {
++        "pg-cloudflare": "^1.4.0"
++      },
++      "peerDependencies": {
++        "pg-native": ">=3.0.1"
++      },
++      "peerDependenciesMeta": {
++        "pg-native": {
++          "optional": true
++        }
++      }
++    },
++    "node_modules/pg-cloudflare": {
++      "version": "1.4.0",
++      "resolved": "https://registry.npmjs.org/pg-cloudflare/-/pg-cloudflare-1.4.0.tgz",
++      "integrity": "sha512-Vo7z/6rrQYxpNRylp4Tlob2elzbh+N/MOQbxFVWCxS7oEx6jF53GTJFxK2WWpKuBRkmiin4Mt+xofFDjx09R0A==",
++      "optional": true
++    },
++    "node_modules/pg-connection-string": {
++      "version": "2.14.0",
++      "resolved": "https://registry.npmjs.org/pg-connection-string/-/pg-connection-string-2.14.0.tgz",
++      "integrity": "sha512-XwWDGcLRGCXAR8F/AM5bG7Q+A3Wm2s6QeEjlOKZLlH3UYcguiqCWKyWXVag5TLTIjR7oOJUY8kcADaZgWPyLeg=="
++    },
++    "node_modules/pg-int8": {
++      "version": "1.0.1",
++      "resolved": "https://registry.npmjs.org/pg-int8/-/pg-int8-1.0.1.tgz",
++      "integrity": "sha512-WCtabS6t3c8SkpDBUlb1kjOs7l66xsGdKpIPZsg4wR+B3+u9UAum2odSsF9tnvxg80h4ZxLWMy4pRjOsFIqQpw==",
++      "engines": {
++        "node": ">=4.0.0"
++      }
++    },
++    "node_modules/pg-pool": {
++      "version": "3.14.0",
++      "resolved": "https://registry.npmjs.org/pg-pool/-/pg-pool-3.14.0.tgz",
++      "integrity": "sha512-gKtPkFdQPU3DksooVLi9LsjZxrsBUZIpa+7aVx+LV5pNh0KzP4Zleud2po+ConrxbuXGBJ6Hfer6hdgpIBpBaw==",
++      "peerDependencies": {
++        "pg": ">=8.0"
++      }
++    },
++    "node_modules/pg-protocol": {
++      "version": "1.15.0",
++      "resolved": "https://registry.npmjs.org/pg-protocol/-/pg-protocol-1.15.0.tgz",
++      "integrity": "sha512-cq9sECI5s0+uPUXjbz8ioyPJni6RzsRib0US67i5IoTZKw8fNeYlVE7u8F4dG7vEJJtc5wdD1K189lCCUwqWTQ=="
++    },
++    "node_modules/pg-types": {
++      "version": "2.2.0",
++      "resolved": "https://registry.npmjs.org/pg-types/-/pg-types-2.2.0.tgz",
++      "integrity": "sha512-qTAAlrEsl8s4OiEQY69wDvcMIdQN6wdz5ojQiOy6YRMuynxenON0O5oCpJI6lshc6scgAY8qvJ2On/p+CXY0GA==",
++      "dependencies": {
++        "pg-int8": "1.0.1",
++        "postgres-array": "~2.0.0",
++        "postgres-bytea": "~1.0.0",
++        "postgres-date": "~1.0.4",
++        "postgres-interval": "^1.1.0"
++      },
++      "engines": {
++        "node": ">=4"
++      }
++    },
++    "node_modules/pgpass": {
++      "version": "1.0.5",
++      "resolved": "https://registry.npmjs.org/pgpass/-/pgpass-1.0.5.tgz",
++      "integrity": "sha512-FdW9r/jQZhSeohs1Z3sI1yxFQNFvMcnmfuj4WBMUTxOrAyLMaTcE1aAMBiTlbMNaXvBCQuVi0R7hd8udDSP7ug==",
++      "dependencies": {
++        "split2": "^4.1.0"
++      }
++    },
+     "node_modules/picocolors": {
+       "version": "1.1.1",
+       "resolved": "https://registry.npmjs.org/picocolors/-/picocolors-1.1.1.tgz",
+@@ -3291,6 +3427,41 @@
+         "node": "^10 || ^12 || >=14"
+       }
+     },
++    "node_modules/postgres-array": {
++      "version": "2.0.0",
++      "resolved": "https://registry.npmjs.org/postgres-array/-/postgres-array-2.0.0.tgz",
++      "integrity": "sha512-VpZrUqU5A69eQyW2c5CA1jtLecCsN2U/bD6VilrFDWq5+5UIEVO7nazS3TEcHf1zuPYO/sqGvUvW62g86RXZuA==",
++      "engines": {
++        "node": ">=4"
++      }
++    },
++    "node_modules/postgres-bytea": {
++      "version": "1.0.1",
++      "resolved": "https://registry.npmjs.org/postgres-bytea/-/postgres-bytea-1.0.1.tgz",
++      "integrity": "sha512-5+5HqXnsZPE65IJZSMkZtURARZelel2oXUEO8rH83VS/hxH5vv1uHquPg5wZs8yMAfdv971IU+kcPUczi7NVBQ==",
++      "engines": {
++        "node": ">=0.10.0"
++      }
++    },
++    "node_modules/postgres-date": {
++      "version": "1.0.7",
++      "resolved": "https://registry.npmjs.org/postgres-date/-/postgres-date-1.0.7.tgz",
++      "integrity": "sha512-suDmjLVQg78nMK2UZ454hAG+OAW+HQPZ6n++TNDUX+L0+uUlLywnoxJKDou51Zm+zTCjrCl0Nq6J9C5hP9vK/Q==",
++      "engines": {
++        "node": ">=0.10.0"
++      }
++    },
++    "node_modules/postgres-interval": {
++      "version": "1.2.0",
++      "resolved": "https://registry.npmjs.org/postgres-interval/-/postgres-interval-1.2.0.tgz",
++      "integrity": "sha512-9ZhXKM/rw350N1ovuWHbGxnGh/SNJ4cnxHiM0rxE4VN41wsg8P8zWn9hv/buK00RP4WvlOyr/RBDiptyxVbkZQ==",
++      "dependencies": {
++        "xtend": "^4.0.0"
++      },
++      "engines": {
++        "node": ">=0.10.0"
++      }
++    },
+     "node_modules/prelude-ls": {
+       "version": "1.2.1",
+       "resolved": "https://registry.npmjs.org/prelude-ls/-/prelude-ls-1.2.1.tgz",
+@@ -4582,6 +4753,14 @@
+       "resolved": "https://registry.npmjs.org/wrappy/-/wrappy-1.0.2.tgz",
+       "integrity": "sha512-l4Sp/DRseor9wL6EvV2+TuQn63dMkPjZ/sp9XkghTEbV9KlPS1xUsZ3u7/IQO4wxtcFB4bgpQPRcR3QCvezPcQ=="
+     },
++    "node_modules/xtend": {
++      "version": "4.0.2",
++      "resolved": "https://registry.npmjs.org/xtend/-/xtend-4.0.2.tgz",
++      "integrity": "sha512-LKYU1iAXJXUgAXn9URjiu+MWhyUXHsvfp7mcuYm9dSUKK0/CjtrUwFAxD82/mCWbtLsGjFIad0wIsod4zrTAEQ==",
++      "engines": {
++        "node": ">=0.4"
++      }
++    },
+     "node_modules/yocto-queue": {
+       "version": "0.1.0",
+       "resolved": "https://registry.npmjs.org/yocto-queue/-/yocto-queue-0.1.0.tgz",
+diff --git a/package.json b/package.json
+index 680143b..1b1e804 100644
+--- a/package.json
++++ b/package.json
+@@ -17,20 +17,24 @@
+   "license": "ISC",
+   "type": "module",
+   "dependencies": {
++    "bcrypt": "^6.0.0",
+     "cors": "^2.8.6",
+     "dotenv": "^17.4.2",
+     "express": "^5.2.1",
+     "express-rate-limit": "^8.5.2",
+     "helmet": "^8.2.0",
++    "pg": "^8.22.0",
+     "pino": "^10.3.1",
+     "pino-pretty": "^13.1.3",
+     "zod": "^4.4.3"
+   },
+   "devDependencies": {
+     "@eslint/js": "^9.39.4",
++    "@types/bcrypt": "^6.0.0",
+     "@types/cors": "^2.8.19",
+     "@types/express": "^5.0.6",
+     "@types/node": "^26.0.1",
++    "@types/pg": "^8.20.0",
+     "@types/supertest": "^7.2.0",
+     "eslint": "^9.39.4",
+     "prettier": "^3.9.4",
+diff --git a/src/controllers/merchants.controller.ts b/src/controllers/merchants.controller.ts
+new file mode 100644
+index 0000000..68e77fb
+--- /dev/null
++++ b/src/controllers/merchants.controller.ts
+@@ -0,0 +1,78 @@
++import type { Request, Response, NextFunction } from 'express';
++import {
++  registerMerchantBody,
++  updateWebhookUrlBody,
++  idParam,
++} from '../schemas/merchants.schema.js';
++import type { MerchantsService } from '../services/merchants.service.js';
++import { ok, created } from '../lib/respond.js';
++import { AppError } from '../lib/errors.js';
++
++export function createMerchantsController(service: MerchantsService) {
++  return {
++    register: async (req: Request, res: Response, next: NextFunction) => {
++      try {
++        const body = registerMerchantBody.parse(req.body);
++        if (!body.webhookUrl.startsWith('https://')) {
++          throw new AppError(400, 'INVALID_WEBHOOK_URL', 'Webhook URL must be HTTPS');
++        }
++        const result = await service.register(body);
++        return created(res, result);
++      } catch (err) {
++        next(err);
++      }
++    },
++    getById: async (req: Request, res: Response, next: NextFunction) => {
++      try {
++        const params = idParam.parse(req.params);
++        if (req.principal?.tier === 'merchant' && req.principal.id !== params.id) {
++          throw new AppError(403, 'FORBIDDEN', 'Cannot access other merchant profiles');
++        }
++        if (req.principal?.tier === 'vendor' && req.principal.merchantId !== params.id) {
++          throw new AppError(403, 'FORBIDDEN', 'Cannot access other merchant profiles');
++        }
++
++        const merchant = await service.getById(params.id);
++        return ok(res, merchant);
++      } catch (err) {
++        next(err);
++      }
++    },
++    updateWebhookUrl: async (req: Request, res: Response, next: NextFunction) => {
++      try {
++        const params = idParam.parse(req.params);
++        if (req.principal?.tier === 'merchant' && req.principal.id !== params.id) {
++          throw new AppError(403, 'FORBIDDEN', 'Cannot access other merchant profiles');
++        }
++        if (req.principal?.tier === 'vendor') {
++          throw new AppError(403, 'FORBIDDEN', 'Vendors cannot modify merchant profiles');
++        }
++
++        const body = updateWebhookUrlBody.parse(req.body);
++        if (!body.webhookUrl.startsWith('https://')) {
++          throw new AppError(400, 'INVALID_WEBHOOK_URL', 'Webhook URL must be HTTPS');
++        }
++        const merchant = await service.updateWebhookUrl(params.id, body.webhookUrl);
++        return ok(res, merchant);
++      } catch (err) {
++        next(err);
++      }
++    },
++    rotateApiKey: async (req: Request, res: Response, next: NextFunction) => {
++      try {
++        const params = idParam.parse(req.params);
++        if (req.principal?.tier === 'merchant' && req.principal.id !== params.id) {
++          throw new AppError(403, 'FORBIDDEN', 'Cannot access other merchant profiles');
++        }
++        if (req.principal?.tier === 'vendor') {
++          throw new AppError(403, 'FORBIDDEN', 'Vendors cannot modify merchant profiles');
++        }
++
++        const result = await service.rotateApiKey(params.id);
++        return ok(res, result);
++      } catch (err) {
++        next(err);
++      }
++    },
++  };
++}
+diff --git a/src/controllers/vendors.controller.ts b/src/controllers/vendors.controller.ts
+new file mode 100644
+index 0000000..05a4af9
+--- /dev/null
++++ b/src/controllers/vendors.controller.ts
+@@ -0,0 +1,71 @@
++import type { Request, Response, NextFunction } from 'express';
++import { createVendorBody, vendorIdParam } from '../schemas/vendors.schema.js';
++import { created, ok } from '../lib/respond.js';
++import { AppError } from '../lib/errors.js';
++
++export interface VendorsService {
++  createVendor(
++    merchantId: string,
++    data: { name: string },
++  ): Promise<{
++    id: string;
++    merchant_id: string;
++    name: string;
++    nomba_va_number: string | null;
++    nomba_bank_name: string | null;
++    va_status: 'pending' | 'active' | 'suspended';
++    created_at: Date;
++    updated_at: Date;
++  }>;
++  getVendor(id: string): Promise<{
++    id: string;
++    merchant_id: string;
++    name: string;
++    nomba_va_number: string | null;
++    nomba_bank_name: string | null;
++    va_status: 'pending' | 'active' | 'suspended';
++    created_at: Date;
++    updated_at: Date;
++  }>;
++}
++
++export function createVendorsController(service: VendorsService) {
++  return {
++    create: async (req: Request, res: Response, next: NextFunction) => {
++      try {
++        if (!req.principal || req.principal.tier !== 'merchant') {
++          throw new AppError(403, 'FORBIDDEN', 'Only merchants can create vendors');
++        }
++
++        const body = createVendorBody.parse(req.body);
++        const vendor = await service.createVendor(req.principal.id, body);
++        return created(res, vendor);
++      } catch (err) {
++        next(err);
++      }
++    },
++    getById: async (req: Request, res: Response, next: NextFunction) => {
++      try {
++        // Anyone with valid auth can view vendor if they know ID (or you can scope it, but PRD doesn't enforce strict scope for read in MVP)
++        // If we need to scope to the merchant, we would check vendor.merchant_id === req.principal.id
++        if (!req.principal) {
++          throw new AppError(401, 'UNAUTHORIZED', 'Unauthorized');
++        }
++
++        const params = vendorIdParam.parse(req.params);
++        const vendor = await service.getVendor(params.id);
++
++        if (req.principal.tier === 'merchant' && vendor.merchant_id !== req.principal.id) {
++          throw new AppError(403, 'FORBIDDEN', 'Vendor does not belong to this merchant');
++        }
++        if (req.principal.tier === 'vendor' && vendor.id !== req.principal.id) {
++          throw new AppError(403, 'FORBIDDEN', 'Cannot view other vendors');
++        }
++
++        return ok(res, vendor);
++      } catch (err) {
++        next(err);
++      }
++    },
++  };
++}
+diff --git a/src/lib/api-key.ts b/src/lib/api-key.ts
+new file mode 100644
+index 0000000..1fd8cc2
+--- /dev/null
++++ b/src/lib/api-key.ts
+@@ -0,0 +1,17 @@
++import bcrypt from 'bcrypt';
++import crypto from 'node:crypto';
++
++const SALT_ROUNDS = 12;
++
++export function generate(): string {
++  const raw = crypto.randomBytes(32).toString('base64url');
++  return `ice_${raw}`;
++}
++
++export function hash(key: string): Promise<string> {
++  return bcrypt.hash(key, SALT_ROUNDS);
++}
++
++export function verify(key: string, hashStr: string): Promise<boolean> {
++  return bcrypt.compare(key, hashStr);
++}
+diff --git a/src/lib/nomba.ts b/src/lib/nomba.ts
+index efdec22..5f00124 100644
+--- a/src/lib/nomba.ts
++++ b/src/lib/nomba.ts
+@@ -170,30 +170,29 @@ export function createNombaClient() {
+     }) => {
+       try {
+         // Rule 4: Always Lookup Before Transfers
+-        const lookupRes = await fetch(
+-          `${NOMBA_BASE_URL}/transfers/bank/lookup`,
+-          {
+-            method: 'POST',
+-            headers: getHeaders(),
+-            body: JSON.stringify({ accountNumber, bankCode }),
+-          },
+-        );
++        const lookupRes = await fetch(`${NOMBA_BASE_URL}/transfers/bank/lookup`, {
++          method: 'POST',
++          headers: getHeaders(),
++          body: JSON.stringify({ accountNumber, bankCode }),
++        });
+ 
+         if (!lookupRes.ok) {
+           throw new AppError(502, 'NOMBA_ERROR', 'Failed to lookup recipient account name');
+         }
+ 
+         const lookupSchema = z.object({
+-          data: z.object({
+-            accountName: z.string(),
+-          }).optional(),
++          data: z
++            .object({
++              accountName: z.string(),
++            })
++            .optional(),
+         });
+ 
+         const parsedLookup = lookupSchema.safeParse(await lookupRes.json());
+         if (!parsedLookup.success || !parsedLookup.data.data?.accountName) {
+           throw new AppError(502, 'NOMBA_ERROR', 'Could not resolve account name from lookup');
+         }
+-        
++
+         const accountName = parsedLookup.data.data.accountName;
+ 
+         // Rule 1: Always use Kobo (amount is already in Kobo, no conversion)
+diff --git a/src/lib/respond.ts b/src/lib/respond.ts
+index 22300e0..321c5fa 100644
+--- a/src/lib/respond.ts
++++ b/src/lib/respond.ts
+@@ -7,12 +7,7 @@ export const created = (res: Response, data: unknown) => ok(res, data, 201);
+ 
+ export const noContent = (res: Response) => res.status(204).send();
+ 
+-export const appError = (
+-  res: Response,
+-  errorCode: string,
+-  message: string,
+-  status = 500
+-) => {
++export const appError = (res: Response, errorCode: string, message: string, status = 500) => {
+   return res.status(status).json({
+     ok: false,
+     errorCode,
+diff --git a/src/middleware/auth.ts b/src/middleware/auth.ts
+new file mode 100644
+index 0000000..a2a82e6
+--- /dev/null
++++ b/src/middleware/auth.ts
+@@ -0,0 +1,68 @@
++import type { Request, Response, NextFunction } from 'express';
++import { AppError } from '../lib/errors.js';
++import { verify } from '../lib/api-key.js';
++import { createLogger } from '../lib/logger.js';
++
++const log = createLogger('auth-middleware');
++
++export interface MerchantsRepo {
++  findByKeyPrefix(prefix: string): Promise<{ id: string; api_key_hash: string } | null>;
++}
++
++export interface VendorsRepo {
++  findByKeyPrefix(
++    prefix: string,
++  ): Promise<{ id: string; merchant_id: string; api_key_hash: string } | null>;
++}
++
++export function createAuthMiddleware(deps: { merchants: MerchantsRepo; vendors: VendorsRepo }) {
++  return async (req: Request, res: Response, next: NextFunction) => {
++    try {
++      const authHeader = req.headers.authorization;
++      if (!authHeader) {
++        throw new AppError(401, 'MISSING_API_KEY', 'No API key provided');
++      }
++
++      if (!authHeader.startsWith('Bearer ')) {
++        throw new AppError(
++          401,
++          'INVALID_AUTHORIZATION_HEADER',
++          'Authorization header must start with Bearer',
++        );
++      }
++
++      const key = authHeader.substring(7).trim();
++      if (!key) {
++        throw new AppError(401, 'MISSING_API_KEY', 'No API key provided');
++      }
++
++      const prefix = key.slice(0, 8);
++
++      // Try merchant (master) key first
++      const merchant = await deps.merchants.findByKeyPrefix(prefix);
++      if (merchant && (await verify(key, merchant.api_key_hash))) {
++        req.principal = {
++          tier: 'merchant',
++          id: merchant.id,
++        };
++        return next();
++      }
++
++      // Then try vendor (scoped) key
++      const vendor = await deps.vendors.findByKeyPrefix(prefix);
++      if (vendor && (await verify(key, vendor.api_key_hash))) {
++        req.principal = {
++          tier: 'vendor',
++          id: vendor.id,
++          merchantId: vendor.merchant_id,
++        };
++        return next();
++      }
++
++      log.warn({ prefix }, 'Invalid API key attempt');
++      throw new AppError(401, 'INVALID_API_KEY', 'Invalid API key');
++    } catch (err) {
++      next(err);
++    }
++  };
++}
+diff --git a/src/middleware/errors.ts b/src/middleware/errors.ts
+index 116ffcc..a19b3d4 100644
+--- a/src/middleware/errors.ts
++++ b/src/middleware/errors.ts
+@@ -8,24 +8,17 @@ export function notFoundHandler(req: Request, res: Response) {
+   appError(res, 'NOT_FOUND', `Cannot ${req.method} ${req.path}`, 404);
+ }
+ 
+-export function errorHandler(
+-  err: unknown,
+-  req: Request,
+-  res: Response,
+-  _next: NextFunction,
+-) {
++export function errorHandler(err: unknown, req: Request, res: Response, _next: NextFunction) {
+   log.error({ err, path: req.path }, 'Unhandled error');
+ 
+   const status =
+-    typeof err === 'object' && err !== null && 'status' in err && typeof (err as Record<string, unknown>).status === 'number'
++    typeof err === 'object' &&
++    err !== null &&
++    'status' in err &&
++    typeof (err as Record<string, unknown>).status === 'number'
+       ? (err as Record<string, unknown>).status
+       : 500;
+   const message = err instanceof Error ? err.message : 'Internal Server Error';
+ 
+-  appError(
+-    res,
+-    status === 500 ? 'INTERNAL_ERROR' : 'APP_ERROR',
+-    message,
+-    status as number
+-  );
++  appError(res, status === 500 ? 'INTERNAL_ERROR' : 'APP_ERROR', message, status as number);
+ }
+diff --git a/src/repositories/merchants.repo.ts b/src/repositories/merchants.repo.ts
+new file mode 100644
+index 0000000..16d9889
+--- /dev/null
++++ b/src/repositories/merchants.repo.ts
+@@ -0,0 +1,90 @@
++import type { Pool } from 'pg';
++import { AppError } from '../lib/errors.js';
++
++export interface MerchantRow {
++  id: string;
++  business_name: string;
++  email: string;
++  api_key_hash: string;
++  api_key_prefix: string;
++  webhook_url: string;
++  status: 'active' | 'suspended';
++  created_at: Date;
++  updated_at: Date;
++}
++
++export interface NewMerchant {
++  id: string;
++  business_name: string;
++  email: string;
++  api_key_hash: string;
++  api_key_prefix: string;
++  webhook_url: string;
++}
++
++export interface MerchantsRepo {
++  create(data: NewMerchant): Promise<MerchantRow>;
++  byId(id: string): Promise<MerchantRow | null>;
++  byEmail(email: string): Promise<MerchantRow | null>;
++  findByKeyPrefix(prefix: string): Promise<{ id: string; api_key_hash: string } | null>;
++  updateWebhookUrl(id: string, webhookUrl: string): Promise<MerchantRow>;
++  updateApiKey(id: string, apiKeyHash: string, apiKeyPrefix: string): Promise<MerchantRow>;
++}
++
++export function createMerchantsRepo(db: Pool): MerchantsRepo {
++  return {
++    create: async (data: NewMerchant): Promise<MerchantRow> => {
++      const res = await db.query<MerchantRow>(
++        `INSERT INTO merchants (id, business_name, email, api_key_hash, api_key_prefix, webhook_url, status)
++         VALUES ($1, $2, $3, $4, $5, $6, 'active')
++         RETURNING *`,
++        [
++          data.id,
++          data.business_name,
++          data.email,
++          data.api_key_hash,
++          data.api_key_prefix,
++          data.webhook_url,
++        ],
++      );
++      return res.rows[0] as MerchantRow;
++    },
++    byId: async (id: string): Promise<MerchantRow | null> => {
++      const res = await db.query<MerchantRow>('SELECT * FROM merchants WHERE id = $1', [id]);
++      return res.rows[0] ?? null;
++    },
++    byEmail: async (email: string): Promise<MerchantRow | null> => {
++      const res = await db.query<MerchantRow>('SELECT * FROM merchants WHERE email = $1', [email]);
++      return res.rows[0] ?? null;
++    },
++    findByKeyPrefix: async (
++      prefix: string,
++    ): Promise<{ id: string; api_key_hash: string } | null> => {
++      const res = await db.query<{ id: string; api_key_hash: string }>(
++        'SELECT id, api_key_hash FROM merchants WHERE api_key_prefix = $1 AND status = $2',
++        [prefix, 'active'],
++      );
++      return res.rows[0] ?? null;
++    },
++    updateWebhookUrl: async (id: string, webhookUrl: string): Promise<MerchantRow> => {
++      const res = await db.query<MerchantRow>(
++        'UPDATE merchants SET webhook_url = $1, updated_at = NOW() WHERE id = $2 RETURNING *',
++        [webhookUrl, id],
++      );
++      if (res.rowCount === 0) throw new AppError(404, 'MERCHANT_NOT_FOUND', 'Merchant not found');
++      return res.rows[0] as MerchantRow;
++    },
++    updateApiKey: async (
++      id: string,
++      apiKeyHash: string,
++      apiKeyPrefix: string,
++    ): Promise<MerchantRow> => {
++      const res = await db.query<MerchantRow>(
++        'UPDATE merchants SET api_key_hash = $1, api_key_prefix = $2, updated_at = NOW() WHERE id = $3 RETURNING *',
++        [apiKeyHash, apiKeyPrefix, id],
++      );
++      if (res.rowCount === 0) throw new AppError(404, 'MERCHANT_NOT_FOUND', 'Merchant not found');
++      return res.rows[0] as MerchantRow;
++    },
++  };
++}
+diff --git a/src/repositories/vendors.repo.ts b/src/repositories/vendors.repo.ts
+new file mode 100644
+index 0000000..48050db
+--- /dev/null
++++ b/src/repositories/vendors.repo.ts
+@@ -0,0 +1,78 @@
++import type { Pool } from 'pg';
++import { AppError } from '../lib/errors.js';
++
++export interface VendorRow {
++  id: string;
++  merchant_id: string;
++  name: string;
++  api_key_hash: string | null;
++  api_key_prefix: string | null;
++  nomba_va_number: string | null;
++  nomba_bank_name: string | null;
++  va_status: 'pending' | 'active' | 'suspended';
++  created_at: Date;
++  updated_at: Date;
++}
++
++export interface NewVendor {
++  id: string;
++  merchant_id: string;
++  name: string;
++  va_status: 'pending' | 'active' | 'suspended';
++}
++
++export interface VendorsRepo {
++  create(data: NewVendor): Promise<VendorRow>;
++  delete(id: string): Promise<void>;
++  updateVa(id: string, vaNumber: string, bankName: string): Promise<VendorRow>;
++  byId(id: string): Promise<VendorRow | null>;
++  byNameAndMerchant(name: string, merchantId: string): Promise<VendorRow | null>;
++  findByKeyPrefix(
++    prefix: string,
++  ): Promise<{ id: string; merchant_id: string; api_key_hash: string } | null>;
++}
++
++export function createVendorsRepo(db: Pool): VendorsRepo {
++  return {
++    create: async (data: NewVendor): Promise<VendorRow> => {
++      const res = await db.query<VendorRow>(
++        `INSERT INTO vendors (id, merchant_id, name, va_status)
++         VALUES ($1, $2, $3, $4)
++         RETURNING *`,
++        [data.id, data.merchant_id, data.name, data.va_status],
++      );
++      return res.rows[0] as VendorRow;
++    },
++    delete: async (id: string): Promise<void> => {
++      await db.query('DELETE FROM vendors WHERE id = $1', [id]);
++    },
++    updateVa: async (id: string, vaNumber: string, bankName: string): Promise<VendorRow> => {
++      const res = await db.query<VendorRow>(
++        'UPDATE vendors SET nomba_va_number = $1, nomba_bank_name = $2, updated_at = NOW() WHERE id = $3 RETURNING *',
++        [vaNumber, bankName, id],
++      );
++      if (res.rowCount === 0) throw new AppError(404, 'VENDOR_NOT_FOUND', 'Vendor not found');
++      return res.rows[0] as VendorRow;
++    },
++    byId: async (id: string): Promise<VendorRow | null> => {
++      const res = await db.query<VendorRow>('SELECT * FROM vendors WHERE id = $1', [id]);
++      return res.rows[0] ?? null;
++    },
++    byNameAndMerchant: async (name: string, merchantId: string): Promise<VendorRow | null> => {
++      const res = await db.query<VendorRow>(
++        'SELECT * FROM vendors WHERE name = $1 AND merchant_id = $2',
++        [name, merchantId],
++      );
++      return res.rows[0] ?? null;
++    },
++    findByKeyPrefix: async (
++      prefix: string,
++    ): Promise<{ id: string; merchant_id: string; api_key_hash: string } | null> => {
++      const res = await db.query<{ id: string; merchant_id: string; api_key_hash: string }>(
++        'SELECT id, merchant_id, api_key_hash FROM vendors WHERE api_key_prefix = $1 AND va_status = $2 AND api_key_hash IS NOT NULL',
++        [prefix, 'active'],
++      );
++      return res.rows[0] ?? null;
++    },
++  };
++}
+diff --git a/src/routes/merchants.routes.ts b/src/routes/merchants.routes.ts
+new file mode 100644
+index 0000000..beb63df
+--- /dev/null
++++ b/src/routes/merchants.routes.ts
+@@ -0,0 +1,16 @@
++import { Router, type RequestHandler } from 'express';
++import type { createMerchantsController } from '../controllers/merchants.controller.js';
++
++export function createMerchantsRouter(
++  controller: ReturnType<typeof createMerchantsController>,
++  authMiddleware: RequestHandler,
++) {
++  const router = Router();
++
++  router.post('/register', controller.register);
++  router.get('/:id', authMiddleware, controller.getById);
++  router.put('/:id/webhook-url', authMiddleware, controller.updateWebhookUrl);
++  router.post('/:id/api-keys/rotate', authMiddleware, controller.rotateApiKey);
++
++  return router;
++}
+diff --git a/src/routes/v1.ts b/src/routes/v1.ts
+index c7a0bd0..1995105 100644
+--- a/src/routes/v1.ts
++++ b/src/routes/v1.ts
+@@ -1,7 +1,11 @@
+ import { Router } from 'express';
+ 
+-const v1Router = Router();
++// We will export a factory function or initialize with null for now
++// Since this depends on app.ts wiring, we can accept the router from app.ts
++// or create a setup router function.
++export const v1Router = Router();
+ 
+-// Routes will be mounted here in future tasks (e.g. /merchants, /vendors)
+-
+-export { v1Router };
++export function setupV1Router(deps: { merchantsRouter?: Router; vendorsRouter?: Router }) {
++  if (deps.merchantsRouter) v1Router.use('/merchants', deps.merchantsRouter);
++  if (deps.vendorsRouter) v1Router.use('/vendors', deps.vendorsRouter);
++}
+diff --git a/src/routes/vendors.routes.ts b/src/routes/vendors.routes.ts
+new file mode 100644
+index 0000000..6635fb2
+--- /dev/null
++++ b/src/routes/vendors.routes.ts
+@@ -0,0 +1,18 @@
++import { Router } from 'express';
++import type { RequestHandler } from 'express';
++
++export interface VendorsController {
++  create: RequestHandler;
++  getById: RequestHandler;
++}
++
++export function createVendorsRouter(controller: VendorsController, authMiddleware: RequestHandler) {
++  const router = Router();
++
++  router.use(authMiddleware);
++
++  router.post('/', controller.create);
++  router.get('/:id', controller.getById);
++
++  return router;
++}
+diff --git a/src/schemas/merchants.schema.ts b/src/schemas/merchants.schema.ts
+new file mode 100644
+index 0000000..2995806
+--- /dev/null
++++ b/src/schemas/merchants.schema.ts
+@@ -0,0 +1,21 @@
++import { z } from 'zod';
++
++export const registerMerchantBody = z.object({
++  businessName: z.string().min(2).max(100),
++  email: z.string().email(),
++  webhookUrl: z.string().url(),
++});
++
++export type RegisterMerchantInput = z.infer<typeof registerMerchantBody>;
++
++export const updateWebhookUrlBody = z.object({
++  webhookUrl: z.string().url(),
++});
++
++export type UpdateWebhookUrlInput = z.infer<typeof updateWebhookUrlBody>;
++
++export const idParam = z.object({
++  id: z.string().uuid(),
++});
++
++export type IdParam = z.infer<typeof idParam>;
+diff --git a/src/schemas/vendors.schema.ts b/src/schemas/vendors.schema.ts
+new file mode 100644
+index 0000000..ebb1e01
+--- /dev/null
++++ b/src/schemas/vendors.schema.ts
+@@ -0,0 +1,13 @@
++import { z } from 'zod';
++
++export const createVendorBody = z.object({
++  name: z.string().min(2).max(100),
++});
++
++export type CreateVendorInput = z.infer<typeof createVendorBody>;
++
++export const vendorIdParam = z.object({
++  id: z.string().uuid(),
++});
++
++export type VendorIdParam = z.infer<typeof vendorIdParam>;
+diff --git a/src/services/merchants.service.ts b/src/services/merchants.service.ts
+new file mode 100644
+index 0000000..34ccc4a
+--- /dev/null
++++ b/src/services/merchants.service.ts
+@@ -0,0 +1,85 @@
++import crypto from 'node:crypto';
++import type { MerchantsRepo, MerchantRow } from '../repositories/merchants.repo.js';
++import type { RegisterMerchantInput } from '../schemas/merchants.schema.js';
++import { generate, hash } from '../lib/api-key.js';
++import { AppError } from '../lib/errors.js';
++import { createLogger } from '../lib/logger.js';
++
++const log = createLogger('merchants-service');
++
++export type MerchantProfile = Omit<MerchantRow, 'api_key_hash' | 'api_key_prefix'>;
++
++export interface MerchantsService {
++  register(data: RegisterMerchantInput): Promise<{ merchant: MerchantProfile; api_key: string }>;
++  getById(id: string): Promise<MerchantProfile>;
++  updateWebhookUrl(id: string, webhookUrl: string): Promise<MerchantProfile>;
++  rotateApiKey(id: string): Promise<{ api_key: string }>;
++}
++
++export function createMerchantsService(deps: { merchants: MerchantsRepo }): MerchantsService {
++  return {
++    register: async (data: RegisterMerchantInput) => {
++      const existing = await deps.merchants.byEmail(data.email);
++      if (existing) {
++        throw new AppError(409, 'EMAIL_IN_USE', 'Email already in use');
++      }
++
++      const rawKey = generate();
++      const hashedKey = await hash(rawKey);
++      const prefix = rawKey.slice(0, 8);
++      const id = crypto.randomUUID();
++
++      const row = await deps.merchants.create({
++        id,
++        business_name: data.businessName,
++        email: data.email,
++        api_key_hash: hashedKey,
++        api_key_prefix: prefix,
++        webhook_url: data.webhookUrl,
++      });
++
++      log.info(
++        { merchantId: id, businessName: data.businessName },
++        'Merchant registered successfully',
++      );
++
++      const { api_key_hash: _hash, api_key_prefix: _prefix, ...merchant } = row;
++      return { merchant, api_key: rawKey };
++    },
++    getById: async (id: string) => {
++      const row = await deps.merchants.byId(id);
++      if (!row) {
++        throw new AppError(404, 'MERCHANT_NOT_FOUND', 'Merchant not found');
++      }
++      const { api_key_hash: _hash, api_key_prefix: _prefix, ...merchant } = row;
++      return merchant;
++    },
++    updateWebhookUrl: async (id: string, webhookUrl: string) => {
++      const existing = await deps.merchants.byId(id);
++      if (!existing) {
++        throw new AppError(404, 'MERCHANT_NOT_FOUND', 'Merchant not found');
++      }
++
++      const row = await deps.merchants.updateWebhookUrl(id, webhookUrl);
++      log.info({ merchantId: id, webhookUrl }, 'Merchant webhook URL updated');
++
++      const { api_key_hash: _hash, api_key_prefix: _prefix, ...merchant } = row;
++      return merchant;
++    },
++    rotateApiKey: async (id: string) => {
++      const existing = await deps.merchants.byId(id);
++      if (!existing) {
++        throw new AppError(404, 'MERCHANT_NOT_FOUND', 'Merchant not found');
++      }
++
++      const rawKey = generate();
++      const hashedKey = await hash(rawKey);
++      const prefix = rawKey.slice(0, 8);
++
++      await deps.merchants.updateApiKey(id, hashedKey, prefix);
++      log.info({ merchantId: id }, 'Merchant API key rotated');
++
++      return { api_key: rawKey };
++    },
++  };
++}
+diff --git a/src/services/vendors.service.ts b/src/services/vendors.service.ts
+new file mode 100644
+index 0000000..4bf2e1c
+--- /dev/null
++++ b/src/services/vendors.service.ts
+@@ -0,0 +1,64 @@
++import crypto from 'node:crypto';
++import { z } from 'zod';
++import type { VendorsRepo } from '../repositories/vendors.repo.js';
++import type { NombaClient } from '../lib/nomba.js';
++import type { CreateVendorInput } from '../schemas/vendors.schema.js';
++import { AppError } from '../lib/errors.js';
++import { createLogger } from '../lib/logger.js';
++
++const log = createLogger('vendors-service');
++
++export function createVendorsService(deps: { vendors: VendorsRepo; nomba: NombaClient }) {
++  return {
++    createVendor: async (merchantId: string, data: CreateVendorInput) => {
++      const existing = await deps.vendors.byNameAndMerchant(data.name, merchantId);
++      if (existing) {
++        throw new AppError(409, 'VENDOR_EXISTS', 'Vendor name already exists for this merchant');
++      }
++
++      const id = crypto.randomUUID();
++      let vendor = await deps.vendors.create({
++        id,
++        merchant_id: merchantId,
++        name: data.name,
++        va_status: 'active',
++      });
++
++      try {
++        const nombaRes = await deps.nomba.createVirtualAccount({
++          accountRef: id,
++          accountName: data.name,
++        });
++
++        const nombaSchema = z.object({
++          data: z.object({
++            accountNumber: z.string(),
++            bankName: z.string().optional(),
++          }),
++        });
++
++        const parsed = nombaSchema.safeParse(nombaRes);
++        if (!parsed.success) {
++          throw new AppError(502, 'NOMBA_ERROR', 'Invalid response format from Nomba');
++        }
++
++        const { accountNumber, bankName } = parsed.data.data;
++        vendor = await deps.vendors.updateVa(id, accountNumber, bankName ?? 'Nombank');
++      } catch (err) {
++        log.error({ err, id, merchantId }, 'Nomba VA provisioning failed, rolling back vendor');
++        await deps.vendors.delete(id);
++        throw err;
++      }
++
++      return vendor;
++    },
++
++    getVendor: async (id: string) => {
++      const vendor = await deps.vendors.byId(id);
++      if (!vendor) {
++        throw new AppError(404, 'VENDOR_NOT_FOUND', 'Vendor not found');
++      }
++      return vendor;
++    },
++  };
++}
+diff --git a/src/types/express.d.ts b/src/types/express.d.ts
+new file mode 100644
+index 0000000..62f352c
+--- /dev/null
++++ b/src/types/express.d.ts
+@@ -0,0 +1,13 @@
++declare global {
++  namespace Express {
++    interface Request {
++      principal?: {
++        tier: 'merchant' | 'vendor';
++        id: string;
++        merchantId?: string;
++      };
++    }
++  }
++}
++
++export {};
+diff --git a/tests/unit/auth.test.ts b/tests/unit/auth.test.ts
+new file mode 100644
+index 0000000..1e815da
+--- /dev/null
++++ b/tests/unit/auth.test.ts
+@@ -0,0 +1,127 @@
++import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
++import type { Request, Response, NextFunction } from 'express';
++import { createAuthMiddleware, type MerchantsRepo, type VendorsRepo } from '../../src/middleware/auth.js';
++import { hash } from '../../src/lib/api-key.js';
++import { AppError } from '../../src/lib/errors.js';
++
++describe('Auth Middleware', () => {
++  let req: Partial<Request>;
++  let res: Partial<Response>;
++  let next: NextFunction;
++
++  beforeEach(() => {
++    req = { headers: {} };
++    res = {};
++    next = vi.fn();
++  });
++
++  it('throws MISSING_API_KEY if no Authorization header', async () => {
++    const middleware = createAuthMiddleware({
++      merchants: { findByKeyPrefix: vi.fn() },
++      vendors: { findByKeyPrefix: vi.fn() },
++    });
++
++    await middleware(req as Request, res as Response, next);
++
++    expect(next).toHaveBeenCalledWith(expect.any(AppError));
++    const err = (next as Mock).mock.calls[0][0];
++    expect(err.errorCode).toBe('MISSING_API_KEY');
++    expect(err.status).toBe(401);
++  });
++
++  it('throws INVALID_AUTHORIZATION_HEADER if not Bearer', async () => {
++    req.headers = { authorization: 'Basic token' };
++    const middleware = createAuthMiddleware({
++      merchants: { findByKeyPrefix: vi.fn() },
++      vendors: { findByKeyPrefix: vi.fn() },
++    });
++
++    await middleware(req as Request, res as Response, next);
++
++    expect(next).toHaveBeenCalledWith(expect.any(AppError));
++    const err = (next as Mock).mock.calls[0][0];
++    expect(err.errorCode).toBe('INVALID_AUTHORIZATION_HEADER');
++  });
++
++  it('authenticates a valid merchant key', async () => {
++    const rawKey = 'ice_live_1234567890';
++    const prefix = rawKey.slice(0, 8);
++    const keyHash = await hash(rawKey);
++
++    const merchantsRepo: MerchantsRepo = {
++      findByKeyPrefix: vi.fn().mockImplementation(async (p) => {
++        if (p === prefix) return { id: 'm_123', api_key_hash: keyHash };
++        return null;
++      }),
++    };
++    const vendorsRepo: VendorsRepo = { findByKeyPrefix: vi.fn().mockResolvedValue(null) };
++
++    const middleware = createAuthMiddleware({ merchants: merchantsRepo, vendors: vendorsRepo });
++
++    req.headers = { authorization: `Bearer ${rawKey}` };
++    await middleware(req as Request, res as Response, next);
++
++    expect(next).toHaveBeenCalledWith(); // success, no args
++    expect((req as Request).principal).toEqual({ tier: 'merchant', id: 'm_123' });
++    expect(merchantsRepo.findByKeyPrefix).toHaveBeenCalledWith(prefix);
++    expect(vendorsRepo.findByKeyPrefix).not.toHaveBeenCalled();
++  });
++
++  it('authenticates a valid vendor key when merchant is not found', async () => {
++    const rawKey = 'vnd_live_0987654321';
++    const prefix = rawKey.slice(0, 8);
++    const keyHash = await hash(rawKey);
++
++    const merchantsRepo: MerchantsRepo = { findByKeyPrefix: vi.fn().mockResolvedValue(null) };
++    const vendorsRepo: VendorsRepo = {
++      findByKeyPrefix: vi.fn().mockImplementation(async (p) => {
++        if (p === prefix) return { id: 'v_456', merchant_id: 'm_123', api_key_hash: keyHash };
++        return null;
++      }),
++    };
++
++    const middleware = createAuthMiddleware({ merchants: merchantsRepo, vendors: vendorsRepo });
++
++    req.headers = { authorization: `Bearer ${rawKey}` };
++    await middleware(req as Request, res as Response, next);
++
++    expect(next).toHaveBeenCalledWith();
++    expect((req as Request).principal).toEqual({ tier: 'vendor', id: 'v_456', merchantId: 'm_123' });
++    expect(merchantsRepo.findByKeyPrefix).toHaveBeenCalledWith(prefix);
++    expect(vendorsRepo.findByKeyPrefix).toHaveBeenCalledWith(prefix);
++  });
++
++  it('throws INVALID_API_KEY when key is not found anywhere', async () => {
++    const merchantsRepo: MerchantsRepo = { findByKeyPrefix: vi.fn().mockResolvedValue(null) };
++    const vendorsRepo: VendorsRepo = { findByKeyPrefix: vi.fn().mockResolvedValue(null) };
++
++    const middleware = createAuthMiddleware({ merchants: merchantsRepo, vendors: vendorsRepo });
++
++    req.headers = { authorization: `Bearer unknown_key` };
++    await middleware(req as Request, res as Response, next);
++
++    expect(next).toHaveBeenCalledWith(expect.any(AppError));
++    const err = (next as Mock).mock.calls[0][0];
++    expect(err.errorCode).toBe('INVALID_API_KEY');
++  });
++
++  it('throws INVALID_API_KEY when key is found but hash mismatch', async () => {
++    const validKey = 'ice_live_123';
++    const badKey = 'ice_live_bad';
++    const keyHash = await hash(validKey);
++
++    const merchantsRepo: MerchantsRepo = {
++      findByKeyPrefix: vi.fn().mockResolvedValue({ id: 'm_123', api_key_hash: keyHash })
++    };
++    const vendorsRepo: VendorsRepo = { findByKeyPrefix: vi.fn().mockResolvedValue(null) };
++
++    const middleware = createAuthMiddleware({ merchants: merchantsRepo, vendors: vendorsRepo });
++
++    req.headers = { authorization: `Bearer ${badKey}` };
++    await middleware(req as Request, res as Response, next);
++
++    expect(next).toHaveBeenCalledWith(expect.any(AppError));
++    const err = (next as Mock).mock.calls[0][0];
++    expect(err.errorCode).toBe('INVALID_API_KEY');
++  });
++});
+diff --git a/tests/unit/merchants.service.test.ts b/tests/unit/merchants.service.test.ts
+new file mode 100644
+index 0000000..a23be19
+--- /dev/null
++++ b/tests/unit/merchants.service.test.ts
+@@ -0,0 +1,179 @@
++import { describe, it, expect, vi } from 'vitest';
++import { createMerchantsService } from '../../src/services/merchants.service.js';
++import type { MerchantsRepo, MerchantRow } from '../../src/repositories/merchants.repo.js';
++
++describe('merchants.service', () => {
++  it('should register a new merchant and return api_key', async () => {
++    const fakeMerchants: MerchantsRepo = {
++      create: vi.fn().mockImplementation(async (data) => ({
++        id: data.id,
++        business_name: data.business_name,
++        email: data.email,
++        api_key_hash: data.api_key_hash,
++        api_key_prefix: data.api_key_prefix,
++        webhook_url: data.webhook_url,
++        status: 'active',
++        created_at: new Date(),
++        updated_at: new Date()
++      })),
++      byId: vi.fn(),
++      byEmail: vi.fn().mockResolvedValue(null),
++      findByKeyPrefix: vi.fn(),
++      updateWebhookUrl: vi.fn(),
++      updateApiKey: vi.fn(),
++    };
++
++    const service = createMerchantsService({ merchants: fakeMerchants });
++
++    const result = await service.register({
++      businessName: 'Test Business',
++      email: 'test@example.com',
++      webhookUrl: 'https://example.com/webhook',
++    });
++
++    expect(result).toHaveProperty('api_key');
++    expect(result.api_key.startsWith('ice_')).toBe(true);
++    expect(result.merchant.business_name).toBe('Test Business');
++    expect(result.merchant.email).toBe('test@example.com');
++    expect(result.merchant.webhook_url).toBe('https://example.com/webhook');
++    expect(result.merchant).not.toHaveProperty('api_key_hash');
++    expect(result.merchant).not.toHaveProperty('api_key_prefix');
++    expect(fakeMerchants.create).toHaveBeenCalledOnce();
++    expect(fakeMerchants.byEmail).toHaveBeenCalledWith('test@example.com');
++  });
++
++  it('should throw 409 if email already exists', async () => {
++    const fakeMerchants: MerchantsRepo = {
++      create: vi.fn(),
++      byId: vi.fn(),
++      byEmail: vi.fn().mockResolvedValue({ id: 'existing' } as MerchantRow),
++      findByKeyPrefix: vi.fn(),
++      updateWebhookUrl: vi.fn(),
++      updateApiKey: vi.fn(),
++    };
++
++    const service = createMerchantsService({ merchants: fakeMerchants });
++
++    await expect(service.register({
++      businessName: 'Test Business',
++      email: 'test@example.com',
++      webhookUrl: 'https://example.com/webhook',
++    })).rejects.toThrow('Email already in use');
++  });
++
++  it('should retrieve a merchant by ID without sensitive fields', async () => {
++    const fakeMerchants: MerchantsRepo = {
++      create: vi.fn(),
++      byId: vi.fn().mockResolvedValue({
++        id: 'some-id',
++        business_name: 'Test',
++        email: 'test@example.com',
++        api_key_hash: 'hash',
++        api_key_prefix: 'prefix',
++      } as MerchantRow),
++      byEmail: vi.fn(),
++      findByKeyPrefix: vi.fn(),
++      updateWebhookUrl: vi.fn(),
++      updateApiKey: vi.fn(),
++    };
++
++    const service = createMerchantsService({ merchants: fakeMerchants });
++
++    const result = await service.getById('some-id');
++    expect(result.id).toBe('some-id');
++    expect(result.business_name).toBe('Test');
++    expect(result.email).toBe('test@example.com');
++    expect(result).not.toHaveProperty('api_key_hash');
++    expect(result).not.toHaveProperty('api_key_prefix');
++    expect(fakeMerchants.byId).toHaveBeenCalledWith('some-id');
++  });
++
++  it('should throw an error if merchant not found', async () => {
++    const fakeMerchants: MerchantsRepo = {
++      create: vi.fn(),
++      byId: vi.fn().mockResolvedValue(null),
++      byEmail: vi.fn(),
++      findByKeyPrefix: vi.fn(),
++      updateWebhookUrl: vi.fn(),
++      updateApiKey: vi.fn(),
++    };
++
++    const service = createMerchantsService({ merchants: fakeMerchants });
++
++    await expect(service.getById('unknown')).rejects.toThrow('Merchant not found');
++  });
++
++  it('should update merchant webhook url', async () => {
++    const fakeMerchants: MerchantsRepo = {
++      create: vi.fn(),
++      byId: vi.fn().mockResolvedValue({ id: 'some-id' } as MerchantRow),
++      byEmail: vi.fn(),
++      findByKeyPrefix: vi.fn(),
++      updateWebhookUrl: vi.fn().mockResolvedValue({
++        id: 'some-id',
++        business_name: 'Test',
++        email: 'test@example.com',
++        webhook_url: 'https://new.example.com/webhook',
++        api_key_hash: 'hash',
++        api_key_prefix: 'prefix',
++      } as MerchantRow),
++      updateApiKey: vi.fn(),
++    };
++
++    const service = createMerchantsService({ merchants: fakeMerchants });
++
++    const result = await service.updateWebhookUrl('some-id', 'https://new.example.com/webhook');
++    expect(result.webhook_url).toBe('https://new.example.com/webhook');
++    expect(result).not.toHaveProperty('api_key_hash');
++    expect(result).not.toHaveProperty('api_key_prefix');
++    expect(fakeMerchants.updateWebhookUrl).toHaveBeenCalledWith('some-id', 'https://new.example.com/webhook');
++  });
++
++  it('should throw an error if updating webhook url for unknown merchant', async () => {
++    const fakeMerchants: MerchantsRepo = {
++      create: vi.fn(),
++      byId: vi.fn().mockResolvedValue(null),
++      byEmail: vi.fn(),
++      findByKeyPrefix: vi.fn(),
++      updateWebhookUrl: vi.fn(),
++      updateApiKey: vi.fn(),
++    };
++
++    const service = createMerchantsService({ merchants: fakeMerchants });
++
++    await expect(service.updateWebhookUrl('unknown', 'https://example.com')).rejects.toThrow('Merchant not found');
++  });
++
++  it('should rotate API key for a merchant', async () => {
++    const fakeMerchants: MerchantsRepo = {
++      create: vi.fn(),
++      byId: vi.fn().mockResolvedValue({ id: 'some-id' } as MerchantRow),
++      byEmail: vi.fn(),
++      findByKeyPrefix: vi.fn(),
++      updateWebhookUrl: vi.fn(),
++      updateApiKey: vi.fn().mockResolvedValue({ id: 'some-id' } as MerchantRow),
++    };
++
++    const service = createMerchantsService({ merchants: fakeMerchants });
++
++    const result = await service.rotateApiKey('some-id');
++    expect(result).toHaveProperty('api_key');
++    expect(result.api_key.startsWith('ice_')).toBe(true);
++    expect(fakeMerchants.updateApiKey).toHaveBeenCalledWith('some-id', expect.any(String), expect.any(String));
++  });
++
++  it('should throw an error if rotating api key for unknown merchant', async () => {
++    const fakeMerchants: MerchantsRepo = {
++      create: vi.fn(),
++      byId: vi.fn().mockResolvedValue(null),
++      byEmail: vi.fn(),
++      findByKeyPrefix: vi.fn(),
++      updateWebhookUrl: vi.fn(),
++      updateApiKey: vi.fn(),
++    };
++
++    const service = createMerchantsService({ merchants: fakeMerchants });
++
++    await expect(service.rotateApiKey('unknown')).rejects.toThrow('Merchant not found');
++  });
++});
+diff --git a/tests/unit/vendors.service.test.ts b/tests/unit/vendors.service.test.ts
+new file mode 100644
+index 0000000..a3b4ee1
+--- /dev/null
++++ b/tests/unit/vendors.service.test.ts
+@@ -0,0 +1,83 @@
++import { describe, it, expect, vi, beforeEach } from 'vitest';
++import { createVendorsService } from '../../src/services/vendors.service.js';
++import { AppError } from '../../src/lib/errors.js';
++import type { VendorsRepo } from '../../src/repositories/vendors.repo.js';
++import type { NombaClient } from '../../src/lib/nomba.js';
++
++describe('Vendors Service', () => {
++  const mockVendorsRepo = {
++    create: vi.fn(),
++    delete: vi.fn(),
++    updateVa: vi.fn(),
++    byId: vi.fn(),
++    byNameAndMerchant: vi.fn(),
++    findByKeyPrefix: vi.fn(),
++  };
++
++  const mockNombaClient = {
++    authenticate: vi.fn(),
++    close: vi.fn(),
++    _setToken: vi.fn(),
++    createVirtualAccount: vi.fn(),
++    deleteVirtualAccount: vi.fn(),
++    transferToBank: vi.fn(),
++  };
++
++  const service = createVendorsService({
++    vendors: mockVendorsRepo as unknown as VendorsRepo,
++    nomba: mockNombaClient as unknown as NombaClient,
++  });
++
++  beforeEach(() => {
++    vi.clearAllMocks();
++  });
++
++  it('creates a vendor, calls Nomba, and stores VA', async () => {
++    mockVendorsRepo.byNameAndMerchant.mockResolvedValueOnce(null);
++    mockVendorsRepo.create.mockResolvedValueOnce({ id: 'v123', merchant_id: 'm123', name: 'Test Vendor' });
++    mockNombaClient.createVirtualAccount.mockResolvedValueOnce({
++      data: {
++        accountNumber: '1234567890',
++        bankName: 'Test Bank',
++      },
++    });
++    mockVendorsRepo.updateVa.mockResolvedValueOnce({
++      id: 'v123',
++      merchant_id: 'm123',
++      name: 'Test Vendor',
++      nomba_va_number: '1234567890',
++      nomba_bank_name: 'Test Bank',
++      va_status: 'active',
++    });
++
++    const res = await service.createVendor('m123', { name: 'Test Vendor' });
++
++    expect(res.nomba_va_number).toBe('1234567890');
++    expect(res.nomba_bank_name).toBe('Test Bank');
++    expect(mockVendorsRepo.create).toHaveBeenCalled();
++    expect(mockNombaClient.createVirtualAccount).toHaveBeenCalled();
++    expect(mockVendorsRepo.updateVa).toHaveBeenCalledWith(expect.any(String), '1234567890', 'Test Bank');
++  });
++
++  it('fails cleanly on Nomba error and deletes orphan record', async () => {
++    mockVendorsRepo.byNameAndMerchant.mockResolvedValueOnce(null);
++    mockVendorsRepo.create.mockResolvedValueOnce({ id: 'v123', merchant_id: 'm123', name: 'Test Vendor' });
++    mockNombaClient.createVirtualAccount.mockRejectedValueOnce(new AppError(502, 'NOMBA_ERROR', 'Failed'));
++
++    await expect(service.createVendor('m123', { name: 'Test Vendor' })).rejects.toThrow(AppError);
++
++    expect(mockVendorsRepo.create).toHaveBeenCalled();
++    expect(mockNombaClient.createVirtualAccount).toHaveBeenCalled();
++    expect(mockVendorsRepo.delete).toHaveBeenCalled();
++    expect(mockVendorsRepo.updateVa).not.toHaveBeenCalled();
++  });
++
++  it('fails if duplicate vendor name exists', async () => {
++    mockVendorsRepo.byNameAndMerchant.mockResolvedValueOnce({ id: 'v123' });
++
++    await expect(service.createVendor('m123', { name: 'Test Vendor' })).rejects.toThrow(/Vendor name already exists/);
++
++    expect(mockVendorsRepo.create).not.toHaveBeenCalled();
++    expect(mockNombaClient.createVirtualAccount).not.toHaveBeenCalled();
++  });
++});
