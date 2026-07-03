@@ -11,19 +11,48 @@ import { createWebhookInboundService } from './services/webhook-inbound.service.
 import { createWebhooksController } from './controllers/webhooks.controller.js';
 import { createWebhooksRouter } from './routes/webhooks.routes.js';
 import { redis } from './lib/redis.js';
-import { v1Router } from './routes/v1.js';
+import { v1Router, setupV1Router } from './routes/v1.js';
 import { notFoundHandler, errorHandler } from './middleware/errors.js';
+import { createMerchantsRepo } from './repositories/merchants.repo.js';
+import { createMerchantsService } from './services/merchants.service.js';
+import { createMerchantsController } from './controllers/merchants.controller.js';
+import { createMerchantsRouter } from './routes/merchants.routes.js';
+import { createVendorsRepo } from './repositories/vendors.repo.js';
+import { createVendorsService } from './services/vendors.service.js';
+import { createVendorsController } from './controllers/vendors.controller.js';
+import { createVendorsRouter } from './routes/vendors.routes.js';
+import { createNombaClient } from './lib/nomba.js';
+import { createAuthMiddleware } from './middleware/auth.js';
 
 const app = express();
 
 const db = createDbPool(config.DATABASE_URL);
+
+const nomba = createNombaClient();
+
+const merchantsRepo = createMerchantsRepo(db);
+const vendorsRepo = createVendorsRepo(db);
 const transactionsRepo = createTransactionsRepo(db);
+
 const webhookInboundService = createWebhookInboundService({
   transactions: transactionsRepo,
   webhookSecret: config.NOMBA_WEBHOOK_SECRET,
 });
+
+const merchantsService = createMerchantsService({ merchants: merchantsRepo });
+const vendorsService = createVendorsService({ vendors: vendorsRepo, nomba });
+
+const merchantsController = createMerchantsController(merchantsService);
+const vendorsController = createVendorsController(vendorsService);
 const webhooksController = createWebhooksController(webhookInboundService);
+
+const authMiddleware = createAuthMiddleware({ merchants: merchantsRepo, vendors: vendorsRepo });
+
+const merchantsRouter = createMerchantsRouter(merchantsController, authMiddleware);
+const vendorsRouter = createVendorsRouter(vendorsController, authMiddleware);
 const webhooksRouter = createWebhooksRouter(webhooksController);
+
+setupV1Router({ merchantsRouter, vendorsRouter });
 
 // Assign a request ID for tracing
 app.use((_req, res, next) => {
