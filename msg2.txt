@@ -1,0 +1,3 @@
+fix(dashboard): explicitly derive Zod types using z.infer
+
+The previous implementation implicitly inferred types from the Zod safeParse output. Per the strict engineering standards, we must explicitly use `z.infer<typeof schema>` to derive and export TypeScript types from Zod schemas to ensure robust type boundaries. This commit adds explicit type derivation for the configuration and API schemas.
