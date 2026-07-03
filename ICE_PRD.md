@@ -220,7 +220,7 @@ _Covers hackathon requirement: Account provisioning flow._
 | `GET /v1/vendors/:id` | GET | Fetch vendor profile + their DVA details |
 | `POST /v1/vendors/:id/api-keys` | POST | Generate a scoped vendor API key |
 | `PUT /v1/vendors/:id/account` | PUT | Update vendor DVA name or callback URL |
-| `POST /v1/vendors/:id/account/suspend` | POST | Suspend vendor DVA (calls Nomba delete/expire endpoint) |
+| `POST /v1/vendors/:id/account/suspend` | POST | Suspend vendor DVA (calls Nomba suspend endpoint) |
 | `GET /v1/vendors` | GET | List all vendors for a platform (paginated, filterable) |
 
 #### **Customer-Level DVA (Optional — Vendor-Controlled)**
@@ -365,9 +365,9 @@ ICE passively monitors payment patterns and flags suspicious activity before mer
 ICE runs a background cron job (daily, off-peak hours) to identify and clean up dormant virtual accounts.
 
 - A VA is considered dormant if it has received no payments in 90 days (configurable per merchant)
-- ICE calls Nomba's delete endpoint for dormant VAs
+- ICE calls Nomba's suspend endpoint for dormant VAs
 - Merchant is notified with a summary report of suspended accounts
-- Suspended accounts can be reactivated via `PUT /v1/vendors/:id/account` (ICE creates a new Nomba VA since undelete is unsupported)
+- Suspended accounts can be reactivated via `PUT /v1/vendors/:id/account` (ICE creates a new Nomba VA since delete is unsupported)
 
 ---
 

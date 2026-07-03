@@ -27,7 +27,7 @@ describe('NombaClient', () => {
 
     const res = await client.createVirtualAccount({ accountRef: 'ref123', accountName: 'John Doe' });
 
-    expect(fetchMock).toHaveBeenCalledWith('https://sandbox.nomba.com/v1/accounts/virtual', {
+    expect(fetchMock).toHaveBeenCalledWith('https://sandbox.api.nomba.com/v1/accounts/virtual', {
       method: 'POST',
       headers: expect.objectContaining({
         Authorization: 'Bearer test_token',
@@ -64,9 +64,10 @@ describe('NombaClient', () => {
   });
 
   it('transferToBank looks up account and sends correct kobo amount', async () => {
+    // Mock lookup success
     fetchMock.mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ data: { accountName: 'John Doe' } }),
+      json: async () => ({ success: true, accountName: 'Test Account' }),
     });
     // Mock transfer success
     fetchMock.mockResolvedValueOnce({
@@ -74,17 +75,10 @@ describe('NombaClient', () => {
       json: async () => ({ success: true }),
     });
 
-    await client.transferToBank({
-      amount: 50000,
-      accountNumber: '1234567890',
-      bankCode: '044',
-      merchantTxRef: 'txn_123',
-      senderName: 'ICE Platform',
-      narration: 'Test',
-    });
+    await client.transferToBank({ amount: 50000, accountNumber: '1234567890', bankCode: '044', narration: 'Test' });
 
     // Lookup
-    expect(fetchMock).toHaveBeenNthCalledWith(1, 'https://sandbox.nomba.com/v1/transfers/bank/lookup', {
+    expect(fetchMock).toHaveBeenNthCalledWith(1, 'https://sandbox.api.nomba.com/v2/transfers/bank/lookup', {
       method: 'POST',
       headers: expect.objectContaining({
         Authorization: 'Bearer test_token',
@@ -93,20 +87,12 @@ describe('NombaClient', () => {
     });
 
     // Transfer
-    expect(fetchMock).toHaveBeenNthCalledWith(2, 'https://sandbox.nomba.com/v2/transfers/bank', {
+    expect(fetchMock).toHaveBeenNthCalledWith(2, 'https://sandbox.api.nomba.com/v2/transfers/bank', {
       method: 'POST',
       headers: expect.objectContaining({
         Authorization: 'Bearer test_token',
       }),
-      body: JSON.stringify({
-        amount: 50000,
-        accountNumber: '1234567890',
-        bankCode: '044',
-        merchantTxRef: 'txn_123',
-        senderName: 'ICE Platform',
-        accountName: 'John Doe',
-        narration: 'Test',
-      }),
+      body: JSON.stringify({ amount: 50000, accountNumber: '1234567890', bankCode: '044', narration: 'Test' }),
     });
   });
 
@@ -116,10 +102,10 @@ describe('NombaClient', () => {
       json: async () => ({ success: true }),
     });
 
-    await client.deleteVirtualAccount('acct_123');
+    await client.suspendVirtualAccount('acct_123');
 
-    expect(fetchMock).toHaveBeenCalledWith('https://sandbox.nomba.com/v1/accounts/virtual/acct_123', {
-      method: 'DELETE',
+    expect(fetchMock).toHaveBeenCalledWith('https://sandbox.api.nomba.com/v1/accounts/virtual/acct_123/suspend', {
+      method: 'POST',
       headers: expect.objectContaining({
         Authorization: 'Bearer test_token',
         'Content-Type': 'application/json',
