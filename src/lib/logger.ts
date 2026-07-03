@@ -1,11 +1,12 @@
 import pino from 'pino';
+import { config } from '../config.js';
 
 export function createLogger(serviceName: string) {
   return pino({
     name: serviceName,
-    level: process.env.NODE_ENV === 'test' ? 'silent' : 'info',
+    level: config.NODE_ENV === 'test' ? 'silent' : 'info',
     transport:
-      process.env.NODE_ENV === 'development'
+      config.NODE_ENV === 'development'
         ? {
             target: 'pino-pretty',
             options: {

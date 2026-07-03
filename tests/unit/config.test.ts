@@ -14,9 +14,12 @@ describe('Config Validation', () => {
     const mockConsoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     // Clear env to force validation failure
-    process.env = {};
+    process.env = { PORT: 'abc' };
 
-    try {
+    try 
+    
+    
+    {
       vi.resetModules();
       await expect(import('../../src/config.js')).rejects.toThrow(
         'Process exited with code 1'
