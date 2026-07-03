@@ -5,11 +5,14 @@ import rateLimit from 'express-rate-limit';
 import crypto from 'node:crypto';
 
 import { config } from './config.js';
+import { createDbPool } from './db/client.js';
+import { createTransactionsRepo } from './repositories/transactions.repo.js';
+import { createWebhookInboundService } from './services/webhook-inbound.service.js';
+import { createWebhooksController } from './controllers/webhooks.controller.js';
+import { createWebhooksRouter } from './routes/webhooks.routes.js';
 import { redis } from './lib/redis.js';
 import { v1Router, setupV1Router } from './routes/v1.js';
 import { notFoundHandler, errorHandler } from './middleware/errors.js';
-import pg from 'pg';
-const { Pool } = pg;
 import { createMerchantsRepo } from './repositories/merchants.repo.js';
 import { createMerchantsService } from './services/merchants.service.js';
 import { createMerchantsController } from './controllers/merchants.controller.js';
@@ -23,25 +26,31 @@ import { createAuthMiddleware } from './middleware/auth.js';
 
 const app = express();
 
-const db = new Pool({
-  connectionString: config.DATABASE_URL,
-});
+const db = createDbPool(config.DATABASE_URL);
 
 const nomba = createNombaClient();
 
 const merchantsRepo = createMerchantsRepo(db);
 const vendorsRepo = createVendorsRepo(db);
+const transactionsRepo = createTransactionsRepo(db);
+
+const webhookInboundService = createWebhookInboundService({
+  transactions: transactionsRepo,
+  webhookSecret: config.NOMBA_WEBHOOK_SECRET,
+});
 
 const merchantsService = createMerchantsService({ merchants: merchantsRepo });
 const vendorsService = createVendorsService({ vendors: vendorsRepo, nomba });
 
 const merchantsController = createMerchantsController(merchantsService);
 const vendorsController = createVendorsController(vendorsService);
+const webhooksController = createWebhooksController(webhookInboundService);
 
 const authMiddleware = createAuthMiddleware({ merchants: merchantsRepo, vendors: vendorsRepo });
 
 const merchantsRouter = createMerchantsRouter(merchantsController, authMiddleware);
 const vendorsRouter = createVendorsRouter(vendorsController, authMiddleware);
+const webhooksRouter = createWebhooksRouter(webhooksController);
 
 setupV1Router({ merchantsRouter, vendorsRouter });
 
@@ -65,6 +74,9 @@ app.get('/healthz', (req, res) => {
   return res.json({ ok: true, redis: 'ready' });
 });
 
+// Scope the raw text parser specifically to the webhook route
+v1Router.use('/webhooks/nomba', express.text({ type: 'application/json' }), webhooksRouter);
+
 // API Routes
 app.use('/v1', v1Router);
 
@@ -72,4 +84,4 @@ app.use('/v1', v1Router);
 app.use(notFoundHandler);
 app.use(errorHandler);
 
-export { app };
+export { app, db };
