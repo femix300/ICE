@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createWebhookDeliveryWorker } from '../../src/workers/webhook-delivery.worker.ts';
+import type { createMerchantsRepo } from '../../src/repositories/merchants.repo.ts';
+import type { createWebhookDeliveriesRepo } from '../../src/repositories/webhook-deliveries.repo.ts';
+import type { Queue } from 'bullmq';
 
 // Mock bullmq
 vi.mock('bullmq', () => {
@@ -24,9 +27,9 @@ describe('webhookDeliveryWorker', () => {
     mockDeliveries = { log: vi.fn(), markDeadLetter: vi.fn() };
     mockDeadLetterQueue = { add: vi.fn() };
     worker = createWebhookDeliveryWorker({
-      merchants: mockMerchants as any,
-      deliveries: mockDeliveries as any,
-      deadLetterQueue: mockDeadLetterQueue as any,
+      merchants: mockMerchants as unknown as ReturnType<typeof createMerchantsRepo>,
+      deliveries: mockDeliveries as unknown as ReturnType<typeof createWebhookDeliveriesRepo>,
+      deadLetterQueue: mockDeadLetterQueue as unknown as Queue,
     }) as unknown as typeof worker;
     global.fetch = vi.fn();
   });
