@@ -50,7 +50,7 @@ export function createVendorsService(deps: { vendors: VendorsRepo; nomba: NombaC
         throw err;
       }
 
-      const { api_key_hash, api_key_prefix, ...safeVendor } = vendor;
+      const { api_key_hash: _hash, api_key_prefix: _prefix, ...safeVendor } = vendor;
       return safeVendor;
     },
 
@@ -59,7 +59,7 @@ export function createVendorsService(deps: { vendors: VendorsRepo; nomba: NombaC
       if (!vendor) {
         throw new AppError(404, 'VENDOR_NOT_FOUND', 'Vendor not found');
       }
-      const { api_key_hash, api_key_prefix, ...safeVendor } = vendor;
+      const { api_key_hash: _hash, api_key_prefix: _prefix, ...safeVendor } = vendor;
       return safeVendor;
     },
   };
