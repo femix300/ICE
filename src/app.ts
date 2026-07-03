@@ -23,6 +23,10 @@ import { createVendorsController } from './controllers/vendors.controller.js';
 import { createVendorsRouter } from './routes/vendors.routes.js';
 import { createNombaClient } from './lib/nomba.js';
 import { createAuthMiddleware } from './middleware/auth.js';
+import { createInvoicesRepo } from './repositories/invoices.repo.js';
+import { createInvoicesService } from './services/invoices.service.js';
+import { createInvoicesController } from './controllers/invoices.controller.js';
+import { createInvoicesRouter } from './routes/invoices.routes.js';
 
 const app = express();
 
@@ -33,6 +37,7 @@ const nomba = createNombaClient();
 const merchantsRepo = createMerchantsRepo(db);
 const vendorsRepo = createVendorsRepo(db);
 const transactionsRepo = createTransactionsRepo(db);
+const invoicesRepo = createInvoicesRepo(db);
 
 const webhookInboundService = createWebhookInboundService({
   transactions: transactionsRepo,
@@ -41,16 +46,19 @@ const webhookInboundService = createWebhookInboundService({
 
 const merchantsService = createMerchantsService({ merchants: merchantsRepo });
 const vendorsService = createVendorsService({ vendors: vendorsRepo, nomba });
+const invoicesService = createInvoicesService({ invoices: invoicesRepo });
 
 const merchantsController = createMerchantsController(merchantsService);
 const vendorsController = createVendorsController(vendorsService);
 const webhooksController = createWebhooksController(webhookInboundService);
+const invoicesController = createInvoicesController(invoicesService);
 
 const authMiddleware = createAuthMiddleware({ merchants: merchantsRepo, vendors: vendorsRepo });
 
 const merchantsRouter = createMerchantsRouter(merchantsController, authMiddleware);
 const vendorsRouter = createVendorsRouter(vendorsController, authMiddleware);
 const webhooksRouter = createWebhooksRouter(webhooksController);
+const invoicesRouter = createInvoicesRouter(invoicesController);
 
 setupV1Router({ merchantsRouter, vendorsRouter });
 
@@ -73,6 +81,9 @@ app.get('/healthz', (req, res) => {
   }
   return res.json({ ok: true, redis: 'ready' });
 });
+
+// Mount invoices router
+v1Router.use('/invoices', invoicesRouter);
 
 // Scope the raw text parser specifically to the webhook route
 v1Router.use('/webhooks/nomba', express.text({ type: 'application/json' }), webhooksRouter);
