@@ -7,7 +7,12 @@ export const created = (res: Response, data: unknown) => ok(res, data, 201);
 
 export const noContent = (res: Response) => res.status(204).send();
 
-export const appError = (res: Response, errorCode: string, message: string, status = 500) => {
+export const appError = (
+  res: Response,
+  errorCode: string,
+  message: string,
+  status = 500
+) => {
   return res.status(status).json({
     ok: false,
     errorCode,
