@@ -1,7 +1,10 @@
 import { Router } from 'express';
 
-const v1Router = Router();
+// We will export a factory function or initialize with null for now
+// Since this depends on app.ts wiring, we can accept the router from app.ts 
+// or create a setup router function.
+export const v1Router = Router();
 
-// Routes will be mounted here in future tasks (e.g. /merchants, /vendors)
-
-export { v1Router };
+export function setupV1Router(deps: { merchantsRouter: Router }) {
+  v1Router.use('/merchants', deps.merchantsRouter);
+}
