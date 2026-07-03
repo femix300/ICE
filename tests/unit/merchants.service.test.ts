@@ -18,7 +18,9 @@ describe('merchants.service', () => {
       })),
       byId: vi.fn(),
       byEmail: vi.fn().mockResolvedValue(null),
-      findByKeyPrefix: vi.fn()
+      findByKeyPrefix: vi.fn(),
+      updateWebhookUrl: vi.fn(),
+      updateApiKey: vi.fn(),
     };
 
     const service = createMerchantsService({ merchants: fakeMerchants });
@@ -45,7 +47,9 @@ describe('merchants.service', () => {
       create: vi.fn(),
       byId: vi.fn(),
       byEmail: vi.fn().mockResolvedValue({ id: 'existing' } as MerchantRow),
-      findByKeyPrefix: vi.fn()
+      findByKeyPrefix: vi.fn(),
+      updateWebhookUrl: vi.fn(),
+      updateApiKey: vi.fn(),
     };
 
     const service = createMerchantsService({ merchants: fakeMerchants });
@@ -68,7 +72,9 @@ describe('merchants.service', () => {
         api_key_prefix: 'prefix',
       } as MerchantRow),
       byEmail: vi.fn(),
-      findByKeyPrefix: vi.fn()
+      findByKeyPrefix: vi.fn(),
+      updateWebhookUrl: vi.fn(),
+      updateApiKey: vi.fn(),
     };
 
     const service = createMerchantsService({ merchants: fakeMerchants });
@@ -87,11 +93,87 @@ describe('merchants.service', () => {
       create: vi.fn(),
       byId: vi.fn().mockResolvedValue(null),
       byEmail: vi.fn(),
-      findByKeyPrefix: vi.fn()
+      findByKeyPrefix: vi.fn(),
+      updateWebhookUrl: vi.fn(),
+      updateApiKey: vi.fn(),
     };
 
     const service = createMerchantsService({ merchants: fakeMerchants });
 
     await expect(service.getById('unknown')).rejects.toThrow('Merchant not found');
+  });
+
+  it('should update merchant webhook url', async () => {
+    const fakeMerchants: MerchantsRepo = {
+      create: vi.fn(),
+      byId: vi.fn().mockResolvedValue({ id: 'some-id' } as MerchantRow),
+      byEmail: vi.fn(),
+      findByKeyPrefix: vi.fn(),
+      updateWebhookUrl: vi.fn().mockResolvedValue({
+        id: 'some-id',
+        business_name: 'Test',
+        email: 'test@example.com',
+        webhook_url: 'https://new.example.com/webhook',
+        api_key_hash: 'hash',
+        api_key_prefix: 'prefix',
+      } as MerchantRow),
+      updateApiKey: vi.fn(),
+    };
+
+    const service = createMerchantsService({ merchants: fakeMerchants });
+
+    const result = await service.updateWebhookUrl('some-id', 'https://new.example.com/webhook');
+    expect(result.webhook_url).toBe('https://new.example.com/webhook');
+    expect(result).not.toHaveProperty('api_key_hash');
+    expect(result).not.toHaveProperty('api_key_prefix');
+    expect(fakeMerchants.updateWebhookUrl).toHaveBeenCalledWith('some-id', 'https://new.example.com/webhook');
+  });
+
+  it('should throw an error if updating webhook url for unknown merchant', async () => {
+    const fakeMerchants: MerchantsRepo = {
+      create: vi.fn(),
+      byId: vi.fn().mockResolvedValue(null),
+      byEmail: vi.fn(),
+      findByKeyPrefix: vi.fn(),
+      updateWebhookUrl: vi.fn(),
+      updateApiKey: vi.fn(),
+    };
+
+    const service = createMerchantsService({ merchants: fakeMerchants });
+
+    await expect(service.updateWebhookUrl('unknown', 'https://example.com')).rejects.toThrow('Merchant not found');
+  });
+
+  it('should rotate API key for a merchant', async () => {
+    const fakeMerchants: MerchantsRepo = {
+      create: vi.fn(),
+      byId: vi.fn().mockResolvedValue({ id: 'some-id' } as MerchantRow),
+      byEmail: vi.fn(),
+      findByKeyPrefix: vi.fn(),
+      updateWebhookUrl: vi.fn(),
+      updateApiKey: vi.fn().mockResolvedValue({ id: 'some-id' } as MerchantRow),
+    };
+
+    const service = createMerchantsService({ merchants: fakeMerchants });
+
+    const result = await service.rotateApiKey('some-id');
+    expect(result).toHaveProperty('api_key');
+    expect(result.api_key.startsWith('ice_')).toBe(true);
+    expect(fakeMerchants.updateApiKey).toHaveBeenCalledWith('some-id', expect.any(String), expect.any(String));
+  });
+
+  it('should throw an error if rotating api key for unknown merchant', async () => {
+    const fakeMerchants: MerchantsRepo = {
+      create: vi.fn(),
+      byId: vi.fn().mockResolvedValue(null),
+      byEmail: vi.fn(),
+      findByKeyPrefix: vi.fn(),
+      updateWebhookUrl: vi.fn(),
+      updateApiKey: vi.fn(),
+    };
+
+    const service = createMerchantsService({ merchants: fakeMerchants });
+
+    await expect(service.rotateApiKey('unknown')).rejects.toThrow('Merchant not found');
   });
 });
