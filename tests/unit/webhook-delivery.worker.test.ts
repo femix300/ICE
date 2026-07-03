@@ -24,10 +24,10 @@ describe('webhookDeliveryWorker', () => {
     mockDeliveries = { log: vi.fn(), markDeadLetter: vi.fn() };
     mockDeadLetterQueue = { add: vi.fn() };
     worker = createWebhookDeliveryWorker({
-      merchants: mockMerchants,
-      deliveries: mockDeliveries,
-      deadLetterQueue: mockDeadLetterQueue,
-    });
+      merchants: mockMerchants as any,
+      deliveries: mockDeliveries as any,
+      deadLetterQueue: mockDeadLetterQueue as any,
+    }) as unknown as typeof worker;
     global.fetch = vi.fn();
   });
 
@@ -70,6 +70,23 @@ describe('webhookDeliveryWorker', () => {
     expect(mockDeliveries.log).toHaveBeenCalledWith(expect.objectContaining({
       status: 'FAILED',
       http_status: 500,
+      retry_count: 1
+    }));
+  });
+
+  it('enforces a 10-second timeout for fetch', async () => {
+    mockMerchants.byId.mockResolvedValue({ webhook_url: 'https://test.com' });
+    const abortError = new Error('The operation was aborted');
+    abortError.name = 'AbortError';
+    (global.fetch as unknown as ReturnType<typeof vi.fn>).mockRejectedValue(abortError);
+
+    await expect(worker.processor({
+      attemptsMade: 1,
+      data: { merchant_id: 'test-id', event_type: 'test', payload: {} }
+    })).rejects.toThrow('Network error or timeout during delivery');
+
+    expect(mockDeliveries.log).toHaveBeenCalledWith(expect.objectContaining({
+      status: 'FAILED',
       retry_count: 1
     }));
   });

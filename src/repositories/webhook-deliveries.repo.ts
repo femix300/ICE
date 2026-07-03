@@ -28,5 +28,13 @@ export function createWebhookDeliveriesRepo(db: unknown) {
       ];
       await pool.query(sql, values);
     },
+    markDeadLetter: async (merchant_id: string, event_type: string, payload: unknown) => {
+      // Dummy implementation for now, will log dead letter
+      const sql = `
+        INSERT INTO webhook_deliveries (merchant_id, event_type, payload, status, retry_count)
+        VALUES ($1, $2, $3, 'DEAD_LETTER', 0)
+      `;
+      await pool.query(sql, [merchant_id, event_type, JSON.stringify(payload)]);
+    },
   };
 }
