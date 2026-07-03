@@ -1,0 +1,16 @@
+Closes ICE-185
+
+## Summary
+Implements the outbound webhook delivery BullMQ worker, responsible for delivering ICE webhook events to merchant-configured URLs. Includes robust error handling, a strict custom backoff schedule, and unit test verification.
+
+## Scope
+- `src/workers/webhook-delivery.worker.ts`: Includes `zod` payload validation and uses the mandated `AppError` class for internal errors.
+- **Custom Backoff**: BullMQ settings configured to hit exactly the 30s, 2m, 10m, and 30m intervals per PRD Section 7.1.
+- `tests/unit/webhook-delivery.worker.test.ts`: Actual vitest unit tests using `vi.mock` for BullMQ and global `fetch` to verify skipping, success logging, error propagation, and the custom backoff math without external dependencies.
+- Rebased target branch to `dev`.
+
+## Test Plan
+- Unit tests written for timeout enforcement, graceful URL skipping, and retry count tracking.
+
+## Risk
+Low. This is an isolated worker that correctly enforces a 10s fetch timeout so it won't block the queue.
