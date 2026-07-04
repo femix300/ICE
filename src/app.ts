@@ -29,6 +29,7 @@ import { createVendorsRouter } from './routes/vendors.routes.js';
 import { createNombaClient } from './lib/nomba.js';
 import { createAuthMiddleware } from './middleware/auth.js';
 import { createInvoicesRepo } from './repositories/invoices.repo.js';
+import { createReconciliationRepo } from './repositories/reconciliation.repo.js';
 import { createInvoicesService } from './services/invoices.service.js';
 import { createInvoicesController } from './controllers/invoices.controller.js';
 import { createInvoicesRouter } from './routes/invoices.routes.js';
@@ -46,6 +47,7 @@ const merchantsRepo = createMerchantsRepo(db);
 const vendorsRepo = createVendorsRepo(db);
 const transactionsRepo = createTransactionsRepo(db);
 const invoicesRepo = createInvoicesRepo(db);
+const reconciliationRepo = createReconciliationRepo(db);
 
 const webhookInboundService = createWebhookInboundService({
   transactions: transactionsRepo,
@@ -54,7 +56,7 @@ const webhookInboundService = createWebhookInboundService({
 
 const merchantsService = createMerchantsService({ merchants: merchantsRepo });
 const vendorsService = createVendorsService({ vendors: vendorsRepo, nomba });
-const invoicesService = createInvoicesService({ invoices: invoicesRepo });
+const invoicesService = createInvoicesService({ invoices: invoicesRepo, reconciliation: reconciliationRepo });
 
 const merchantsController = createMerchantsController(merchantsService);
 const vendorsController = createVendorsController(vendorsService);
