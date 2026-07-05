@@ -56,7 +56,10 @@ const webhookInboundService = createWebhookInboundService({
 
 const merchantsService = createMerchantsService({ merchants: merchantsRepo });
 const vendorsService = createVendorsService({ vendors: vendorsRepo, nomba });
-const invoicesService = createInvoicesService({ invoices: invoicesRepo, reconciliation: reconciliationRepo });
+const invoicesService = createInvoicesService({
+  invoices: invoicesRepo,
+  reconciliation: reconciliationRepo,
+});
 
 const merchantsController = createMerchantsController(merchantsService);
 const vendorsController = createVendorsController(vendorsService);
@@ -80,17 +83,19 @@ app.use((_req, res, next) => {
 
 // Middleware order is fixed per engineering guidelines
 // Wait, we need to allow inline scripts for Redoc and Swagger in Helmet CSP
-app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.redoc.ly"],
-      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-      imgSrc: ["'self'", "data:", "https://validator.swagger.io"],
-      workerSrc: ["'self'", "blob:"],
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'", 'https://cdn.redoc.ly'],
+        styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+        imgSrc: ["'self'", 'data:', 'https://validator.swagger.io'],
+        workerSrc: ["'self'", 'blob:'],
+      },
     },
-  },
-}));
+  }),
+);
 
 app.use(cors({ origin: config.CORS_ORIGIN }));
 app.use(express.json({ limit: '1mb' }));

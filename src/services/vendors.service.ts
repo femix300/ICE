@@ -5,6 +5,7 @@ import type { NombaClient } from '../lib/nomba.js';
 import type { CreateVendorInput } from '../schemas/vendors.schema.js';
 import { AppError } from '../lib/errors.js';
 import { createLogger } from '../lib/logger.js';
+import { generate, hash } from '../lib/api-key.js';
 
 const log = createLogger('vendors-service');
 
@@ -60,6 +61,92 @@ export function createVendorsService(deps: { vendors: VendorsRepo; nomba: NombaC
         throw new AppError(404, 'VENDOR_NOT_FOUND', 'Vendor not found');
       }
       const { api_key_hash: _hash, api_key_prefix: _prefix, ...safeVendor } = vendor;
+      return safeVendor;
+    },
+
+    generateApiKey: async (id: string, merchantId: string) => {
+      const vendor = await deps.vendors.byId(id);
+      if (!vendor || vendor.merchant_id !== merchantId) {
+        throw new AppError(404, 'VENDOR_NOT_FOUND', 'Vendor not found');
+      }
+
+      const rawKey = generate();
+      const prefix = rawKey.substring(0, 12);
+      const hashedKey = await hash(rawKey);
+
+      await deps.vendors.updateApiKey(id, hashedKey, prefix);
+
+      return {
+        api_key: rawKey,
+        message: 'Please store this key securely. It will not be shown again.',
+      };
+    },
+
+    suspendAccount: async (id: string, merchantId: string) => {
+      const vendor = await deps.vendors.byId(id);
+      if (!vendor || vendor.merchant_id !== merchantId) {
+        throw new AppError(404, 'VENDOR_NOT_FOUND', 'Vendor not found');
+      }
+
+      if (vendor.va_status === 'suspended') {
+        throw new AppError(400, 'BAD_REQUEST', 'Vendor account is already suspended');
+      }
+
+      try {
+        await deps.nomba.deleteVirtualAccount(`${vendor.merchant_id}_${vendor.id}`);
+      } catch (err) {
+        log.error({ err, id, merchantId }, 'Failed to suspend Nomba virtual account');
+        throw new AppError(502, 'NOMBA_ERROR', 'Failed to suspend virtual account via Nomba');
+      }
+
+      const updated = await deps.vendors.updateStatus(id, 'suspended');
+      const { api_key_hash: _hash, api_key_prefix: _prefix, ...safeVendor } = updated;
+      return safeVendor;
+    },
+
+    listVendors: async (merchantId: string, page: number, pageSize: number, status?: string) => {
+      const offset = (page - 1) * pageSize;
+      const { data, total } = await deps.vendors.list(merchantId, pageSize, offset, status);
+
+      const safeData = data.map((v) => {
+        const { api_key_hash: _hash, api_key_prefix: _prefix, ...safeVendor } = v;
+        return safeVendor;
+      });
+
+      return {
+        data: safeData,
+        meta: {
+          page,
+          pageSize,
+          total,
+          totalPages: Math.ceil(total / pageSize),
+        },
+      };
+    },
+
+    updateAccount: async (
+      id: string,
+      merchantId: string,
+      data: { name?: string; callbackUrl?: string },
+    ) => {
+      const vendor = await deps.vendors.byId(id);
+      if (!vendor || vendor.merchant_id !== merchantId) {
+        throw new AppError(404, 'VENDOR_NOT_FOUND', 'Vendor not found');
+      }
+
+      if (data.name) {
+        try {
+          await deps.nomba.updateVirtualAccount(`${vendor.merchant_id}_${vendor.id}`, {
+            accountName: data.name,
+          });
+        } catch (err) {
+          log.error({ err, id, merchantId }, 'Failed to update Nomba virtual account');
+          throw new AppError(502, 'NOMBA_ERROR', 'Failed to update virtual account via Nomba');
+        }
+      }
+
+      const updated = await deps.vendors.updateAccount(id, data.name, data.callbackUrl);
+      const { api_key_hash: _hash, api_key_prefix: _prefix, ...safeVendor } = updated;
       return safeVendor;
     },
   };

@@ -11,7 +11,7 @@ export const refundWorker = new Worker(
     log.info({ jobId: job.id }, 'Processing refund');
   },
   // @ts-expect-error type mismatch between bullmq's ioredis and the project's ioredis
-  { connection: redis }
+  { connection: redis },
 );
 
 refundWorker.on('failed', (job: Job<unknown> | undefined, err: unknown) => {
