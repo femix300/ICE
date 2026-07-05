@@ -33,6 +33,10 @@ import { createReconciliationRepo } from './repositories/reconciliation.repo.js'
 import { createInvoicesService } from './services/invoices.service.js';
 import { createInvoicesController } from './controllers/invoices.controller.js';
 import { createInvoicesRouter } from './routes/invoices.routes.js';
+import { createCustomersRepo } from './repositories/customers.repo.js';
+import { createCustomersService } from './services/customers.service.js';
+import { createCustomersController } from './controllers/customers.controller.js';
+import { createCustomersRouter } from './routes/customers.routes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -48,6 +52,7 @@ const vendorsRepo = createVendorsRepo(db);
 const transactionsRepo = createTransactionsRepo(db);
 const invoicesRepo = createInvoicesRepo(db);
 const reconciliationRepo = createReconciliationRepo(db);
+const customersRepo = createCustomersRepo(db);
 
 const webhookInboundService = createWebhookInboundService({
   transactions: transactionsRepo,
@@ -60,19 +65,27 @@ const invoicesService = createInvoicesService({
   invoices: invoicesRepo,
   reconciliation: reconciliationRepo,
 });
+const customersService = createCustomersService({
+  customers: customersRepo,
+  vendors: vendorsRepo,
+  nomba,
+});
 
 const merchantsController = createMerchantsController(merchantsService);
 const vendorsController = createVendorsController(vendorsService);
 const webhooksController = createWebhooksController(webhookInboundService);
 const invoicesController = createInvoicesController(invoicesService);
+const customersController = createCustomersController(customersService);
 
 const authMiddleware = createAuthMiddleware({ merchants: merchantsRepo, vendors: vendorsRepo });
 
 const merchantsRouter = createMerchantsRouter(merchantsController, authMiddleware);
-const vendorsRouter = createVendorsRouter(vendorsController, authMiddleware);
+
 const webhooksRouter = createWebhooksRouter(webhooksController);
 const invoicesRouter = createInvoicesRouter(invoicesController);
+const customersRouter = createCustomersRouter(customersController, authMiddleware);
 
+const vendorsRouter = createVendorsRouter(vendorsController, authMiddleware, customersRouter);
 setupV1Router({ merchantsRouter, vendorsRouter });
 
 // Assign a request ID for tracing
