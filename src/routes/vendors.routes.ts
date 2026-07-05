@@ -10,7 +10,11 @@ export interface VendorsController {
   updateAccount: RequestHandler;
 }
 
-export function createVendorsRouter(controller: VendorsController, authMiddleware: RequestHandler) {
+export function createVendorsRouter(
+  controller: VendorsController,
+  authMiddleware: RequestHandler,
+  customersRouter?: Router,
+) {
   const router = Router();
 
   router.use(authMiddleware);
@@ -21,6 +25,10 @@ export function createVendorsRouter(controller: VendorsController, authMiddlewar
   router.post('/:id/api-keys', controller.generateApiKey);
   router.post('/:id/account/suspend', controller.suspend);
   router.put('/:id/account', controller.updateAccount);
+
+  if (customersRouter) {
+    router.use('/:id/customers', customersRouter);
+  }
 
   return router;
 }
