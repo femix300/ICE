@@ -27,6 +27,8 @@ export default function ApiKeyDisplay({ apiKey, onContinue }: ApiKeyDisplayProps
       await navigator.clipboard.writeText(apiKey);
       setCopied(true);
     } catch (err) {
+      // We intentionally silence this error because clipboard operations can fail due to browser permissions or lack of secure context.
+      // The UI remains intact and the user can still manually select and copy the key text.
       log.error({ err }, 'Failed to copy API key to clipboard');
     }
   };

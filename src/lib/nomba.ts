@@ -5,7 +5,7 @@ import { createLogger } from './logger.js';
 
 const log = createLogger('nomba-client');
 
-const NOMBA_BASE_URL = 'https://sandbox.api.nomba.com/v1';
+const NOMBA_BASE_URL = 'https://sandbox.nomba.com/v1';
 
 export function createNombaClient() {
   let accessToken: string | null = null;
@@ -132,15 +132,37 @@ export function createNombaClient() {
       }
     },
 
-    suspendVirtualAccount: async (accountId: string) => {
+    updateVirtualAccount: async (accountId: string, data: { accountName: string }) => {
       try {
-        const res = await fetch(`${NOMBA_BASE_URL}/accounts/virtual/${accountId}/suspend`, {
-          method: 'POST',
+        const res = await fetch(`${NOMBA_BASE_URL}/accounts/virtual/${accountId}`, {
+          method: 'PUT',
+          headers: getHeaders(),
+          body: JSON.stringify(data),
+        });
+
+        if (!res.ok) {
+          throw new AppError(502, 'NOMBA_ERROR', 'Failed to update virtual account');
+        }
+        return (await res.json()) as unknown;
+      } catch (error: unknown) {
+        if (error instanceof AppError) throw error;
+        throw new AppError(
+          502,
+          'NOMBA_ERROR',
+          error instanceof Error ? error.message : 'Unknown error',
+        );
+      }
+    },
+
+    deleteVirtualAccount: async (accountId: string) => {
+      try {
+        const res = await fetch(`${NOMBA_BASE_URL}/accounts/virtual/${accountId}`, {
+          method: 'DELETE',
           headers: getHeaders(),
         });
 
         if (!res.ok) {
-          throw new AppError(502, 'NOMBA_ERROR', 'Failed to suspend virtual account');
+          throw new AppError(502, 'NOMBA_ERROR', 'Failed to delete virtual account');
         }
         return (await res.json()) as unknown;
       } catch (error: unknown) {
@@ -157,33 +179,57 @@ export function createNombaClient() {
       amount,
       accountNumber,
       bankCode,
+      merchantTxRef,
+      senderName,
       narration,
     }: {
       amount: number;
       accountNumber: string;
       bankCode: string;
+      merchantTxRef: string;
+      senderName: string;
       narration?: string;
     }) => {
       try {
         // Rule 4: Always Lookup Before Transfers
-        const lookupRes = await fetch(
-          `${NOMBA_BASE_URL.replace('/v1', '')}/v2/transfers/bank/lookup`,
-          {
-            method: 'POST',
-            headers: getHeaders(),
-            body: JSON.stringify({ accountNumber, bankCode }),
-          },
-        );
+        const lookupRes = await fetch(`${NOMBA_BASE_URL}/transfers/bank/lookup`, {
+          method: 'POST',
+          headers: getHeaders(),
+          body: JSON.stringify({ accountNumber, bankCode }),
+        });
 
         if (!lookupRes.ok) {
           throw new AppError(502, 'NOMBA_ERROR', 'Failed to lookup recipient account name');
         }
 
+        const lookupSchema = z.object({
+          data: z
+            .object({
+              accountName: z.string(),
+            })
+            .optional(),
+        });
+
+        const parsedLookup = lookupSchema.safeParse(await lookupRes.json());
+        if (!parsedLookup.success || !parsedLookup.data.data?.accountName) {
+          throw new AppError(502, 'NOMBA_ERROR', 'Could not resolve account name from lookup');
+        }
+
+        const accountName = parsedLookup.data.data.accountName;
+
         // Rule 1: Always use Kobo (amount is already in Kobo, no conversion)
         const res = await fetch(`${NOMBA_BASE_URL.replace('/v1', '')}/v2/transfers/bank`, {
           method: 'POST',
           headers: getHeaders(),
-          body: JSON.stringify({ amount, accountNumber, bankCode, narration }),
+          body: JSON.stringify({
+            amount,
+            accountNumber,
+            bankCode,
+            merchantTxRef,
+            senderName,
+            accountName,
+            narration,
+          }),
         });
 
         if (!res.ok) {
