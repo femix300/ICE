@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS vendors (
     name VARCHAR(255) NOT NULL,
     api_key_hash VARCHAR(255),
     api_key_prefix VARCHAR(50),
+    callback_url TEXT,
     nomba_va_number VARCHAR(50),
     nomba_bank_name VARCHAR(255),
     va_status VARCHAR(50) NOT NULL,

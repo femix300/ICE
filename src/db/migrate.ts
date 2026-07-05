@@ -15,7 +15,7 @@ async function runMigration() {
   log.info({}, 'starting database migration');
 
   const pool = createDbPool(config.DATABASE_URL);
-  
+
   try {
     const schemaPath = join(__dirname, 'schema.sql');
     log.info({ schemaPath }, 'reading schema file');

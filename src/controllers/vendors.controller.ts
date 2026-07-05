@@ -2,32 +2,9 @@ import type { Request, Response, NextFunction } from 'express';
 import { createVendorBody, vendorIdParam } from '../schemas/vendors.schema.js';
 import { created, ok } from '../lib/respond.js';
 import { AppError } from '../lib/errors.js';
+import type { VendorsService } from '../types/index.js';
 
-export interface VendorsService {
-  createVendor(
-    merchantId: string,
-    data: { name: string },
-  ): Promise<{
-    id: string;
-    merchant_id: string;
-    name: string;
-    nomba_va_number: string | null;
-    nomba_bank_name: string | null;
-    va_status: 'pending' | 'active' | 'suspended';
-    created_at: Date;
-    updated_at: Date;
-  }>;
-  getVendor(id: string): Promise<{
-    id: string;
-    merchant_id: string;
-    name: string;
-    nomba_va_number: string | null;
-    nomba_bank_name: string | null;
-    va_status: 'pending' | 'active' | 'suspended';
-    created_at: Date;
-    updated_at: Date;
-  }>;
-}
+import { listVendorsQuery, updateVendorAccountBody } from '../schemas/vendors.schema.js';
 
 export function createVendorsController(service: VendorsService) {
   return {
@@ -62,6 +39,64 @@ export function createVendorsController(service: VendorsService) {
           throw new AppError(403, 'FORBIDDEN', 'Cannot view other vendors');
         }
 
+        return ok(res, vendor);
+      } catch (err) {
+        next(err);
+      }
+    },
+    generateApiKey: async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        if (!req.principal || req.principal.tier !== 'merchant') {
+          throw new AppError(403, 'FORBIDDEN', 'Only merchants can generate vendor API keys');
+        }
+
+        const params = vendorIdParam.parse(req.params);
+        const result = await service.generateApiKey(params.id, req.principal.id);
+        return ok(res, result);
+      } catch (err) {
+        next(err);
+      }
+    },
+    suspend: async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        if (!req.principal || req.principal.tier !== 'merchant') {
+          throw new AppError(403, 'FORBIDDEN', 'Only merchants can suspend vendors');
+        }
+
+        const params = vendorIdParam.parse(req.params);
+        const vendor = await service.suspendAccount(params.id, req.principal.id);
+        return ok(res, vendor);
+      } catch (err) {
+        next(err);
+      }
+    },
+    list: async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        if (!req.principal || req.principal.tier !== 'merchant') {
+          throw new AppError(403, 'FORBIDDEN', 'Only merchants can list vendors');
+        }
+
+        const query = listVendorsQuery.parse(req.query);
+        const result = await service.listVendors(
+          req.principal.id,
+          query.page,
+          query.pageSize,
+          query.status,
+        );
+        return ok(res, result);
+      } catch (err) {
+        next(err);
+      }
+    },
+    updateAccount: async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        if (!req.principal || req.principal.tier !== 'merchant') {
+          throw new AppError(403, 'FORBIDDEN', 'Only merchants can update vendors');
+        }
+
+        const params = vendorIdParam.parse(req.params);
+        const body = updateVendorAccountBody.parse(req.body);
+        const vendor = await service.updateAccount(params.id, req.principal.id, body);
         return ok(res, vendor);
       } catch (err) {
         next(err);
