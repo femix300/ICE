@@ -2,9 +2,21 @@ import type { Request, Response, NextFunction } from 'express';
 import { createCustomerBody, customerIdParam, vendorIdParam } from '../schemas/customers.schema.js';
 import { created, ok } from '../lib/respond.js';
 import { AppError } from '../lib/errors.js';
-import type { CustomersService } from '../types/index.js';
+import type { CustomersService, VendorsService } from '../types/index.js';
 
-export function createCustomersController(service: CustomersService) {
+export function createCustomersController(
+  service: CustomersService,
+  vendorsService: VendorsService,
+) {
+  const verifyMerchantScope = async (principal: { id: string; tier: string }, vendorId: string) => {
+    if (principal.tier === 'merchant') {
+      const vendor = await vendorsService.getVendor(vendorId);
+      if (vendor.merchant_id !== principal.id) {
+        throw new AppError(403, 'FORBIDDEN', 'Merchants can only access their own vendors');
+      }
+    }
+  };
+
   return {
     create: async (req: Request, res: Response, next: NextFunction) => {
       try {
@@ -23,6 +35,7 @@ export function createCustomersController(service: CustomersService) {
             'Vendors can only create customers under their own account',
           );
         }
+        await verifyMerchantScope(req.principal, params.id);
 
         const customer = await service.createCustomer(params.id, body);
         return created(res, customer);
@@ -42,6 +55,7 @@ export function createCustomersController(service: CustomersService) {
         if (req.principal.tier === 'vendor' && req.principal.id !== params.id) {
           throw new AppError(403, 'FORBIDDEN', 'Vendors can only view their own customers');
         }
+        await verifyMerchantScope(req.principal, params.id);
 
         const customer = await service.getCustomer(params.id, params.cid);
         return ok(res, customer);
@@ -65,6 +79,7 @@ export function createCustomersController(service: CustomersService) {
             'Vendors can only provision DVAs for their own customers',
           );
         }
+        await verifyMerchantScope(req.principal, params.id);
 
         const customer = await service.provisionCustomerDva(params.id, params.cid);
         return ok(res, customer);

@@ -74,5 +74,22 @@ export function createMerchantsController(service: MerchantsService) {
         next(err);
       }
     },
+
+    listWebhookDeliveries: async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const params = idParam.parse(req.params);
+        if (req.principal?.tier === 'merchant' && req.principal.id !== params.id) {
+          throw new AppError(403, 'FORBIDDEN', 'Cannot access other merchant webhook deliveries');
+        }
+        if (req.principal?.tier === 'vendor') {
+          throw new AppError(403, 'FORBIDDEN', 'Vendors cannot access merchant webhook deliveries');
+        }
+
+        const deliveries = await service.listWebhookDeliveries(params.id);
+        return ok(res, deliveries);
+      } catch (err) {
+        next(err);
+      }
+    },
   };
 }

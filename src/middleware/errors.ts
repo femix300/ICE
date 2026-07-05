@@ -9,6 +9,7 @@ export function notFoundHandler(req: Request, res: Response) {
 }
 
 export function errorHandler(err: unknown, req: Request, res: Response, _next: NextFunction) {
+  console.error('UNHANDLED ERROR:', err);
   log.error({ err, path: req.path }, 'Unhandled error');
 
   const status =

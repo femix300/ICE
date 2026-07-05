@@ -26,7 +26,7 @@ export const TRANSITIONS: Record<InvoiceStatus, readonly InvoiceStatus[]> = {
 
 export const createInvoiceSchema = z.object({
   vendor_id: z.string().min(1),
-  customer_id: z.string().min(1),
+  customer_id: z.string().min(1).optional(),
   amount_kobo: z.number().int().positive(),
 });
 

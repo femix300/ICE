@@ -12,6 +12,7 @@ describe('Customers Service', () => {
     byVendorAndId: vi.fn(),
     byEmailAndVendor: vi.fn(),
     updateVa: vi.fn(),
+    delete: vi.fn(),
   };
 
   const mockVendorsRepo = {
@@ -137,7 +138,7 @@ describe('Customers Service', () => {
       expect(mockCustomersRepo.create).not.toHaveBeenCalled();
     });
 
-    it('bubbles up Nomba errors when DVA provisioning fails', async () => {
+    it('bubbles up Nomba errors when DVA provisioning fails and performs rollback', async () => {
       mockVendorsRepo.byId.mockResolvedValueOnce({ id: 'v123' });
       mockCustomersRepo.byEmailAndVendor.mockResolvedValueOnce(null);
       mockCustomersRepo.create.mockResolvedValueOnce({
@@ -157,6 +158,7 @@ describe('Customers Service', () => {
 
       expect(mockCustomersRepo.create).toHaveBeenCalled();
       expect(mockCustomersRepo.updateVa).not.toHaveBeenCalled();
+      expect(mockCustomersRepo.delete).toHaveBeenCalledWith('c123');
     });
   });
 

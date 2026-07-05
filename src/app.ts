@@ -22,6 +22,7 @@ import { createMerchantsRepo } from './repositories/merchants.repo.js';
 import { createMerchantsService } from './services/merchants.service.js';
 import { createMerchantsController } from './controllers/merchants.controller.js';
 import { createMerchantsRouter } from './routes/merchants.routes.js';
+import { createWebhookDeliveriesRepo } from './repositories/webhook-deliveries.repo.js';
 import { createVendorsRepo } from './repositories/vendors.repo.js';
 import { createVendorsService } from './services/vendors.service.js';
 import { createVendorsController } from './controllers/vendors.controller.js';
@@ -53,13 +54,17 @@ const transactionsRepo = createTransactionsRepo(db);
 const invoicesRepo = createInvoicesRepo(db);
 const reconciliationRepo = createReconciliationRepo(db);
 const customersRepo = createCustomersRepo(db);
+const webhookDeliveriesRepo = createWebhookDeliveriesRepo(db);
 
 const webhookInboundService = createWebhookInboundService({
   transactions: transactionsRepo,
   webhookSecret: config.NOMBA_WEBHOOK_SECRET,
 });
 
-const merchantsService = createMerchantsService({ merchants: merchantsRepo });
+const merchantsService = createMerchantsService({
+  merchants: merchantsRepo,
+  webhookDeliveries: webhookDeliveriesRepo,
+});
 const vendorsService = createVendorsService({ vendors: vendorsRepo, nomba });
 const invoicesService = createInvoicesService({
   invoices: invoicesRepo,
@@ -75,7 +80,7 @@ const merchantsController = createMerchantsController(merchantsService);
 const vendorsController = createVendorsController(vendorsService);
 const webhooksController = createWebhooksController(webhookInboundService);
 const invoicesController = createInvoicesController(invoicesService);
-const customersController = createCustomersController(customersService);
+const customersController = createCustomersController(customersService, vendorsService);
 
 const authMiddleware = createAuthMiddleware({ merchants: merchantsRepo, vendors: vendorsRepo });
 
@@ -163,4 +168,4 @@ app.use('/v1', v1Router);
 app.use(notFoundHandler);
 app.use(errorHandler);
 
-export { app, db };
+export { app, db, nomba };

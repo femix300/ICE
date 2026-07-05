@@ -22,7 +22,7 @@ export function createCustomersService(deps: {
 
     const nombaSchema = z.object({
       data: z.object({
-        accountNumber: z.string(),
+        bankAccountNumber: z.string(),
         bankName: z.string().optional(),
       }),
     });
@@ -32,8 +32,8 @@ export function createCustomersService(deps: {
       throw new AppError(502, 'NOMBA_ERROR', 'Invalid response format from Nomba');
     }
 
-    const { accountNumber, bankName } = parsed.data.data;
-    return { accountNumber, bankName: bankName ?? 'Nombank' };
+    const { bankAccountNumber, bankName } = parsed.data.data;
+    return { accountNumber: bankAccountNumber, bankName: bankName ?? 'Nombank' };
   };
 
   return {
@@ -66,6 +66,7 @@ export function createCustomersService(deps: {
           customer = await deps.customers.updateVa(id, accountNumber, bankName);
         } catch (err) {
           log.error({ err, id, vendorId }, 'Nomba DVA provisioning failed for customer');
+          await deps.customers.delete(id);
           throw err;
         }
       }
