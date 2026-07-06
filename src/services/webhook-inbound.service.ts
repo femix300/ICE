@@ -4,12 +4,14 @@ import { NombaEventType } from '../schemas/webhooks.schema.js';
 import { verifySignature } from '../lib/hmac.js';
 import { AppError } from '../lib/errors.js';
 import { createLogger } from '../lib/logger.js';
+import type { ReconciliationService } from './reconciliation.service.js';
 
 const log = createLogger('webhook-inbound');
 
 type WebhookInboundDeps = {
   transactions: TransactionsRepo;
   webhookSecret: string;
+  reconciliation: ReconciliationService;
 };
 
 export function createWebhookInboundService(deps: WebhookInboundDeps) {
@@ -38,7 +40,7 @@ export function createWebhookInboundService(deps: WebhookInboundDeps) {
           { transactionId: payload.data.transactionId },
           'dispatching to reconciliation engine',
         );
-        // Reconciliation engine will be wired in M04
+        await deps.reconciliation.reconcile(transaction);
       }
 
       return { duplicate: false, transactionId: transaction.transaction_id };

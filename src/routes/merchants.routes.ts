@@ -11,6 +11,7 @@ export function createMerchantsRouter(
   router.get('/:id', authMiddleware, controller.getById);
   router.put('/:id/webhook-url', authMiddleware, controller.updateWebhookUrl);
   router.post('/:id/api-keys/rotate', authMiddleware, controller.rotateApiKey);
+  router.get('/:id/webhook-deliveries', authMiddleware, controller.listWebhookDeliveries);
 
   return router;
 }

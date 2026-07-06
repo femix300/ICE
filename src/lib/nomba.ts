@@ -132,6 +132,28 @@ export function createNombaClient() {
       }
     },
 
+    updateVirtualAccount: async (accountId: string, data: { accountName: string }) => {
+      try {
+        const res = await fetch(`${NOMBA_BASE_URL}/accounts/virtual/${accountId}`, {
+          method: 'PUT',
+          headers: getHeaders(),
+          body: JSON.stringify(data),
+        });
+
+        if (!res.ok) {
+          throw new AppError(502, 'NOMBA_ERROR', 'Failed to update virtual account');
+        }
+        return (await res.json()) as unknown;
+      } catch (error: unknown) {
+        if (error instanceof AppError) throw error;
+        throw new AppError(
+          502,
+          'NOMBA_ERROR',
+          error instanceof Error ? error.message : 'Unknown error',
+        );
+      }
+    },
+
     deleteVirtualAccount: async (accountId: string) => {
       try {
         const res = await fetch(`${NOMBA_BASE_URL}/accounts/virtual/${accountId}`, {
@@ -170,30 +192,29 @@ export function createNombaClient() {
     }) => {
       try {
         // Rule 4: Always Lookup Before Transfers
-        const lookupRes = await fetch(
-          `${NOMBA_BASE_URL}/transfers/bank/lookup`,
-          {
-            method: 'POST',
-            headers: getHeaders(),
-            body: JSON.stringify({ accountNumber, bankCode }),
-          },
-        );
+        const lookupRes = await fetch(`${NOMBA_BASE_URL}/transfers/bank/lookup`, {
+          method: 'POST',
+          headers: getHeaders(),
+          body: JSON.stringify({ accountNumber, bankCode }),
+        });
 
         if (!lookupRes.ok) {
           throw new AppError(502, 'NOMBA_ERROR', 'Failed to lookup recipient account name');
         }
 
         const lookupSchema = z.object({
-          data: z.object({
-            accountName: z.string(),
-          }).optional(),
+          data: z
+            .object({
+              accountName: z.string(),
+            })
+            .optional(),
         });
 
         const parsedLookup = lookupSchema.safeParse(await lookupRes.json());
         if (!parsedLookup.success || !parsedLookup.data.data?.accountName) {
           throw new AppError(502, 'NOMBA_ERROR', 'Could not resolve account name from lookup');
         }
-        
+
         const accountName = parsedLookup.data.data.accountName;
 
         // Rule 1: Always use Kobo (amount is already in Kobo, no conversion)

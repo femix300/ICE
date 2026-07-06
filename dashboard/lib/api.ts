@@ -7,7 +7,6 @@ const log = createLogger('api-client');
 
 const BASE = config.NEXT_PUBLIC_API_URL.replace(/\/$/, '');
 
-// Common response wrapper schema from the backend
 const apiResponseSchema = z.object({
   ok: z.boolean(),
   data: z.unknown().optional(),
@@ -18,11 +17,10 @@ export type ApiResponse = z.infer<typeof apiResponseSchema>;
 
 interface ApiRequestOptions<T> {
   schema: z.Schema<T>;
-  key?: string;
 }
 
 export const api = {
-  get: async <T>(path: string, options: ApiRequestOptions<T>): Promise<T> => {
+  get: async <T>(path: string, options?: ApiRequestOptions<T>): Promise<T> => {
     const headers: Record<string, string> = {
       Accept: 'application/json',
     };
@@ -79,14 +77,21 @@ export const api = {
       if (!parsedEnvelope.data.ok) {
         throw new AppError('API_ERROR', parsedEnvelope.data.error || 'API returned ok=false');
       }
-      return options.schema.parse(parsedEnvelope.data.data);
+      const rawData = parsedEnvelope.data.data;
+      if (options?.schema) {
+        return options.schema.parse(rawData);
+      }
+      return rawData as T;
     }
 
     // Fallback if envelope does not match standard backend structure
-    return options.schema.parse(result);
+    if (options?.schema) {
+      return options.schema.parse(result);
+    }
+    return result as T;
   },
 
-  post: async <T>(path: string, body: unknown, options: ApiRequestOptions<T>): Promise<T> => {
+  post: async <T>(path: string, body: unknown, options?: ApiRequestOptions<T>): Promise<T> => {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       Accept: 'application/json',
@@ -145,10 +150,17 @@ export const api = {
       if (!parsedEnvelope.data.ok) {
         throw new AppError('API_ERROR', parsedEnvelope.data.error || 'API returned ok=false');
       }
-      return options.schema.parse(parsedEnvelope.data.data);
+      const rawData = parsedEnvelope.data.data;
+      if (options?.schema) {
+        return options.schema.parse(rawData);
+      }
+      return rawData as T;
     }
 
     // Fallback if envelope does not match standard backend structure
-    return options.schema.parse(result);
+    if (options?.schema) {
+      return options.schema.parse(result);
+    }
+    return result as T;
   },
 };

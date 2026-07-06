@@ -6,6 +6,7 @@ import type { InvoicesRepo, InvoiceRow } from '../../src/repositories/invoices.r
 import type { ReconciliationRepo, ReconciliationLogRow, CreateReconciliationLogInput } from '../../src/repositories/reconciliation.repo.js';
 import type { TransactionRow } from '../../src/repositories/transactions.repo.js';
 import { InvoiceStatus } from '../../src/schemas/invoices.schema.js';
+import { AppError } from '../../src/lib/errors.js';
 
 // ── Hand-rolled fakes ──
 
@@ -28,6 +29,25 @@ function createFakeReconciliationRepo(): ReconciliationRepo & { _logs: Reconcili
       logs.push(row);
       return row;
     },
+
+    async findByInvoiceId(invoiceId: string) {
+      return logs.filter((l) => l.invoice_id === invoiceId);
+    },
+
+    async findLogs(status?: string, limit = 20, offset = 0) {
+      let filtered = logs;
+      if (status) {
+        filtered = filtered.filter((l) => l.status === status);
+      }
+      return filtered.slice(offset, offset + limit);
+    },
+
+    async countLogs(status?: string) {
+      if (status) {
+        return logs.filter((l) => l.status === status).length;
+      }
+      return logs.length;
+    },
   };
 }
 
@@ -42,25 +62,30 @@ function createFakeInvoicesRepo(initialInvoices: InvoiceRow[] = []): InvoicesRep
       return store.get(id);
     },
 
-    async findByVendorId() {
-      return [...store.values()];
+    async findMerchantIdByInvoiceId(invoiceId: string) {
+      const invoice = store.get(invoiceId);
+      return invoice ? 'merchant-1' : undefined;
+    },
+
+    async findByVendorId(vendorId: string) {
+      return [...store.values()].filter(i => i.vendor_id === vendorId);
     },
 
     async findIssuedByVaNumber(vaNumber: string) {
       return [...store.values()].find(
         (i) =>
-          (i as any)._va_number === vaNumber &&
+          (i as unknown as { _va_number: string })._va_number === vaNumber &&
           (i.status === InvoiceStatus.ISSUED || i.status === InvoiceStatus.PARTIALLY_PAID),
       );
     },
 
     async create() {
-      throw new Error('Not used in reconciliation tests');
+      throw new AppError(500, 'NOT_USED', 'Not used in reconciliation tests');
     },
 
     async updateStatus(id: string, status, paidAmountKobo?: number) {
       const row = store.get(id);
-      if (!row) throw new Error('Not found');
+      if (!row) throw new AppError(404, 'NOT_FOUND', 'Not found');
       const updated: InvoiceRow = {
         ...row,
         status,
@@ -77,7 +102,7 @@ function createFakeRefundQueue(): RefundQueue & { _jobs: RefundJobData[] } {
   const jobs: RefundJobData[] = [];
   return {
     _jobs: jobs,
-    async add(data: RefundJobData) {
+    async add(_name: string, data: RefundJobData) {
       jobs.push(data);
     },
   };
@@ -143,7 +168,7 @@ describe('ReconciliationService — edge cases', () => {
       expect(result.difference_kobo).toBe(200000);
 
       expect(fakeRefundQueue._jobs).toHaveLength(1);
-      expect(fakeRefundQueue._jobs[0]!.amount_kobo).toBe(200000);
+      expect(fakeRefundQueue._jobs[0]?.amount_kobo).toBe(200000);
     });
 
     it('refund job contains correct sender account and bank code', async () => {
@@ -156,10 +181,10 @@ describe('ReconciliationService — edge cases', () => {
 
       expect(result.refund_queued).toBe(true);
 
-      const job = fakeRefundQueue._jobs[0]!;
-      expect(job.recipient_account).toBe('9876543210');
-      expect(job.recipient_bank_code).toBe('044');
-      expect(job.transaction_id).toBe(tx.transaction_id);
+      const job = fakeRefundQueue._jobs[0];
+      expect(job?.recipient_account).toBe('9876543210');
+      expect(job?.recipient_bank_code).toBe('044');
+      expect(job?.transaction_id).toBe(tx.transaction_id);
     });
 
     it('moves invoice to overpaid status', async () => {
@@ -176,8 +201,8 @@ describe('ReconciliationService — edge cases', () => {
       await service.reconcile(tx);
 
       expect(fakeReconRepo._logs).toHaveLength(1);
-      expect(fakeReconRepo._logs[0]!.action_taken).toBe('refund_queued');
-      expect(fakeReconRepo._logs[0]!.status).toBe(ReconciliationStatus.OVERPAYMENT);
+      expect(fakeReconRepo._logs[0]?.action_taken).toBe('refund_queued');
+      expect(fakeReconRepo._logs[0]?.status).toBe(ReconciliationStatus.OVERPAYMENT);
     });
   });
 
@@ -219,8 +244,8 @@ describe('ReconciliationService — edge cases', () => {
       await service.reconcile(tx);
 
       expect(fakeReconRepo._logs).toHaveLength(1);
-      expect(fakeReconRepo._logs[0]!.action_taken).toBe('partial_payment_recorded');
-      expect(fakeReconRepo._logs[0]!.status).toBe(ReconciliationStatus.UNDERPAYMENT);
+      expect(fakeReconRepo._logs[0]?.action_taken).toBe('partial_payment_recorded');
+      expect(fakeReconRepo._logs[0]?.status).toBe(ReconciliationStatus.UNDERPAYMENT);
     });
   });
 

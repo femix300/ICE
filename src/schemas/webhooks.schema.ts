@@ -16,7 +16,7 @@ export const nombaWebhookPayload = z.object({
   ]),
   data: z.object({
     transactionId: z.string().min(1),
-    amount: z.number().positive(),
+    amount: z.number().positive(), // Nomba sends in Naira; converted to Kobo at storage
     accountNumber: z.string().min(1),
     senderName: z.string().min(1),
     senderAccountNumber: z.string().min(1),

@@ -24,7 +24,10 @@ export type RefundQueue = {
 };
 
 export type NombaTransferClient = {
-  lookupAccount(data: { accountNumber: string; bankCode: string }): Promise<{ accountName: string }>;
+  lookupAccount(data: {
+    accountNumber: string;
+    bankCode: string;
+  }): Promise<{ accountName: string }>;
   transfer(data: {
     amount: number;
     accountNumber: string;
@@ -67,7 +70,11 @@ export function createMisdirectedService(deps: MisdirectedServiceDeps) {
           { transactionId: transaction.transaction_id, vaNumber: transaction.va_number },
           'misdirected payment — no merchant found for VA number',
         );
-        throw new AppError(500, 'INTERNAL_ERROR', `No merchant found for VA number ${transaction.va_number}`);
+        throw new AppError(
+          500,
+          'INTERNAL_ERROR',
+          `No merchant found for VA number ${transaction.va_number}`,
+        );
       }
 
       const payment = await deps.misdirected.create({
@@ -155,8 +162,15 @@ export function createMisdirectedService(deps: MisdirectedServiceDeps) {
         throw new AppError(404, 'NOT_FOUND', `Invoice ${invoiceId} not found`);
       }
 
-      if (invoice.status !== InvoiceStatus.ISSUED && invoice.status !== InvoiceStatus.PARTIALLY_PAID) {
-        throw new AppError(400, 'BAD_REQUEST', `Invoice must be issued or partially paid, found: ${invoice.status}`);
+      if (
+        invoice.status !== InvoiceStatus.ISSUED &&
+        invoice.status !== InvoiceStatus.PARTIALLY_PAID
+      ) {
+        throw new AppError(
+          400,
+          'BAD_REQUEST',
+          `Invoice must be issued or partially paid, found: ${invoice.status}`,
+        );
       }
 
       // Reconcile the payment against the invoice
@@ -185,13 +199,16 @@ export function createMisdirectedService(deps: MisdirectedServiceDeps) {
       invoiceTransition(invoice.status, nextStatus);
       await deps.invoices.updateStatus(invoice.id, nextStatus, invoice.paid_amount_kobo + received);
 
-      const rawPayload = payment.raw_payload as {
-        data?: {
-          transactionId?: string;
-          senderAccountNumber?: string;
-          senderBankCode?: string;
-        };
-      } | null | undefined;
+      const rawPayload = payment.raw_payload as
+        | {
+            data?: {
+              transactionId?: string;
+              senderAccountNumber?: string;
+              senderBankCode?: string;
+            };
+          }
+        | null
+        | undefined;
       const transactionId = rawPayload?.data?.transactionId || `TXN-MIS-${payment.id}`;
 
       await deps.reconciliation.create({
@@ -270,13 +287,16 @@ export function createMisdirectedService(deps: MisdirectedServiceDeps) {
         throw new AppError(400, 'BAD_REQUEST', 'Misdirected payment already resolved');
       }
 
-      const rawPayload = payment.raw_payload as {
-        data?: {
-          transactionId?: string;
-          senderAccountNumber?: string;
-          senderBankCode?: string;
-        };
-      } | null | undefined;
+      const rawPayload = payment.raw_payload as
+        | {
+            data?: {
+              transactionId?: string;
+              senderAccountNumber?: string;
+              senderBankCode?: string;
+            };
+          }
+        | null
+        | undefined;
       const recipientAccount = rawPayload?.data?.senderAccountNumber;
       const recipientBankCode = rawPayload?.data?.senderBankCode;
 
@@ -286,13 +306,19 @@ export function createMisdirectedService(deps: MisdirectedServiceDeps) {
 
       // ── Nomba Certification Requirement ──
       // 1. MUST call bank lookup before performing the transfer
-      log.info({ recipientAccount, recipientBankCode }, 'lookup recipient account name before transfer');
+      log.info(
+        { recipientAccount, recipientBankCode },
+        'lookup recipient account name before transfer',
+      );
       const lookup = await deps.nombaTransfer.lookupAccount({
         accountNumber: recipientAccount,
         bankCode: recipientBankCode,
       });
 
-      log.info({ recipientAccount, accountName: lookup.accountName }, 'recipient account name verified');
+      log.info(
+        { recipientAccount, accountName: lookup.accountName },
+        'recipient account name verified',
+      );
 
       // 2. Perform the transfer via Nomba Transfer API
       const transfer = await deps.nombaTransfer.transfer({
@@ -321,7 +347,10 @@ export function createMisdirectedService(deps: MisdirectedServiceDeps) {
         ip_address: ipAddress,
       });
 
-      log.info({ paymentId: id, transferReference: transfer.transferReference, actorId }, 'misdirected payment refunded');
+      log.info(
+        { paymentId: id, transferReference: transfer.transferReference, actorId },
+        'misdirected payment refunded',
+      );
 
       return {
         payment_id: id,

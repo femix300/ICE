@@ -1,5 +1,9 @@
 import crypto from 'node:crypto';
 import type { MerchantsRepo, MerchantRow } from '../repositories/merchants.repo.js';
+import type {
+  WebhookDeliveriesRepo,
+  WebhookDeliveryRow,
+} from '../repositories/webhook-deliveries.repo.js';
 import type { RegisterMerchantInput } from '../schemas/merchants.schema.js';
 import { generate, hash } from '../lib/api-key.js';
 import { AppError } from '../lib/errors.js';
@@ -14,9 +18,17 @@ export interface MerchantsService {
   getById(id: string): Promise<MerchantProfile>;
   updateWebhookUrl(id: string, webhookUrl: string): Promise<MerchantProfile>;
   rotateApiKey(id: string): Promise<{ api_key: string }>;
+  listWebhookDeliveries(
+    merchantId: string,
+    limit?: number,
+    offset?: number,
+  ): Promise<WebhookDeliveryRow[]>;
 }
 
-export function createMerchantsService(deps: { merchants: MerchantsRepo }): MerchantsService {
+export function createMerchantsService(deps: {
+  merchants: MerchantsRepo;
+  webhookDeliveries?: WebhookDeliveriesRepo;
+}): MerchantsService {
   return {
     register: async (data: RegisterMerchantInput) => {
       const existing = await deps.merchants.byEmail(data.email);
@@ -80,6 +92,17 @@ export function createMerchantsService(deps: { merchants: MerchantsRepo }): Merc
       log.info({ merchantId: id }, 'Merchant API key rotated');
 
       return { api_key: rawKey };
+    },
+
+    listWebhookDeliveries: async (
+      merchantId: string,
+      limit = 20,
+      offset = 0,
+    ): Promise<WebhookDeliveryRow[]> => {
+      if (!deps.webhookDeliveries) {
+        throw new AppError(500, 'INTERNAL_ERROR', 'Webhook deliveries repository not injected');
+      }
+      return deps.webhookDeliveries.listByMerchantId(merchantId, limit, offset);
     },
   };
 }

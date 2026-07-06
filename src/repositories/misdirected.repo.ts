@@ -34,7 +34,14 @@ export function createMisdirectedRepo(db: Pool) {
         `INSERT INTO misdirected_payments (id, merchant_id, va_number, amount_kobo, sender_name, raw_payload, status)
          VALUES ($1, $2, $3, $4, $5, $6, 'PENDING_REVIEW')
          RETURNING *`,
-        [id, input.merchant_id, input.va_number, input.amount_kobo, input.sender_name, JSON.stringify(input.raw_payload)],
+        [
+          id,
+          input.merchant_id,
+          input.va_number,
+          input.amount_kobo,
+          input.sender_name,
+          JSON.stringify(input.raw_payload),
+        ],
       );
 
       const row = result.rows[0];
@@ -44,7 +51,11 @@ export function createMisdirectedRepo(db: Pool) {
       return row;
     },
 
-    async findByMerchantId(merchantId: string, limit = 50, offset = 0): Promise<MisdirectedPaymentRow[]> {
+    async findByMerchantId(
+      merchantId: string,
+      limit = 50,
+      offset = 0,
+    ): Promise<MisdirectedPaymentRow[]> {
       const result = await db.query<MisdirectedPaymentRow>(
         `SELECT * FROM misdirected_payments
          WHERE merchant_id = $1
@@ -71,7 +82,11 @@ export function createMisdirectedRepo(db: Pool) {
       return result.rows[0];
     },
 
-    async updateResolution(id: string, resolution: string, status: string): Promise<MisdirectedPaymentRow> {
+    async updateResolution(
+      id: string,
+      resolution: string,
+      status: string,
+    ): Promise<MisdirectedPaymentRow> {
       const result = await db.query<MisdirectedPaymentRow>(
         `UPDATE misdirected_payments
          SET resolution = $1, status = $2, updated_at = CURRENT_TIMESTAMP

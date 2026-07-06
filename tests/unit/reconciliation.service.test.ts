@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 
 import { createReconciliationService, ReconciliationStatus } from '../../src/services/reconciliation.service.js';
+import { AppError } from '../../src/lib/errors.js';
 import type { InvoicesRepo, InvoiceRow } from '../../src/repositories/invoices.repo.js';
 import type { ReconciliationRepo, ReconciliationLogRow, CreateReconciliationLogInput } from '../../src/repositories/reconciliation.repo.js';
 import type { TransactionRow } from '../../src/repositories/transactions.repo.js';
@@ -27,6 +28,25 @@ function createFakeReconciliationRepo(): ReconciliationRepo & { _logs: Reconcili
       logs.push(row);
       return row;
     },
+
+    async findByInvoiceId(invoiceId: string) {
+      return logs.filter((l) => l.invoice_id === invoiceId);
+    },
+
+    async findLogs(status?: string, limit = 20, offset = 0) {
+      let filtered = logs;
+      if (status) {
+        filtered = filtered.filter((l) => l.status === status);
+      }
+      return filtered.slice(offset, offset + limit);
+    },
+
+    async countLogs(status?: string) {
+      if (status) {
+        return logs.filter((l) => l.status === status).length;
+      }
+      return logs.length;
+    },
   };
 }
 
@@ -41,25 +61,30 @@ function createFakeInvoicesRepo(initialInvoices: InvoiceRow[] = []): InvoicesRep
       return store.get(id);
     },
 
-    async findByVendorId() {
-      return [...store.values()];
+    async findMerchantIdByInvoiceId(invoiceId: string) {
+      const invoice = store.get(invoiceId);
+      return invoice ? 'merchant-1' : undefined;
+    },
+
+    async findByVendorId(vendorId: string) {
+      return [...store.values()].filter(i => i.vendor_id === vendorId);
     },
 
     async findIssuedByVaNumber(vaNumber: string) {
       return [...store.values()].find(
         (i) =>
-          (i as any)._va_number === vaNumber &&
+          (i as unknown as { _va_number: string })._va_number === vaNumber &&
           (i.status === InvoiceStatus.ISSUED || i.status === InvoiceStatus.PARTIALLY_PAID),
       );
     },
 
     async create() {
-      throw new Error('Not used in reconciliation tests');
+      throw new AppError(500, 'NOT_USED', 'Not used in reconciliation tests');
     },
 
     async updateStatus(id: string, status, paidAmountKobo?: number) {
       const row = store.get(id);
-      if (!row) throw new Error('Not found');
+      if (!row) throw new AppError(404, 'NOT_FOUND', 'Not found');
       const updated: InvoiceRow = {
         ...row,
         status,
@@ -139,9 +164,9 @@ describe('ReconciliationService', () => {
       await service.reconcile(tx);
 
       expect(fakeReconRepo._logs).toHaveLength(1);
-      expect(fakeReconRepo._logs[0]!.status).toBe(ReconciliationStatus.EXACT_MATCH);
-      expect(fakeReconRepo._logs[0]!.difference_kobo).toBe(0);
-      expect(fakeReconRepo._logs[0]!.action_taken).toBe('invoice_closed');
+      expect(fakeReconRepo._logs[0]?.status).toBe(ReconciliationStatus.EXACT_MATCH);
+      expect(fakeReconRepo._logs[0]?.difference_kobo).toBe(0);
+      expect(fakeReconRepo._logs[0]?.action_taken).toBe('invoice_closed');
     });
   });
 
@@ -210,9 +235,9 @@ describe('ReconciliationService', () => {
       await service.reconcile(tx);
 
       expect(fakeReconRepo._logs).toHaveLength(1);
-      expect(fakeReconRepo._logs[0]!.status).toBe(ReconciliationStatus.UNMATCHED);
-      expect(fakeReconRepo._logs[0]!.invoice_id).toBeNull();
-      expect(fakeReconRepo._logs[0]!.received_kobo).toBe(300000);
+      expect(fakeReconRepo._logs[0]?.status).toBe(ReconciliationStatus.UNMATCHED);
+      expect(fakeReconRepo._logs[0]?.invoice_id).toBeNull();
+      expect(fakeReconRepo._logs[0]?.received_kobo).toBe(300000);
     });
   });
 
@@ -269,8 +294,8 @@ describe('ReconciliationService', () => {
       await service.reconcile(tx);
 
       expect(fakeReconRepo._logs).toHaveLength(1);
-      expect(fakeReconRepo._logs[0]!.status).toBe(ReconciliationStatus.UNDERPAYMENT);
-      expect(fakeReconRepo._logs[0]!.action_taken).toBe('partial_payment_recorded');
+      expect(fakeReconRepo._logs[0]?.status).toBe(ReconciliationStatus.UNDERPAYMENT);
+      expect(fakeReconRepo._logs[0]?.action_taken).toBe('partial_payment_recorded');
     });
   });
 });

@@ -20,10 +20,7 @@ export type InvoiceRow = {
 export function createInvoicesRepo(db: Pool) {
   return {
     async findById(id: string): Promise<InvoiceRow | undefined> {
-      const result = await db.query<InvoiceRow>(
-        'SELECT * FROM invoices WHERE id = $1',
-        [id],
-      );
+      const result = await db.query<InvoiceRow>('SELECT * FROM invoices WHERE id = $1', [id]);
       return result.rows[0];
     },
 
@@ -75,7 +72,11 @@ export function createInvoicesRepo(db: Pool) {
       return row;
     },
 
-    async updateStatus(id: string, status: InvoiceStatus, paidAmountKobo?: number): Promise<InvoiceRow> {
+    async updateStatus(
+      id: string,
+      status: InvoiceStatus,
+      paidAmountKobo?: number,
+    ): Promise<InvoiceRow> {
       let query: string;
       let params: unknown[];
 
