@@ -10,5 +10,15 @@ export function createPaymentsRouter(controller: MisdirectedController) {
     controller.list(req, res, next).catch(next);
   });
 
+  // POST /v1/payments/:id/match
+  router.post('/:id/match', (req, res, next) => {
+    controller.match(req, res, next).catch(next);
+  });
+
+  // POST /v1/payments/:id/refund
+  router.post('/:id/refund', (req, res, next) => {
+    controller.refund(req, res, next).catch(next);
+  });
+
   return router;
 }

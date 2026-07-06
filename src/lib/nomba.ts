@@ -165,7 +165,6 @@ export function createNombaClient() {
       narration?: string;
     }) => {
       try {
-        // Rule 4: Always Lookup Before Transfers
         const lookupRes = await fetch(
           `${NOMBA_BASE_URL.replace('/v1', '')}/v2/transfers/bank/lookup`,
           {
@@ -179,7 +178,6 @@ export function createNombaClient() {
           throw new AppError(502, 'NOMBA_ERROR', 'Failed to lookup recipient account name');
         }
 
-        // Rule 1: Always use Kobo (amount is already in Kobo, no conversion)
         const res = await fetch(`${NOMBA_BASE_URL.replace('/v1', '')}/v2/transfers/bank`, {
           method: 'POST',
           headers: getHeaders(),
@@ -190,6 +188,77 @@ export function createNombaClient() {
           throw new AppError(502, 'NOMBA_ERROR', `Nomba transfer failed: ${res.status}`);
         }
         return (await res.json()) as unknown;
+      } catch (error: unknown) {
+        if (error instanceof AppError) throw error;
+        throw new AppError(
+          502,
+          'NOMBA_ERROR',
+          error instanceof Error ? error.message : 'Unknown error',
+        );
+      }
+    },
+
+    lookupAccount: async ({
+      accountNumber,
+      bankCode,
+    }: {
+      accountNumber: string;
+      bankCode: string;
+    }) => {
+      try {
+        const res = await fetch(
+          `${NOMBA_BASE_URL.replace('/v1', '')}/v2/transfers/bank/lookup`,
+          {
+            method: 'POST',
+            headers: getHeaders(),
+            body: JSON.stringify({ accountNumber, bankCode }),
+          },
+        );
+
+        if (!res.ok) {
+          throw new AppError(502, 'NOMBA_ERROR', 'Failed to lookup recipient account name');
+        }
+
+        const data = (await res.json()) as { data?: { accountName?: string } };
+        return {
+          accountName: data.data?.accountName || 'Unknown',
+        };
+      } catch (error: unknown) {
+        if (error instanceof AppError) throw error;
+        throw new AppError(
+          502,
+          'NOMBA_ERROR',
+          error instanceof Error ? error.message : 'Unknown error',
+        );
+      }
+    },
+
+    transfer: async ({
+      amount,
+      accountNumber,
+      bankCode,
+      narration,
+    }: {
+      amount: number;
+      accountNumber: string;
+      bankCode: string;
+      narration?: string;
+    }) => {
+      try {
+        const res = await fetch(`${NOMBA_BASE_URL.replace('/v1', '')}/v2/transfers/bank`, {
+          method: 'POST',
+          headers: getHeaders(),
+          body: JSON.stringify({ amount, accountNumber, bankCode, narration }),
+        });
+
+        if (!res.ok) {
+          throw new AppError(502, 'NOMBA_ERROR', `Nomba transfer failed: ${res.status}`);
+        }
+
+        const data = (await res.json()) as { data?: { transferReference?: string } };
+        return {
+          transferReference: data.data?.transferReference || 'REF-UNKNOWN',
+        };
       } catch (error: unknown) {
         if (error instanceof AppError) throw error;
         throw new AppError(
