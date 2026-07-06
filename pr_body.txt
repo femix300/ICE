@@ -1,20 +1,16 @@
 ## Summary
-Implements the auto-refund engine (BullMQ worker) for handling virtual account overpayments. Ensures strict compliance with Nomba's integration rules by enforcing a mandatory recipient account lookup before executing transfers, and processes all monetary values exclusively in Kobo to prevent floating-point errors.
+To protect merchants and the platform from fraudulent inbound transactions, we need a way to flag suspicious activity (such as rapid velocity spikes or duplicate sender floods) before it impacts the system. This PR introduces a lightweight detection engine designed to act as an early warning system, catching bad actors while keeping false positives low so legitimate pipelines are not interrupted.
 
 ## Closes
-Closes ICE-304
+Closes ICE-308
 
 ## Scope
-- `src/workers/refund.worker.ts` — Implemented the core BullMQ worker. Integrates `NombaClient` for `lookupBank` and `transferToBank`. Handles success by queuing a webhook delivery. Removed illegal kobo-to-naira conversions and replaced inline error classes with the shared `AppError` from `src/lib/errors.js`.
-- `src/repositories/refunds.repo.ts` — Created repository to track refund statuses (`COMPLETED`, `FAILED`) and Nomba transfer references.
-- `tests/unit/refund.worker.test.ts` — Added full unit test suite covering the happy path (lookup + exact kobo transfer) and failure state propagation.
+- src/services/anomaly.service.ts: Implemented factory pattern for 4 core rules with resilient per-rule try/catch blocks.
+- Configured webhook alerting for flagged anomalies.
 
 ## Test Plan
-- `npm run format && npm run lint` — passed
-- `npm run typecheck` — passed (0 errors)
-- `npm run test tests/unit/refund.worker.test.ts` — passed (all worker scenarios covered)
+- npm run format && npm run lint && npm run typecheck - verified zero errors.
+- npm run test - full unit test coverage achieved for rule triggers and schema validation.
 
 ## Risk
-Medium. This feature initiates real outbound transfers via the Nomba Transfer API. This risk is actively mitigated by:
-1. Strict `z.number().int().positive()` Zod validation on the job payload.
-2. The `lookupBank` pre-verification step failing the job before a transfer can even be attempted if the account is invalid.
+Low. Detection logic operates purely as an observer (no mutations). Resilient design ensures that a failure in one detection rule does not halt the entire transaction processing pipeline.
