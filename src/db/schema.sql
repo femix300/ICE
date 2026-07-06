@@ -2,7 +2,9 @@
 CREATE TABLE IF NOT EXISTS merchants (
     id VARCHAR(255) PRIMARY KEY,
     business_name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NOT NULL UNIQUE,
     api_key_hash VARCHAR(255) NOT NULL,
+    api_key_prefix VARCHAR(50) NOT NULL,
     webhook_url TEXT NOT NULL,
     status VARCHAR(50) NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -14,8 +16,11 @@ CREATE TABLE IF NOT EXISTS vendors (
     id VARCHAR(255) PRIMARY KEY,
     merchant_id VARCHAR(255) NOT NULL REFERENCES merchants(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
-    api_key_hash VARCHAR(255) NOT NULL,
-    nomba_va_number VARCHAR(50) NOT NULL,
+    api_key_hash VARCHAR(255),
+    api_key_prefix VARCHAR(50),
+    callback_url TEXT,
+    nomba_va_number VARCHAR(50),
+    nomba_bank_name VARCHAR(255),
     va_status VARCHAR(50) NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -29,6 +34,7 @@ CREATE TABLE IF NOT EXISTS customers (
     name VARCHAR(255) NOT NULL,
     email VARCHAR(255) NOT NULL,
     nomba_va_number VARCHAR(50) NULL,
+    nomba_bank_name VARCHAR(255) NULL,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

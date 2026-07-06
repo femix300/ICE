@@ -206,14 +206,11 @@ export function createNombaClient() {
       bankCode: string;
     }) => {
       try {
-        const res = await fetch(
-          `${NOMBA_BASE_URL.replace('/v1', '')}/v2/transfers/bank/lookup`,
-          {
-            method: 'POST',
-            headers: getHeaders(),
-            body: JSON.stringify({ accountNumber, bankCode }),
-          },
-        );
+        const res = await fetch(`${NOMBA_BASE_URL.replace('/v1', '')}/v2/transfers/bank/lookup`, {
+          method: 'POST',
+          headers: getHeaders(),
+          body: JSON.stringify({ accountNumber, bankCode }),
+        });
 
         if (!res.ok) {
           throw new AppError(502, 'NOMBA_ERROR', 'Failed to lookup recipient account name');

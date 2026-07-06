@@ -1,5 +1,8 @@
 import type { InvoicesRepo } from '../repositories/invoices.repo.js';
-import type { ReconciliationRepo, CreateReconciliationLogInput } from '../repositories/reconciliation.repo.js';
+import type {
+  ReconciliationRepo,
+  CreateReconciliationLogInput,
+} from '../repositories/reconciliation.repo.js';
 import type { TransactionRow } from '../repositories/transactions.repo.js';
 import { InvoiceStatus } from '../schemas/invoices.schema.js';
 import { transition } from './invoices.service.js';
@@ -49,7 +52,10 @@ export function createReconciliationService(deps: ReconciliationDeps) {
       // 1. Duplicate check — already reconciled?
       const existing = await deps.reconciliation.findByTransactionId(transaction.transaction_id);
       if (existing) {
-        log.info({ transactionId: transaction.transaction_id }, 'duplicate reconciliation rejected');
+        log.info(
+          { transactionId: transaction.transaction_id },
+          'duplicate reconciliation rejected',
+        );
         return { status: ReconciliationStatus.DUPLICATE, action: 'rejected' };
       }
 
@@ -69,7 +75,10 @@ export function createReconciliationService(deps: ReconciliationDeps) {
         };
         await deps.reconciliation.create(logEntry);
 
-        log.warn({ transactionId: transaction.transaction_id, vaNumber: transaction.va_number }, 'unmatched payment');
+        log.warn(
+          { transactionId: transaction.transaction_id, vaNumber: transaction.va_number },
+          'unmatched payment',
+        );
         return { status: ReconciliationStatus.UNMATCHED, action: 'flagged' };
       }
 
@@ -80,7 +89,11 @@ export function createReconciliationService(deps: ReconciliationDeps) {
       // 3. Exact match
       if (received === expected) {
         transition(invoice.status, InvoiceStatus.PAID);
-        await deps.invoices.updateStatus(invoice.id, InvoiceStatus.PAID, invoice.paid_amount_kobo + received);
+        await deps.invoices.updateStatus(
+          invoice.id,
+          InvoiceStatus.PAID,
+          invoice.paid_amount_kobo + received,
+        );
 
         const logEntry: CreateReconciliationLogInput = {
           transaction_id: transaction.transaction_id,
@@ -93,14 +106,25 @@ export function createReconciliationService(deps: ReconciliationDeps) {
         };
         await deps.reconciliation.create(logEntry);
 
-        log.info({ transactionId: transaction.transaction_id, invoiceId: invoice.id }, 'exact match — invoice closed');
-        return { status: ReconciliationStatus.EXACT_MATCH, action: 'invoice_closed', invoice_id: invoice.id };
+        log.info(
+          { transactionId: transaction.transaction_id, invoiceId: invoice.id },
+          'exact match — invoice closed',
+        );
+        return {
+          status: ReconciliationStatus.EXACT_MATCH,
+          action: 'invoice_closed',
+          invoice_id: invoice.id,
+        };
       }
 
       // 4. Overpayment — queue auto-refund for the difference
       if (received > expected) {
         transition(invoice.status, InvoiceStatus.OVERPAID);
-        await deps.invoices.updateStatus(invoice.id, InvoiceStatus.OVERPAID, invoice.paid_amount_kobo + received);
+        await deps.invoices.updateStatus(
+          invoice.id,
+          InvoiceStatus.OVERPAID,
+          invoice.paid_amount_kobo + received,
+        );
 
         const logEntry: CreateReconciliationLogInput = {
           transaction_id: transaction.transaction_id,
@@ -140,7 +164,11 @@ export function createReconciliationService(deps: ReconciliationDeps) {
       const outstanding = expected - received;
 
       transition(invoice.status, InvoiceStatus.PARTIALLY_PAID);
-      await deps.invoices.updateStatus(invoice.id, InvoiceStatus.PARTIALLY_PAID, invoice.paid_amount_kobo + received);
+      await deps.invoices.updateStatus(
+        invoice.id,
+        InvoiceStatus.PARTIALLY_PAID,
+        invoice.paid_amount_kobo + received,
+      );
 
       const logEntry: CreateReconciliationLogInput = {
         transaction_id: transaction.transaction_id,

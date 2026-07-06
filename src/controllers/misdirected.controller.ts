@@ -54,7 +54,7 @@ export function createMisdirectedController(service: MisdirectedService) {
 
         const body = matchBodySchema.parse(req.body);
         const result = await service.matchPayment(
-          paymentId,
+          typeof paymentId === "string" ? paymentId : paymentId[0],
           body.invoice_id,
           merchantId,
           typeof actorId === 'string' ? actorId : 'system',
@@ -88,7 +88,7 @@ export function createMisdirectedController(service: MisdirectedService) {
         }
 
         const result = await service.refundPayment(
-          paymentId,
+          typeof paymentId === "string" ? paymentId : paymentId[0],
           merchantId,
           typeof actorId === 'string' ? actorId : 'system',
           ipAddress,
