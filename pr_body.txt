@@ -7,7 +7,6 @@ Implements the manual replay endpoint for failed webhooks. It takes a dead-lette
 - `src/controllers/webhook-deliveries.controller.ts`: Validates `req.body` using Zod and enforces `AppError` on bad inputs or missing deliveries.
 - `src/repositories/webhook-deliveries.repo.ts`: Extended to fetch delivery payloads by ID.
 - `tests/unit/webhook-deliveries.controller.test.ts`: Added full `vitest` unit tests covering Zod validation failure, 404s, and successful queue addition.
-- Rebased target branch to `dev`.
 
 ## Test Plan
 - Unit test coverage added for controller edge cases.

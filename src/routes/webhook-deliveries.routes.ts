@@ -1,14 +1,14 @@
 import { Router } from 'express';
+import type { Request, Response, NextFunction } from 'express';
+import { createAuthMiddleware } from '../middleware/auth.js';
 
-// Stubs for types
 export function createWebhookDeliveriesRouter(controller: {
-  replay: (req: any, res: any) => Promise<any>;
+  replay: (req: Request, res: Response) => Promise<unknown>;
 }) {
   const router = Router();
 
   // POST /v1/webhook-deliveries/:id/replay
-  // Note: auth middleware to enforce master key would be added here in full integration
-  router.post('/:id/replay', (req, res, next) => {
+  router.post('/:id/replay', createAuthMiddleware, (req: Request, res: Response, next: NextFunction) => {
     controller.replay(req, res).catch(next);
   });
 

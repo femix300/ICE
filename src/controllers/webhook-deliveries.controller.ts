@@ -1,6 +1,7 @@
+import { z } from 'zod';
 import type { Request, Response } from 'express';
 import type { Queue } from 'bullmq';
-import { createLogger } from '../lib/logger.ts';
+import { createLogger } from '../lib/logger.js';
 
 const log = createLogger('webhook-controller');
 
