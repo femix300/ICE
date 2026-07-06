@@ -7,7 +7,6 @@ const log = createLogger('api-client');
 
 const BASE = config.NEXT_PUBLIC_API_URL.replace(/\/$/, '');
 
-// Common response wrapper schema from the backend
 const apiResponseSchema = z.object({
   ok: z.boolean(),
   data: z.unknown().optional(),
@@ -17,8 +16,7 @@ const apiResponseSchema = z.object({
 export type ApiResponse = z.infer<typeof apiResponseSchema>;
 
 interface ApiRequestOptions<T> {
-  schema?: z.Schema<T>;
-  key?: string;
+  schema: z.Schema<T>;
 }
 
 export const api = {
