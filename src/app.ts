@@ -32,6 +32,11 @@ import { createAuthMiddleware } from './middleware/auth.js';
 import { createInvoicesRepo } from './repositories/invoices.repo.js';
 import { createReconciliationRepo } from './repositories/reconciliation.repo.js';
 import { createReconciliationService } from './services/reconciliation.service.js';
+import { createRefundsRepo } from './repositories/refunds.repo.js';
+import { refundQueue } from './queues/refund.queue.js';
+import { webhookDeliveryQueue } from './queues/webhook-delivery.queue.js';
+import { createRefundWorker } from './workers/refund.worker.js';
+import { createWebhookDeliveryWorker } from './workers/webhook-delivery.worker.js';
 import { createInvoicesService } from './services/invoices.service.js';
 import { createInvoicesController } from './controllers/invoices.controller.js';
 import { createInvoicesRouter } from './routes/invoices.routes.js';
@@ -56,10 +61,13 @@ const invoicesRepo = createInvoicesRepo(db);
 const reconciliationRepo = createReconciliationRepo(db);
 const customersRepo = createCustomersRepo(db);
 const webhookDeliveriesRepo = createWebhookDeliveriesRepo(db);
+const refundsRepo = createRefundsRepo(db);
 
 const reconciliationService = createReconciliationService({
   reconciliation: reconciliationRepo,
   invoices: invoicesRepo,
+  refunds: refundsRepo,
+  refundQueue,
 });
 
 const webhookInboundService = createWebhookInboundService({
@@ -174,5 +182,19 @@ app.use('/v1', v1Router);
 // Error Handling
 app.use(notFoundHandler);
 app.use(errorHandler);
+
+// Background workers
+createRefundWorker({
+  nomba,
+  refunds: refundsRepo,
+  merchants: merchantsRepo,
+  webhookDeliveryQueue,
+});
+
+createWebhookDeliveryWorker({
+  merchants: merchantsRepo,
+  deliveries: webhookDeliveriesRepo,
+  deadLetterQueue: webhookDeliveryQueue,
+});
 
 export { app, db, nomba };

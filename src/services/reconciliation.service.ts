@@ -4,6 +4,7 @@ import type {
   CreateReconciliationLogInput,
 } from '../repositories/reconciliation.repo.js';
 import type { TransactionRow } from '../repositories/transactions.repo.js';
+import type { RefundsRepo } from '../repositories/refunds.repo.js';
 import { InvoiceStatus } from '../schemas/invoices.schema.js';
 import { transition } from './invoices.service.js';
 import { createLogger } from '../lib/logger.js';
@@ -31,18 +32,20 @@ type ReconciliationResult = {
 
 export type RefundJobData = {
   transaction_id: string;
+  merchant_id: string;
   amount_kobo: number;
   recipient_account: string;
   recipient_bank_code: string;
 };
 
 export type RefundQueue = {
-  add(data: RefundJobData): Promise<void>;
+  add(name: string, data: RefundJobData): Promise<unknown>;
 };
 
 type ReconciliationDeps = {
   reconciliation: ReconciliationRepo;
   invoices: InvoicesRepo;
+  refunds?: RefundsRepo;
   refundQueue?: RefundQueue;
 };
 
@@ -137,14 +140,29 @@ export function createReconciliationService(deps: ReconciliationDeps) {
         };
         await deps.reconciliation.create(logEntry);
 
-        // Queue refund job — E04 builds the BullMQ processor
-        if (deps.refundQueue) {
-          await deps.refundQueue.add({
+        // Queue refund job — E04 processes via BullMQ
+        const merchantId = await deps.invoices.findMerchantIdByInvoiceId(invoice.id);
+        if (merchantId && deps.refunds) {
+          await deps.refunds.create({
             transaction_id: transaction.transaction_id,
             amount_kobo: difference,
             recipient_account: transaction.sender_account,
             recipient_bank_code: transaction.sender_bank_code,
           });
+        }
+        if (merchantId && deps.refundQueue) {
+          await deps.refundQueue.add('refund', {
+            transaction_id: transaction.transaction_id,
+            merchant_id: merchantId,
+            amount_kobo: difference,
+            recipient_account: transaction.sender_account,
+            recipient_bank_code: transaction.sender_bank_code,
+          });
+        } else if (!merchantId) {
+          log.error(
+            { transactionId: transaction.transaction_id, invoiceId: invoice.id },
+            'could not resolve merchant for invoice; refund not queued',
+          );
         }
 
         log.warn(
