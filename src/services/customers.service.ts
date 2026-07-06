@@ -22,7 +22,7 @@ export function createCustomersService(deps: {
 
     const nombaSchema = z.object({
       data: z.object({
-        accountNumber: z.string(),
+        bankAccountNumber: z.string(),
         bankName: z.string().optional(),
       }),
     });
@@ -32,8 +32,8 @@ export function createCustomersService(deps: {
       throw new AppError(502, 'NOMBA_ERROR', 'Invalid response format from Nomba');
     }
 
-    const { accountNumber, bankName } = parsed.data.data;
-    return { accountNumber, bankName: bankName ?? 'Nombank' };
+    const { bankAccountNumber, bankName } = parsed.data.data;
+    return { accountNumber: bankAccountNumber, bankName: bankName ?? 'Nombank' };
   };
 
   return {

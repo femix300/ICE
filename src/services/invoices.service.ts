@@ -34,12 +34,15 @@ export function createInvoicesService(deps: InvoicesServiceDeps) {
     async createInvoice(input: CreateInvoiceInput) {
       const invoice = await deps.invoices.create(input);
 
+      transition(invoice.status, Status.ISSUED);
+      const issued = await deps.invoices.updateStatus(invoice.id, Status.ISSUED);
+
       log.info(
         { invoiceId: invoice.id, vendorId: input.vendor_id, customerId: input.customer_id },
-        'invoice created',
+        'invoice created and issued',
       );
 
-      return invoice;
+      return issued;
     },
 
     async getInvoice(id: string) {
