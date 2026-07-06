@@ -1,6 +1,9 @@
 node_modules
 .env
+.env.linear
 dist
 coverage
 .DS_Store
 handoffs/
+dashboard/.next/
+dashboard/next-env.d.ts
