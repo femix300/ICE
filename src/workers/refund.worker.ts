@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Worker, type Job, type Queue } from 'bullmq';
 import { z } from 'zod';
 import { redis } from '../lib/redis.js';
