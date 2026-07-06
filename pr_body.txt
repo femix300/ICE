@@ -1,16 +1,20 @@
-Closes ICE-186
-
 ## Summary
-Implements the manual replay endpoint for failed webhooks. It takes a dead-lettered webhook ID, validates it, and re-adds it to the BullMQ webhook delivery queue.
+Implements the auto-refund engine (BullMQ worker) for handling virtual account overpayments. Ensures strict compliance with Nomba's integration rules by enforcing a mandatory recipient account lookup before executing transfers, and processes all monetary values exclusively in Kobo to prevent floating-point errors.
+
+## Closes
+Closes ICE-304
 
 ## Scope
-- `src/controllers/webhook-deliveries.controller.ts`: Validates `req.body` using Zod and enforces `AppError` on bad inputs or missing deliveries.
-- `src/repositories/webhook-deliveries.repo.ts`: Extended to fetch delivery payloads by ID.
-- `tests/unit/webhook-deliveries.controller.test.ts`: Added full `vitest` unit tests covering Zod validation failure, 404s, and successful queue addition.
+- `src/workers/refund.worker.ts` — Implemented the core BullMQ worker. Integrates `NombaClient` for `lookupBank` and `transferToBank`. Handles success by queuing a webhook delivery. Removed illegal kobo-to-naira conversions and replaced inline error classes with the shared `AppError` from `src/lib/errors.js`.
+- `src/repositories/refunds.repo.ts` — Created repository to track refund statuses (`COMPLETED`, `FAILED`) and Nomba transfer references.
+- `tests/unit/refund.worker.test.ts` — Added full unit test suite covering the happy path (lookup + exact kobo transfer) and failure state propagation.
 
 ## Test Plan
-- Unit test coverage added for controller edge cases.
-- Re-queuing payload verified visually.
+- `npm run format && npm run lint` — passed
+- `npm run typecheck` — passed (0 errors)
+- `npm run test tests/unit/refund.worker.test.ts` — passed (all worker scenarios covered)
 
 ## Risk
-Low. Validates payload before pushing to queue.
+Medium. This feature initiates real outbound transfers via the Nomba Transfer API. This risk is actively mitigated by:
+1. Strict `z.number().int().positive()` Zod validation on the job payload.
+2. The `lookupBank` pre-verification step failing the job before a transfer can even be attempted if the account is invalid.

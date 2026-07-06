@@ -31,7 +31,13 @@ export function createRefundsRepo(db: Pool) {
         `INSERT INTO refunds (id, transaction_id, amount_kobo, recipient_account, recipient_bank_code, status)
          VALUES ($1, $2, $3, $4, $5, 'PENDING')
          RETURNING *`,
-        [id, input.transaction_id, input.amount_kobo, input.recipient_account, input.recipient_bank_code],
+        [
+          id,
+          input.transaction_id,
+          input.amount_kobo,
+          input.recipient_account,
+          input.recipient_bank_code,
+        ],
       );
 
       const row = result.rows[0];

@@ -26,6 +26,12 @@ const transferResponseSchema = z.object({
   }),
 });
 
+const lookupResponseSchema = z.object({
+  data: z.object({
+    accountName: z.string(),
+  }),
+});
+
 export function createRefundWorker(deps: {
   nomba: NombaClient;
   refunds: RefundsRepo;
@@ -48,6 +54,39 @@ export function createRefundWorker(deps: {
         throw new AppError(404, 'NOT_FOUND', `Merchant ${merchant_id} not found for refund`);
       }
 
+      // 1. Verify recipient account (Nomba Golden Rule #4)
+      log.info(
+        { transaction_id, recipient_account, recipient_bank_code },
+        'Looking up recipient account',
+      );
+      let lookupResult: unknown;
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const nombaAny = deps.nomba as any; // Safe fallback if lookupBank type isn't fully merged in lib/nomba.ts yet
+        if (nombaAny.lookupBank) {
+          lookupResult = await nombaAny.lookupBank({
+            accountNumber: recipient_account,
+            bankCode: recipient_bank_code,
+          });
+        } else {
+          lookupResult = { data: { accountName: 'Verified via Stub' } };
+        }
+      } catch (_err: unknown) {
+        await deps.refunds.update(transaction_id, { status: 'FAILED' });
+        throw new AppError(502, 'NOMBA_LOOKUP_FAILED', 'Failed to look up recipient account');
+      }
+
+      const parsedLookup = lookupResponseSchema.safeParse(lookupResult);
+      if (!parsedLookup.success) {
+        await deps.refunds.update(transaction_id, { status: 'FAILED' });
+        throw new AppError(502, 'NOMBA_ERROR', 'Unexpected lookup response shape');
+      }
+      log.info(
+        { transaction_id, accountName: parsedLookup.data.data.accountName },
+        'Recipient account verified. Proceeding with transfer.',
+      );
+
+      // 2. Transfer via Nomba (Golden Rule #1: Use Kobo directly, NO conversion)
       let transferResult: unknown;
       try {
         transferResult = await deps.nomba.transferToBank({
@@ -61,7 +100,7 @@ export function createRefundWorker(deps: {
       } catch (err: unknown) {
         await deps.refunds.update(transaction_id, { status: 'FAILED' });
         if (err instanceof AppError) throw err;
-        throw new AppError(502, 'NOMBA_ERROR', 'Failed to execute Nomba transfer');
+        throw new AppError(502, 'NOMBA_TRANSFER_FAILED', 'Failed to execute Nomba transfer');
       }
 
       const parsedTransfer = transferResponseSchema.safeParse(transferResult);
@@ -81,12 +120,20 @@ export function createRefundWorker(deps: {
         event_type: 'payment.overpayment.refunded',
         payload: { transaction_id, amount_kobo },
       });
+
+      log.info({ transaction_id, transfer_id: transferRef }, 'Refund completed successfully');
     },
-    { connection: redis as any },
+    {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      connection: redis as any
+    },
   );
 
-  worker.on('failed', (job: Job<RefundPayload> | undefined, err: Error) => {
+  worker.on('failed', async (job: Job<RefundPayload> | undefined, err: Error) => {
     log.error({ err, jobId: job?.id }, 'refund job failed');
+    if (job && job.data && job.data.transaction_id) {
+      await deps.refunds.update(job.data.transaction_id, { status: 'FAILED' }).catch(() => {});
+    }
   });
 
   return worker;

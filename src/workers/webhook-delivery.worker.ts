@@ -31,7 +31,7 @@ export function createWebhookDeliveryWorker(deps: {
 
       const { merchant_id, event_type, payload } = parsed.data;
       const merchant = await deps.merchants.byId(merchant_id);
-      
+
       if (!merchant || !merchant.webhook_url) return;
 
       let response;
@@ -44,13 +44,22 @@ export function createWebhookDeliveryWorker(deps: {
         });
       } catch (_err) {
         await deps.deliveries.log({
-          merchant_id, event_type, payload, status: 'FAILED', retry_count: job.attemptsMade,
+          merchant_id,
+          event_type,
+          payload,
+          status: 'FAILED',
+          retry_count: job.attemptsMade,
         });
         throw new AppError(500, 'DELIVERY_FAILED', 'Network error or timeout during delivery');
       }
 
       await deps.deliveries.log({
-        merchant_id, event_type, payload, status: 'DELIVERED', http_status: response.status, retry_count: job.attemptsMade,
+        merchant_id,
+        event_type,
+        payload,
+        status: 'DELIVERED',
+        http_status: response.status,
+        retry_count: job.attemptsMade,
       });
 
       if (!response.ok) {
@@ -58,15 +67,21 @@ export function createWebhookDeliveryWorker(deps: {
       }
     },
     {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       connection: redis as any,
       settings: {
         backoffStrategy: (attemptsMade: number) => {
           switch (attemptsMade) {
-            case 1: return 30 * 1000;
-            case 2: return 2 * 60 * 1000;
-            case 3: return 10 * 60 * 1000;
-            case 4: return 30 * 60 * 1000;
-            default: return -1;
+            case 1:
+              return 30 * 1000;
+            case 2:
+              return 2 * 60 * 1000;
+            case 3:
+              return 10 * 60 * 1000;
+            case 4:
+              return 30 * 60 * 1000;
+            default:
+              return -1;
           }
         },
       },
@@ -78,7 +93,11 @@ export function createWebhookDeliveryWorker(deps: {
     if (job && job.attemptsMade >= (job.opts.attempts || 5)) {
       await deps.deadLetterQueue.add('dead-letter', job.data);
       if (job.data) {
-        await deps.deliveries.markDeadLetter(job.data.merchant_id, job.data.event_type, job.data.payload);
+        await deps.deliveries.markDeadLetter(
+          job.data.merchant_id,
+          job.data.event_type,
+          job.data.payload,
+        );
       }
     }
   });

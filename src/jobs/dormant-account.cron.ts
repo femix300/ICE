@@ -1,9 +1,14 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { createLogger } from '../lib/logger.js';
 
 const log = createLogger('dormant-account-cron');
 
 class AppError extends Error {
-  constructor(public code: string, message: string) {
+  constructor(
+    public code: string,
+    message: string,
+  ) {
     super(message);
     this.name = 'AppError';
   }
@@ -91,7 +96,10 @@ export function createDormantAccountCron(deps: {
 
         // Accumulate for summary
         if (!merchantSuspensions.has(account.merchant_id)) {
-          merchantSuspensions.set(account.merchant_id, { merchant_id: account.merchant_id, suspended_vas: [] });
+          merchantSuspensions.set(account.merchant_id, {
+            merchant_id: account.merchant_id,
+            suspended_vas: [],
+          });
         }
         merchantSuspensions.get(account.merchant_id)!.suspended_vas.push(account.id);
 
@@ -132,9 +140,12 @@ export function createDormantAccountCron(deps: {
     setTimeout(() => {
       run().catch((err: unknown) => log.error({ err }, 'Dormant account cron unhandled error'));
       // Repeat every 24 hours after the first run
-      setInterval(() => {
-        run().catch((err: unknown) => log.error({ err }, 'Dormant account cron unhandled error'));
-      }, 24 * 60 * 60 * 1000);
+      setInterval(
+        () => {
+          run().catch((err: unknown) => log.error({ err }, 'Dormant account cron unhandled error'));
+        },
+        24 * 60 * 60 * 1000,
+      );
     }, msUntilNextRun);
 
     log.info({ nextRunAt: nextRun.toISOString() }, 'Dormant account cron scheduled');

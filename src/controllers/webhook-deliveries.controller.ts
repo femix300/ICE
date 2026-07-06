@@ -1,30 +1,23 @@
 import { z } from 'zod';
 import type { Request, Response } from 'express';
-import type { Queue } from 'bullmq';
 import { createLogger } from '../lib/logger.js';
+import { AppError } from '../lib/errors.js';
+import { ok } from '../lib/respond.js';
 
 const log = createLogger('webhook-controller');
-
-// Stub ok envelope
-const ok = (res: Response, data: unknown) => res.status(200).json({ ok: true, data });
-
-class AppError extends Error {
-  constructor(public code: string, message: string) {
-    super(message);
-    this.name = 'AppError';
-  }
-}
 
 export const ReplayPayloadSchema = z.object({
   id: z.string(),
 });
 
 export interface DeliveryRepoStub {
-  byId: (id: string) => Promise<{ id: string; merchant_id: string; event_type: string; payload: any } | null>;
+  byId: (
+    id: string,
+  ) => Promise<{ id: string; merchant_id: string; event_type: string; payload: unknown } | null>;
 }
 
 export interface WebhookDeliveryQueueStub {
-  add: (name: string, data: any) => Promise<any>;
+  add: (name: string, data: unknown) => Promise<unknown>;
 }
 
 export function createWebhookDeliveriesController(deps: {
@@ -35,14 +28,14 @@ export function createWebhookDeliveriesController(deps: {
     replay: async (req: Request, res: Response) => {
       const parsed = ReplayPayloadSchema.safeParse(req.body);
       if (!parsed.success) {
-        throw new AppError('VALIDATION_ERROR', 'Invalid replay payload');
+        throw new AppError(400, 'VALIDATION_ERROR', 'Invalid replay payload');
       }
 
       const { id } = parsed.data;
 
       const delivery = await deps.repo.byId(id);
       if (!delivery) {
-        throw new AppError('NOT_FOUND', 'Webhook delivery record not found');
+        throw new AppError(404, 'NOT_FOUND', 'Webhook delivery record not found');
       }
 
       await deps.webhookDeliveryQueue.add('webhook-delivery', {
@@ -53,6 +46,6 @@ export function createWebhookDeliveriesController(deps: {
 
       log.info({ deliveryId: id }, 'Webhook manually enqueued for replay');
       return ok(res, { message: 'Replay initiated' });
-    }
+    },
   };
 }
