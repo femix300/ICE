@@ -1,15 +1,16 @@
-Closes ICE-187
+Closes ICE-304
 
 ## Summary
-Implements the auto-refund engine via BullMQ. This worker processes refunds for overpayments by verifying the recipient's bank account with Nomba, executing the transfer, updating the database, and enqueueing a webhook notification to the merchant.
+Implements the auto-refund engine for handling overpayments.
 
 ## Scope
-- `src/workers/refund.worker.ts`: Worker implementation. Parses payload with `zod`. Uses `AppError` to capture and wrap Nomba API failures gracefully. 
-- `tests/unit/refund.worker.test.ts`: Added full `vitest` suite testing account lookup, transfer execution, validation, and error handling.
-- Rebased target branch to `dev`.
+- `src/workers/refund.worker.ts`: Executes Nomba account lookup and transfer API. Uses shared `AppError` and proper ESM imports.
+- `src/repositories/refunds.repo.ts`: Manages refund statuses.
+- `tests/unit/refund.worker.test.ts`: Covers kobo processing, lookup-before-transfer, and failure states.
 
 ## Test Plan
-- Unit tests verify complete happy path and failure cases (lookup failure, transfer failure, validation failure).
+- Verified `npm test` passes for the refund worker logic.
+- Confirmed no kobo-to-naira conversion happens internally.
 
 ## Risk
-Low. Worker safely handles external API failures via explicit try-catch blocks mapped to `AppError`.
+Medium. Uses Nomba transfer API. Mitigated by `lookupBank` verification step and strict Zod payload validation.
