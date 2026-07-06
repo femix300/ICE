@@ -42,7 +42,7 @@ describe('Vendors Service', () => {
     mockVendorsRepo.create.mockResolvedValueOnce({ id: 'v123', merchant_id: 'm123', name: 'Test Vendor' });
     mockNombaClient.createVirtualAccount.mockResolvedValueOnce({
       data: {
-        accountNumber: '1234567890',
+        bankAccountNumber: '1234567890',
         bankName: 'Test Bank',
       },
     });

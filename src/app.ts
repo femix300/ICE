@@ -22,6 +22,7 @@ import { createMerchantsRepo } from './repositories/merchants.repo.js';
 import { createMerchantsService } from './services/merchants.service.js';
 import { createMerchantsController } from './controllers/merchants.controller.js';
 import { createMerchantsRouter } from './routes/merchants.routes.js';
+import { createWebhookDeliveriesRepo } from './repositories/webhook-deliveries.repo.js';
 import { createVendorsRepo } from './repositories/vendors.repo.js';
 import { createVendorsService } from './services/vendors.service.js';
 import { createVendorsController } from './controllers/vendors.controller.js';
@@ -30,6 +31,12 @@ import { createNombaClient } from './lib/nomba.js';
 import { createAuthMiddleware } from './middleware/auth.js';
 import { createInvoicesRepo } from './repositories/invoices.repo.js';
 import { createReconciliationRepo } from './repositories/reconciliation.repo.js';
+import { createReconciliationService } from './services/reconciliation.service.js';
+import { createRefundsRepo } from './repositories/refunds.repo.js';
+import { refundQueue } from './queues/refund.queue.js';
+import { webhookDeliveryQueue } from './queues/webhook-delivery.queue.js';
+import { createRefundWorker } from './workers/refund.worker.js';
+import { createWebhookDeliveryWorker } from './workers/webhook-delivery.worker.js';
 import { createInvoicesService } from './services/invoices.service.js';
 import { createInvoicesController } from './controllers/invoices.controller.js';
 import { createInvoicesRouter } from './routes/invoices.routes.js';
@@ -53,13 +60,26 @@ const transactionsRepo = createTransactionsRepo(db);
 const invoicesRepo = createInvoicesRepo(db);
 const reconciliationRepo = createReconciliationRepo(db);
 const customersRepo = createCustomersRepo(db);
+const webhookDeliveriesRepo = createWebhookDeliveriesRepo(db);
+const refundsRepo = createRefundsRepo(db);
+
+const reconciliationService = createReconciliationService({
+  reconciliation: reconciliationRepo,
+  invoices: invoicesRepo,
+  refunds: refundsRepo,
+  refundQueue,
+});
 
 const webhookInboundService = createWebhookInboundService({
   transactions: transactionsRepo,
   webhookSecret: config.NOMBA_WEBHOOK_SECRET,
+  reconciliation: reconciliationService,
 });
 
-const merchantsService = createMerchantsService({ merchants: merchantsRepo });
+const merchantsService = createMerchantsService({
+  merchants: merchantsRepo,
+  webhookDeliveries: webhookDeliveriesRepo,
+});
 const vendorsService = createVendorsService({ vendors: vendorsRepo, nomba });
 const invoicesService = createInvoicesService({
   invoices: invoicesRepo,
@@ -75,7 +95,7 @@ const merchantsController = createMerchantsController(merchantsService);
 const vendorsController = createVendorsController(vendorsService);
 const webhooksController = createWebhooksController(webhookInboundService);
 const invoicesController = createInvoicesController(invoicesService);
-const customersController = createCustomersController(customersService);
+const customersController = createCustomersController(customersService, vendorsService);
 
 const authMiddleware = createAuthMiddleware({ merchants: merchantsRepo, vendors: vendorsRepo });
 
@@ -111,6 +131,8 @@ app.use(
 );
 
 app.use(cors({ origin: config.CORS_ORIGIN }));
+// Webhook route mounted before express.json() so the raw body is preserved for HMAC verification
+app.use('/v1/webhooks/nomba', express.text({ type: 'application/json' }), webhooksRouter);
 app.use(express.json({ limit: '1mb' }));
 app.use(rateLimit({ windowMs: 60_000, max: 100 }));
 
@@ -153,8 +175,6 @@ app.get('/redoc', (req, res) => {
 // Mount invoices router
 v1Router.use('/invoices', invoicesRouter);
 
-// Scope the raw text parser specifically to the webhook route
-v1Router.use('/webhooks/nomba', express.text({ type: 'application/json' }), webhooksRouter);
 
 // API Routes
 app.use('/v1', v1Router);
@@ -163,4 +183,18 @@ app.use('/v1', v1Router);
 app.use(notFoundHandler);
 app.use(errorHandler);
 
-export { app, db };
+// Background workers
+createRefundWorker({
+  nomba,
+  refunds: refundsRepo,
+  merchants: merchantsRepo,
+  webhookDeliveryQueue,
+});
+
+createWebhookDeliveryWorker({
+  merchants: merchantsRepo,
+  deliveries: webhookDeliveriesRepo,
+  deadLetterQueue: webhookDeliveryQueue,
+});
+
+export { app, db, nomba };

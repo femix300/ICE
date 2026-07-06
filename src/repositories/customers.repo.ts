@@ -25,6 +25,7 @@ export interface CustomersRepo {
   byVendorAndId(vendorId: string, id: string): Promise<CustomerRow | null>;
   byEmailAndVendor(email: string, vendorId: string): Promise<CustomerRow | null>;
   updateVa(id: string, vaNumber: string, bankName: string): Promise<CustomerRow>;
+  delete(id: string): Promise<void>;
 }
 
 export function createCustomersRepo(db: Pool): CustomersRepo {
@@ -68,6 +69,10 @@ export function createCustomersRepo(db: Pool): CustomersRepo {
       );
       if (!res.rows[0]) throw new AppError(404, 'CUSTOMER_NOT_FOUND', 'Customer not found');
       return res.rows[0];
+    },
+
+    delete: async (id: string): Promise<void> => {
+      await db.query('DELETE FROM customers WHERE id = $1', [id]);
     },
   };
 }
