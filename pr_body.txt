@@ -1,0 +1,15 @@
+Closes ICE-190
+
+## Summary
+Implements a cron job that runs daily at 02:00 to suspend virtual accounts that have been dormant for 90 days. It deletes the VA on Nomba and notifies the merchant via the webhook delivery queue.
+
+## Scope
+- `src/jobs/dormant-account.cron.ts`: Uses `AppError` to capture Nomba API failures. Implemented robust error catching inside the loop so one failed deletion doesn't stop the cron run.
+- `tests/unit/dormant-account.test.ts`: Added full `vitest` suite testing schedule toggles, graceful continuation on failures, and webhook queuing.
+- Rebased target branch to `dev`.
+
+## Test Plan
+- Unit test coverage validates the loop resilience and deduplication logic.
+
+## Risk
+Low. Gated by `SCHEDULER_ENABLED`. Loop resilience prevents cascading failures.
