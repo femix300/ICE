@@ -48,14 +48,8 @@ export function createRefundWorker(deps: {
         throw new AppError(404, 'NOT_FOUND', `Merchant ${merchant_id} not found for refund`);
       }
 
-      log.info(
-        { transaction_id, recipient_account, recipient_bank_code },
-        'processing refund via Nomba transfer',
-      );
-
       let transferResult: unknown;
       try {
-        // amount is already in kobo; transferToBank does not convert
         transferResult = await deps.nomba.transferToBank({
           amount: amount_kobo,
           accountNumber: recipient_account,
@@ -72,13 +66,11 @@ export function createRefundWorker(deps: {
 
       const parsedTransfer = transferResponseSchema.safeParse(transferResult);
       if (!parsedTransfer.success) {
-        log.error({ transaction_id, transferResult }, 'unexpected Nomba transfer response shape');
         await deps.refunds.update(transaction_id, { status: 'FAILED' });
         throw new AppError(502, 'NOMBA_ERROR', 'Unexpected response shape from Nomba transfer');
       }
 
       const transferRef = parsedTransfer.data.data.id;
-
       await deps.refunds.update(transaction_id, {
         status: 'COMPLETED',
         nomba_transfer_ref: transferRef,
@@ -89,13 +81,8 @@ export function createRefundWorker(deps: {
         event_type: 'payment.overpayment.refunded',
         payload: { transaction_id, amount_kobo },
       });
-
-      log.info({ transaction_id, transfer_id: transferRef }, 'refund completed successfully');
     },
-    {
-      // @ts-expect-error type mismatch between bullmq's ioredis and the project's ioredis
-      connection: redis,
-    },
+    { connection: redis as any },
   );
 
   worker.on('failed', (job: Job<RefundPayload> | undefined, err: Error) => {

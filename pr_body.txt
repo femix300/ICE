@@ -1,15 +1,16 @@
-Closes ICE-190
+Closes ICE-186
 
 ## Summary
-Implements a cron job that runs daily at 02:00 to suspend virtual accounts that have been dormant for 90 days. It deletes the VA on Nomba and notifies the merchant via the webhook delivery queue.
+Implements the manual replay endpoint for failed webhooks. It takes a dead-lettered webhook ID, validates it, and re-adds it to the BullMQ webhook delivery queue.
 
 ## Scope
-- `src/jobs/dormant-account.cron.ts`: Uses `AppError` to capture Nomba API failures. Implemented robust error catching inside the loop so one failed deletion doesn't stop the cron run.
-- `tests/unit/dormant-account.test.ts`: Added full `vitest` suite testing schedule toggles, graceful continuation on failures, and webhook queuing.
-- Rebased target branch to `dev`.
+- `src/controllers/webhook-deliveries.controller.ts`: Validates `req.body` using Zod and enforces `AppError` on bad inputs or missing deliveries.
+- `src/repositories/webhook-deliveries.repo.ts`: Extended to fetch delivery payloads by ID.
+- `tests/unit/webhook-deliveries.controller.test.ts`: Added full `vitest` unit tests covering Zod validation failure, 404s, and successful queue addition.
 
 ## Test Plan
-- Unit test coverage validates the loop resilience and deduplication logic.
+- Unit test coverage added for controller edge cases.
+- Re-queuing payload verified visually.
 
 ## Risk
-Low. Gated by `SCHEDULER_ENABLED`. Loop resilience prevents cascading failures.
+Low. Validates payload before pushing to queue.

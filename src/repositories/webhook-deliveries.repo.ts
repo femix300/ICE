@@ -4,7 +4,7 @@ export interface WebhookDeliveryLogInput {
   merchant_id: string;
   event_type: string;
   payload: unknown;
-  status: 'DELIVERED' | 'FAILED';
+  status: 'DELIVERED' | 'FAILED' | 'DEAD_LETTER';
   http_status?: number;
   retry_count: number;
 }
@@ -21,7 +21,6 @@ export interface WebhookDeliveryRow {
 }
 
 export function createWebhookDeliveriesRepo(db: unknown) {
-  // DB is lightly typed until M01 / P01 lands with actual pg Pool types
   const pool = db as {
     query: <T = unknown>(sql: string, params: unknown[]) => Promise<{ rows: T[] }>;
   };
@@ -67,6 +66,11 @@ export function createWebhookDeliveriesRepo(db: unknown) {
       const result = await pool.query<WebhookDeliveryRow>(sql, [merchant_id, limit, offset]);
       return result.rows;
     },
+    byId: async (id: string): Promise<WebhookDeliveryRow | null> => {
+      const sql = `SELECT * FROM webhook_deliveries WHERE id = $1`;
+      const result = await pool.query<WebhookDeliveryRow>(sql, [id]);
+      return result.rows[0] || null;
+    }
   };
 }
 

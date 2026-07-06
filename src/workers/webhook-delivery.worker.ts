@@ -30,15 +30,9 @@ export function createWebhookDeliveryWorker(deps: {
       }
 
       const { merchant_id, event_type, payload } = parsed.data;
-
       const merchant = await deps.merchants.byId(merchant_id);
-      if (!merchant || !merchant.webhook_url) {
-        log.warn(
-          { merchant_id },
-          'Merchant has no webhook URL or does not exist, skipping delivery',
-        );
-        return;
-      }
+      
+      if (!merchant || !merchant.webhook_url) return;
 
       let response;
       try {
@@ -46,27 +40,17 @@ export function createWebhookDeliveryWorker(deps: {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'X-ICE-Event': event_type },
           body: JSON.stringify(payload),
-          signal: AbortSignal.timeout(10_000), // 10s timeout
+          signal: AbortSignal.timeout(10_000),
         });
       } catch (_err) {
-        log.error({ err: _err, merchant_id }, 'webhook delivery failed: network error or timeout');
         await deps.deliveries.log({
-          merchant_id,
-          event_type,
-          payload,
-          status: 'FAILED',
-          retry_count: job.attemptsMade,
+          merchant_id, event_type, payload, status: 'FAILED', retry_count: job.attemptsMade,
         });
         throw new AppError(500, 'DELIVERY_FAILED', 'Network error or timeout during delivery');
       }
 
       await deps.deliveries.log({
-        merchant_id,
-        event_type,
-        payload,
-        status: response.ok ? 'DELIVERED' : 'FAILED',
-        http_status: response.status,
-        retry_count: job.attemptsMade,
+        merchant_id, event_type, payload, status: 'DELIVERED', http_status: response.status, retry_count: job.attemptsMade,
       });
 
       if (!response.ok) {
@@ -74,22 +58,15 @@ export function createWebhookDeliveryWorker(deps: {
       }
     },
     {
-      // @ts-expect-error type mismatch between bullmq's ioredis and the project's ioredis
-      connection: redis,
+      connection: redis as any,
       settings: {
         backoffStrategy: (attemptsMade: number) => {
-          // Linear PRD mandates: 30s, 2m, 10m, 30m
           switch (attemptsMade) {
-            case 1:
-              return 30 * 1000;
-            case 2:
-              return 2 * 60 * 1000;
-            case 3:
-              return 10 * 60 * 1000;
-            case 4:
-              return 30 * 60 * 1000;
-            default:
-              return -1;
+            case 1: return 30 * 1000;
+            case 2: return 2 * 60 * 1000;
+            case 3: return 10 * 60 * 1000;
+            case 4: return 30 * 60 * 1000;
+            default: return -1;
           }
         },
       },
@@ -99,14 +76,9 @@ export function createWebhookDeliveryWorker(deps: {
   worker.on('failed', async (job: Job<WebhookPayload> | undefined, err: Error) => {
     log.error({ err, jobId: job?.id }, 'Webhook delivery job failed');
     if (job && job.attemptsMade >= (job.opts.attempts || 5)) {
-      log.warn({ jobId: job.id }, 'Max retries reached, routing to DLQ');
       await deps.deadLetterQueue.add('dead-letter', job.data);
       if (job.data) {
-        await deps.deliveries.markDeadLetter(
-          job.data.merchant_id,
-          job.data.event_type,
-          job.data.payload,
-        );
+        await deps.deliveries.markDeadLetter(job.data.merchant_id, job.data.event_type, job.data.payload);
       }
     }
   });
