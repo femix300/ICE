@@ -175,7 +175,6 @@ app.get('/redoc', (req, res) => {
 // Mount invoices router
 v1Router.use('/invoices', invoicesRouter);
 
-
 // API Routes
 app.use('/v1', v1Router);
 

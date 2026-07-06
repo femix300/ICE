@@ -70,7 +70,7 @@ export function createWebhookDeliveriesRepo(db: unknown) {
       const sql = `SELECT * FROM webhook_deliveries WHERE id = $1`;
       const result = await pool.query<WebhookDeliveryRow>(sql, [id]);
       return result.rows[0] || null;
-    }
+    },
   };
 }
 

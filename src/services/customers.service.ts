@@ -64,7 +64,10 @@ export function createCustomersService(deps: {
           const { accountNumber, bankName } = await provisionDva(customer.id, vendorId, data.name);
           customer = await deps.customers.updateVa(customer.id, accountNumber, bankName);
         } catch (err) {
-          log.error({ err, customerId: customer.id, vendorId }, 'Nomba DVA provisioning failed for customer');
+          log.error(
+            { err, customerId: customer.id, vendorId },
+            'Nomba DVA provisioning failed for customer',
+          );
           await deps.customers.delete(customer.id);
           throw err;
         }
