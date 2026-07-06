@@ -245,6 +245,36 @@ export function createNombaClient() {
         );
       }
     },
+
+    fetchTransactions: async ({
+      dateFrom,
+      dateTo,
+      status,
+    }: {
+      dateFrom: string;
+      dateTo: string;
+      status: string;
+    }): Promise<unknown> => {
+      try {
+        const params = new URLSearchParams({ dateFrom, dateTo, status });
+        const res = await fetch(`${NOMBA_BASE_URL}/transactions?${params.toString()}`, {
+          method: 'GET',
+          headers: getHeaders(),
+        });
+
+        if (!res.ok) {
+          throw new AppError(502, 'NOMBA_ERROR', `Failed to fetch Nomba transactions: ${res.status}`);
+        }
+        return (await res.json()) as unknown;
+      } catch (error: unknown) {
+        if (error instanceof AppError) throw error;
+        throw new AppError(
+          502,
+          'NOMBA_ERROR',
+          error instanceof Error ? error.message : 'Unknown error',
+        );
+      }
+    },
   };
 }
 
