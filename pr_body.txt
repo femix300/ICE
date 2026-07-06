@@ -1,15 +1,18 @@
-Closes ICE-188
-
 ## Summary
-Adds API endpoints and controllers for retrieving paginated vendor statements, customer statements, and generic transaction lists.
+Implements the vendor and customer statement endpoints with robust date range, status filtering, and pagination support.
+
+## Closes
+Closes ICE-305
 
 ## Scope
-- `src/controllers/statements.controller.ts`: Added Zod query parameter validation with proper coercion for numbers. Replaced arbitrary errors with `AppError`.
-- `tests/integration/statements.test.ts`: Added proper `vitest` tests covering query parsing, validation logic, and routing to service stubs.
-- Rebased target branch to `dev`.
+- `src/routes/statements.routes.ts`: Stripped double-prefix `/v1` from route paths to correctly mount inside the main router. Added strict interface types for the controller stub.
+- `src/repositories/statements.repo.ts`: Implemented dynamic parameterized SQL query builder to correctly support `from`, `to`, and `status` filters alongside pagination.
+- `src/controllers/statements.controller.ts`: Removed inline tech-debt stubs (`AppError` and `ok`) and replaced them with the shared libraries from `src/lib/`. Corrected ESM import paths.
 
 ## Test Plan
-- Integration tests cover query parsing and parameter injection into the mock service.
+- `npm run format && npm run lint` — passed.
+- `npm run typecheck` — verified strict types with no `any` fallbacks.
+- Integration tests cover scoped vendor access and proper pagination parameters.
 
 ## Risk
-Low. Reads only. Validates parameters before hitting the DB.
+Low. All operations are read-only (`SELECT`). Parameterized query building prevents SQL injection from the newly added dynamic filter clauses.
