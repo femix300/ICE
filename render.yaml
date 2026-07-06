@@ -34,15 +34,15 @@ services:
       - key: CORS_ORIGIN
         sync: false
 
+  - type: redis
+    name: ice-redis
+    region: oregon
+    plan: starter
+    maxmemoryPolicy: noeviction
+
 databases:
   - name: ice-db
     region: oregon
     plan: starter
     databaseName: ice
     user: ice_user
-
-  - name: ice-redis
-    type: redis
-    region: oregon
-    plan: starter
-    maxmemoryPolicy: noeviction
