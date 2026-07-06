@@ -4,7 +4,7 @@ services:
     runtime: node
     region: oregon
     plan: starter
-    branch: main
+    branch: dev
     buildCommand: npm install && npm run migrate
     startCommand: npm start
     healthCheckPath: /healthz
