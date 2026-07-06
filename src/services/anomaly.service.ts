@@ -1,14 +1,8 @@
+import { AppError } from '../lib/errors.js';
 import { z } from 'zod';
-import { createLogger } from '../lib/logger.ts';
+import { createLogger } from '../lib/logger.js';
 
 const log = createLogger('anomaly-service');
-
-class AppError extends Error {
-  constructor(public code: string, message: string) {
-    super(message);
-    this.name = 'AppError';
-  }
-}
 
 // ---------- Types ----------
 
@@ -27,7 +21,12 @@ export type InboundTransaction = z.infer<typeof InboundTransactionSchema>;
 export interface AnomalyRepoStub {
   countRecentPayments: (vaNumber: string, withinMinutes: number) => Promise<number>;
   getRecentAmounts: (vaNumber: string, count: number) => Promise<number[]>;
-  hasDuplicateSender: (senderAccount: string, amountKobo: number, vaNumber: string, withinMinutes: number) => Promise<boolean>;
+  hasDuplicateSender: (
+    senderAccount: string,
+    amountKobo: number,
+    vaNumber: string,
+    withinMinutes: number,
+  ) => Promise<boolean>;
   isVaSuspended: (vaNumber: string, suspendedDaysThreshold: number) => Promise<boolean>;
 }
 
@@ -85,7 +84,12 @@ export function createAnomalyService(deps: {
     {
       name: 'duplicate_sender',
       check: async (tx) => {
-        return await deps.repo.hasDuplicateSender(tx.sender_account, tx.amount_kobo, tx.va_number, 5);
+        return await deps.repo.hasDuplicateSender(
+          tx.sender_account,
+          tx.amount_kobo,
+          tx.va_number,
+          5,
+        );
       },
     },
     {
@@ -100,7 +104,7 @@ export function createAnomalyService(deps: {
     analyze: async (rawTx: unknown): Promise<DetectedAnomaly[]> => {
       const parsed = InboundTransactionSchema.safeParse(rawTx);
       if (!parsed.success) {
-        throw new AppError('VALIDATION_ERROR', 'Invalid transaction payload for anomaly detection');
+        throw new AppError(400, 'VALIDATION_ERROR', 'Invalid transaction payload for anomaly detection');
       }
       const tx = parsed.data;
 
@@ -112,7 +116,7 @@ export function createAnomalyService(deps: {
           if (isTriggered) {
             log.warn(
               { anomalyType: rule.name, transactionId: tx.id, vaNumber: tx.va_number },
-              'Payment anomaly detected'
+              'Payment anomaly detected',
             );
             await queueAlert(rule.name, tx);
             triggered.push({

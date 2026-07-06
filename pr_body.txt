@@ -1,15 +1,16 @@
-Closes ICE-191
-
 ## Summary
-Implements a rule-based anomaly detector service designed to detect suspicious inbound payment patterns. Alerts are queued to the merchant webhook on every triggered rule.
+To protect merchants and the platform from fraudulent inbound transactions, we need a way to flag suspicious activity (such as rapid velocity spikes or duplicate sender floods) before it impacts the system. This PR introduces a lightweight detection engine designed to act as an early warning system, catching bad actors while keeping false positives low so legitimate pipelines are not interrupted.
+
+## Closes
+Closes ICE-308
 
 ## Scope
-- `src/services/anomaly.service.ts`: Implemented 4 base rules: `velocity_spike`, `round_number_flooding`, `duplicate_sender`, and `dormant_account_payment`. Enforced Zod schema parsing on the incoming raw payload and `AppError` on invalid payloads. Implemented resilient loop checking that captures inner rule failures without halting evaluation.
-- `tests/unit/anomaly.service.test.ts`: Added full `vitest` suite covering schema validation, single rule triggers, multiple triggers, and loop resilience.
-- Rebased target branch to `dev`.
+- src/services/anomaly.service.ts: Implemented factory pattern for 4 core rules with resilient per-rule try/catch blocks.
+- Configured webhook alerting for flagged anomalies.
 
 ## Test Plan
-- Unit tests verify all core rule triggers and error handling logic using mocked dependencies.
+- npm run format && npm run lint && npm run typecheck - verified zero errors.
+- npm run test - full unit test coverage achieved for rule triggers and schema validation.
 
 ## Risk
-Low. This is an asynchronous detection service that only raises alerts via webhooks and does not mutate core entities.
+Low. Detection logic operates purely as an observer (no mutations). Resilient design ensures that a failure in one detection rule does not halt the entire transaction processing pipeline.
