@@ -14,6 +14,13 @@ import { createMisdirectedController } from './controllers/misdirected.controlle
 import { createPaymentsRouter } from './routes/payments.routes.js';
 import { createNombaClient } from './lib/nomba.js';
 import { createAuditRepo } from './repositories/audit.repo.js';
+import { createAuditService } from './services/audit.service.js';
+import { createInvoicesService } from './services/invoices.service.js';
+import { createReconciliationService } from './services/reconciliation.service.js';
+import { createInvoicesController } from './controllers/invoices.controller.js';
+import { createReconciliationController } from './controllers/reconciliation.controller.js';
+import { createInvoicesRouter } from './routes/invoices.routes.js';
+import { createReconciliationRouter } from './routes/reconciliation.routes.js';
 import { errorHandler } from './middleware/errors.js';
 import { ok } from './lib/respond.js';
 
@@ -24,19 +31,28 @@ const transactionsRepo = createTransactionsRepo(db);
 const invoicesRepo = createInvoicesRepo(db);
 const reconciliationRepo = createReconciliationRepo(db);
 const misdirectedRepo = createMisdirectedRepo(db);
-const auditRepo = createAuditRepo(); // Placeholder for M07
+const auditRepo = createAuditRepo(db);
 
 // Clients
 const nombaClient = createNombaClient();
-// Authenticate Nomba client in background
 nombaClient.authenticate().catch((err: unknown) => {
   console.error('Failed to authenticate Nomba client at startup:', err);
 });
 
 // Services
+const auditService = createAuditService({ audit: auditRepo });
 const webhookInboundService = createWebhookInboundService({
   transactions: transactionsRepo,
   webhookSecret: config.NOMBA_WEBHOOK_SECRET,
+});
+const invoicesService = createInvoicesService({
+  invoices: invoicesRepo,
+  reconciliation: reconciliationRepo,
+  audit: auditService,
+});
+const reconciliationService = createReconciliationService({
+  reconciliation: reconciliationRepo,
+  invoices: invoicesRepo,
 });
 const misdirectedService = createMisdirectedService({
   misdirected: misdirectedRepo,
@@ -48,6 +64,8 @@ const misdirectedService = createMisdirectedService({
 
 // Controllers
 const webhooksController = createWebhooksController(webhookInboundService);
+const invoicesController = createInvoicesController(invoicesService);
+const reconciliationController = createReconciliationController(reconciliationService);
 const misdirectedController = createMisdirectedController(misdirectedService);
 
 const app = express();
@@ -63,6 +81,8 @@ v1.use(express.json());
 
 // Routes
 v1.use(createWebhooksRouter(webhooksController));
+v1.use('/invoices', createInvoicesRouter(invoicesController));
+v1.use('/reconciliation', createReconciliationRouter(reconciliationController));
 v1.use('/payments', createPaymentsRouter(misdirectedController));
 
 app.use('/v1', v1);
