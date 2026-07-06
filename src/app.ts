@@ -44,6 +44,7 @@ import { createCustomersRepo } from './repositories/customers.repo.js';
 import { createCustomersService } from './services/customers.service.js';
 import { createCustomersController } from './controllers/customers.controller.js';
 import { createCustomersRouter } from './routes/customers.routes.js';
+import { createNightlyReconciliation } from './jobs/nightly-reconciliation.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -195,5 +196,17 @@ createWebhookDeliveryWorker({
   deliveries: webhookDeliveriesRepo,
   deadLetterQueue: webhookDeliveryQueue,
 });
+
+// Nightly reconciliation diff — runs at midnight, diffs Nomba /transactions against local ledger
+createNightlyReconciliation({
+  nomba,
+  db,
+  alertOps: async (title, payload) => {
+    webhookDeliveryQueue.add('webhook-delivery', {
+      event_type: 'system.reconciliation_drift',
+      payload: { title, ...((payload as Record<string, unknown>) ?? {}) },
+    });
+  },
+}).schedule();
 
 export { app, db, nomba };
