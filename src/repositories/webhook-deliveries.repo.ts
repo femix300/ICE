@@ -1,3 +1,5 @@
+import crypto from 'node:crypto';
+
 export interface WebhookDeliveryLogInput {
   merchant_id: string;
   event_type: string;
@@ -26,12 +28,14 @@ export function createWebhookDeliveriesRepo(db: unknown) {
 
   return {
     log: async (data: WebhookDeliveryLogInput) => {
+      const id = crypto.randomUUID();
       const sql = `
-        INSERT INTO webhook_deliveries (merchant_id, event_type, payload, status, http_status, retry_count)
-        VALUES ($1, $2, $3, $4, $5, $6)
+        INSERT INTO webhook_deliveries (id, merchant_id, event_type, payload, status, http_status, retry_count)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
         RETURNING *
       `;
       const values = [
+        id,
         data.merchant_id,
         data.event_type,
         JSON.stringify(data.payload),
@@ -42,11 +46,12 @@ export function createWebhookDeliveriesRepo(db: unknown) {
       await pool.query(sql, values);
     },
     markDeadLetter: async (merchant_id: string, event_type: string, payload: unknown) => {
+      const id = crypto.randomUUID();
       const sql = `
-        INSERT INTO webhook_deliveries (merchant_id, event_type, payload, status, retry_count)
-        VALUES ($1, $2, $3, 'DEAD_LETTER', 0)
+        INSERT INTO webhook_deliveries (id, merchant_id, event_type, payload, status, retry_count)
+        VALUES ($1, $2, $3, $4, 'DEAD_LETTER', 0)
       `;
-      await pool.query(sql, [merchant_id, event_type, JSON.stringify(payload)]);
+      await pool.query(sql, [id, merchant_id, event_type, JSON.stringify(payload)]);
     },
     listByMerchantId: async (
       merchant_id: string,
