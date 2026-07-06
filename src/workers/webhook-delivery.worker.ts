@@ -68,6 +68,7 @@ export function createWebhookDeliveryWorker(deps: {
       }
     },
     {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       connection: redis as any,
       settings: {
         backoffStrategy: (attemptsMade: number) => {

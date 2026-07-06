@@ -1,4 +1,5 @@
-/* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-non-null-assertion */
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { createLogger } from '../lib/logger.js';
 
 const log = createLogger('dormant-account-cron');
