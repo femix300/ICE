@@ -33,7 +33,7 @@ export function createVendorsService(deps: { vendors: VendorsRepo; nomba: NombaC
 
         const nombaSchema = z.object({
           data: z.object({
-            bankAccountNumber: z.string(),
+            accountNumber: z.string(),
             bankName: z.string().optional(),
           }),
         });
@@ -43,8 +43,8 @@ export function createVendorsService(deps: { vendors: VendorsRepo; nomba: NombaC
           throw new AppError(502, 'NOMBA_ERROR', 'Invalid response format from Nomba');
         }
 
-        const { bankAccountNumber, bankName } = parsed.data.data;
-        vendor = await deps.vendors.updateVa(id, bankAccountNumber, bankName ?? 'Nombank');
+        const { accountNumber, bankName } = parsed.data.data;
+        vendor = await deps.vendors.updateVa(id, accountNumber, bankName ?? 'Nombank');
       } catch (err) {
         log.error({ err, id, merchantId }, 'Nomba VA provisioning failed, rolling back vendor');
         await deps.vendors.delete(id);

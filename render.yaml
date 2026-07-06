@@ -2,20 +2,27 @@ services:
   - type: web
     name: ice-api
     runtime: node
-    plan: starter
     region: oregon
+    plan: starter
     branch: main
-    autoDeploy: true
-    buildCommand: npm install && npm run build
+    buildCommand: npm install && npm run migrate
     startCommand: npm start
-    healthCheckPath: /health
+    healthCheckPath: /healthz
+    autoDeploy: true
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
-        value: 3000
-      - key: CORS_ORIGIN
-        sync: false
+        value: 10000
+      - key: DATABASE_URL
+        fromDatabase:
+          name: ice-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: ice-redis
+          property: connectionString
       - key: NOMBA_CLIENT_ID
         sync: false
       - key: NOMBA_CLIENT_SECRET
@@ -24,25 +31,18 @@ services:
         sync: false
       - key: NOMBA_WEBHOOK_SECRET
         sync: false
-      - key: DATABASE_URL
-        fromDatabase:
-          name: ice-postgres
-          property: connectionString
-      - key: REDIS_URL
-        fromService:
-          type: redis
-          name: ice-redis
-          property: connectionString
-
-  - type: redis
-    name: ice-redis
-    plan: starter
-    region: oregon
-    ipAllowList: []
+      - key: CORS_ORIGIN
+        sync: false
 
 databases:
-  - name: ice-postgres
-    plan: starter
+  - name: ice-db
     region: oregon
+    plan: starter
     databaseName: ice
-    user: ice
+    user: ice_user
+
+  - name: ice-redis
+    type: redis
+    region: oregon
+    plan: starter
+    maxmemoryPolicy: noeviction

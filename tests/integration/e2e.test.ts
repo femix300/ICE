@@ -221,6 +221,5 @@ describe('E2E Demo Flow: P10', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.data.length).toBeGreaterThanOrEqual(0);
-    console.log(`[Step 6] Deliveries queued: ${res.body.data?.length ?? 0}, polled success=${success}`);
   });
 });

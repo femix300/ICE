@@ -31,6 +31,7 @@ import { createNombaClient } from './lib/nomba.js';
 import { createAuthMiddleware } from './middleware/auth.js';
 import { createInvoicesRepo } from './repositories/invoices.repo.js';
 import { createReconciliationRepo } from './repositories/reconciliation.repo.js';
+import { createReconciliationService } from './services/reconciliation.service.js';
 import { createInvoicesService } from './services/invoices.service.js';
 import { createInvoicesController } from './controllers/invoices.controller.js';
 import { createInvoicesRouter } from './routes/invoices.routes.js';
@@ -56,9 +57,15 @@ const reconciliationRepo = createReconciliationRepo(db);
 const customersRepo = createCustomersRepo(db);
 const webhookDeliveriesRepo = createWebhookDeliveriesRepo(db);
 
+const reconciliationService = createReconciliationService({
+  reconciliation: reconciliationRepo,
+  invoices: invoicesRepo,
+});
+
 const webhookInboundService = createWebhookInboundService({
   transactions: transactionsRepo,
   webhookSecret: config.NOMBA_WEBHOOK_SECRET,
+  reconciliation: reconciliationService,
 });
 
 const merchantsService = createMerchantsService({
@@ -116,6 +123,8 @@ app.use(
 );
 
 app.use(cors({ origin: config.CORS_ORIGIN }));
+// Webhook route mounted before express.json() so the raw body is preserved for HMAC verification
+app.use('/v1/webhooks/nomba', express.text({ type: 'application/json' }), webhooksRouter);
 app.use(express.json({ limit: '1mb' }));
 app.use(rateLimit({ windowMs: 60_000, max: 100 }));
 
@@ -158,8 +167,6 @@ app.get('/redoc', (req, res) => {
 // Mount invoices router
 v1Router.use('/invoices', invoicesRouter);
 
-// Scope the raw text parser specifically to the webhook route
-v1Router.use('/webhooks/nomba', express.text({ type: 'application/json' }), webhooksRouter);
 
 // API Routes
 app.use('/v1', v1Router);

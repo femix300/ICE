@@ -22,7 +22,7 @@ export function createCustomersService(deps: {
 
     const nombaSchema = z.object({
       data: z.object({
-        bankAccountNumber: z.string(),
+        accountNumber: z.string(),
         bankName: z.string().optional(),
       }),
     });
@@ -32,8 +32,8 @@ export function createCustomersService(deps: {
       throw new AppError(502, 'NOMBA_ERROR', 'Invalid response format from Nomba');
     }
 
-    const { bankAccountNumber, bankName } = parsed.data.data;
-    return { accountNumber: bankAccountNumber, bankName: bankName ?? 'Nombank' };
+    const { accountNumber, bankName } = parsed.data.data;
+    return { accountNumber, bankName: bankName ?? 'Nombank' };
   };
 
   return {
@@ -52,9 +52,8 @@ export function createCustomersService(deps: {
         );
       }
 
-      const id = crypto.randomUUID();
       let customer = await deps.customers.create({
-        id,
+        id: crypto.randomUUID(),
         vendor_id: vendorId,
         name: data.name,
         email: data.email,
@@ -62,11 +61,11 @@ export function createCustomersService(deps: {
 
       if (data.provisionDva) {
         try {
-          const { accountNumber, bankName } = await provisionDva(id, vendorId, data.name);
-          customer = await deps.customers.updateVa(id, accountNumber, bankName);
+          const { accountNumber, bankName } = await provisionDva(customer.id, vendorId, data.name);
+          customer = await deps.customers.updateVa(customer.id, accountNumber, bankName);
         } catch (err) {
-          log.error({ err, id, vendorId }, 'Nomba DVA provisioning failed for customer');
-          await deps.customers.delete(id);
+          log.error({ err, customerId: customer.id, vendorId }, 'Nomba DVA provisioning failed for customer');
+          await deps.customers.delete(customer.id);
           throw err;
         }
       }
