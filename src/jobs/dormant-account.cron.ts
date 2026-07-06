@@ -1,4 +1,4 @@
-import { createLogger } from '../lib/logger.ts';
+import { createLogger } from '../lib/logger.js';
 
 const log = createLogger('dormant-account-cron');
 
