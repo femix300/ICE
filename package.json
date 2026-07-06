@@ -10,7 +10,8 @@
     "build": "tsc",
     "format": "prettier --write src",
     "lint": "eslint src",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "migrate": "tsx src/db/migrate.ts"
   },
   "keywords": [],
   "author": "",
