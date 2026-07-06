@@ -4,7 +4,6 @@ import { ok } from '../lib/respond.js';
 import type { Request, Response } from 'express';
 import { z } from 'zod';
 
-
 // Stub ok envelope
 
 export const StatementsQuerySchema = z.object({
@@ -16,7 +15,12 @@ export const StatementsQuerySchema = z.object({
 });
 
 export interface StatementsServiceStub {
-  getVendorStatement: (authId: string | null, vId: string, f: unknown, p: unknown) => Promise<unknown>;
+  getVendorStatement: (
+    authId: string | null,
+    vId: string,
+    f: unknown,
+    p: unknown,
+  ) => Promise<unknown>;
   getCustomerStatement: (
     authId: string | null,
     vId: string,
@@ -63,7 +67,8 @@ export function createStatementsController(deps: { service: StatementsServiceStu
       const query = validateQuery(req);
       const data = await deps.service.getCustomerStatement(
         getAuthVendorId(req),
-        vendorId as string, customerId as string,
+        vendorId as string,
+        customerId as string,
         { from: query.from, to: query.to, status: query.status },
         { page: query.page, pageSize: query.pageSize },
       );

@@ -104,7 +104,11 @@ export function createAnomalyService(deps: {
     analyze: async (rawTx: unknown): Promise<DetectedAnomaly[]> => {
       const parsed = InboundTransactionSchema.safeParse(rawTx);
       if (!parsed.success) {
-        throw new AppError(400, 'VALIDATION_ERROR', 'Invalid transaction payload for anomaly detection');
+        throw new AppError(
+          400,
+          'VALIDATION_ERROR',
+          'Invalid transaction payload for anomaly detection',
+        );
       }
       const tx = parsed.data;
 

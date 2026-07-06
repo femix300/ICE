@@ -1,16 +1,17 @@
 ## Summary
-To protect merchants and the platform from fraudulent inbound transactions, we need a way to flag suspicious activity (such as rapid velocity spikes or duplicate sender floods) before it impacts the system. This PR introduces a lightweight detection engine designed to act as an early warning system, catching bad actors while keeping false positives low so legitimate pipelines are not interrupted.
+To prevent unmatched inbound Virtual Account payments from dropping silently or breaking the reconciliation engine, we need a fallback mechanism. This PR implements a safety net that flags payments with no matching invoice/customer as `MISDIRECTED`, securely logs the raw payload and sender details, and immediately queues a webhook alert (`payment.misdirected`) so the platform owner can manually review and resolve the funds.
 
 ## Closes
-Closes ICE-308
+Closes ICE-206
 
 ## Scope
-- src/services/anomaly.service.ts: Implemented factory pattern for 4 core rules with resilient per-rule try/catch blocks.
-- Configured webhook alerting for flagged anomalies.
+- `src/services/misdirected.service.ts` & `src/repositories/misdirected.repo.ts`: Core storage and detection logic.
+- `src/routes/merchants.routes.ts`: Added paginated `GET /v1/payments/misdirected` endpoint for dashboard visibility.
+- Integrated with the existing outbound webhook queue (E02).
 
 ## Test Plan
-- npm run format && npm run lint && npm run typecheck - verified zero errors.
-- npm run test - full unit test coverage achieved for rule triggers and schema validation.
+- `npm run format && npm run lint && npm run typecheck` — verified zero errors.
+- `npm run test` — complete coverage for storage, webhook alerting, list endpoint scoping, and default `PENDING_REVIEW` statuses.
 
 ## Risk
-Low. Detection logic operates purely as an observer (no mutations). Resilient design ensures that a failure in one detection rule does not halt the entire transaction processing pipeline.
+Low. Operates as an isolated edge-case handler. Does not mutate the primary successful payment flow, serving strictly as a fallback bucket and notification trigger for unmatched data.

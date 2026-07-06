@@ -10,7 +10,9 @@ export interface Pagination {
 }
 
 export function createStatementsRepo(db: unknown) {
-  const pool = db as { query: <T = unknown>(sql: string, params: unknown[]) => Promise<{ rows: T[] }> };
+  const pool = db as {
+    query: <T = unknown>(sql: string, params: unknown[]) => Promise<{ rows: T[] }>;
+  };
 
   const buildFilterQuery = (baseQuery: string, params: unknown[], filters: StatementFilter) => {
     let sql = baseQuery;
@@ -30,20 +32,37 @@ export function createStatementsRepo(db: unknown) {
   };
 
   return {
-    getVendorStatement: async (vendorId: string, filters: StatementFilter, pagination: Pagination) => {
+    getVendorStatement: async (
+      vendorId: string,
+      filters: StatementFilter,
+      pagination: Pagination,
+    ) => {
       const offset = (pagination.page - 1) * pagination.pageSize;
-      const { sql: filterSql, params } = buildFilterQuery(`SELECT * FROM transactions WHERE vendor_id = $1`, [vendorId], filters);
-      
+      const { sql: filterSql, params } = buildFilterQuery(
+        `SELECT * FROM transactions WHERE vendor_id = $1`,
+        [vendorId],
+        filters,
+      );
+
       const finalSql = `${filterSql} ORDER BY created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
       params.push(pagination.pageSize, offset);
 
       const result = await pool.query(finalSql, params);
       return result.rows || [];
     },
-    getCustomerStatement: async (vendorId: string, customerId: string, filters: StatementFilter, pagination: Pagination) => {
+    getCustomerStatement: async (
+      vendorId: string,
+      customerId: string,
+      filters: StatementFilter,
+      pagination: Pagination,
+    ) => {
       const offset = (pagination.page - 1) * pagination.pageSize;
-      const { sql: filterSql, params } = buildFilterQuery(`SELECT * FROM transactions WHERE vendor_id = $1 AND customer_id = $2`, [vendorId, customerId], filters);
-      
+      const { sql: filterSql, params } = buildFilterQuery(
+        `SELECT * FROM transactions WHERE vendor_id = $1 AND customer_id = $2`,
+        [vendorId, customerId],
+        filters,
+      );
+
       const finalSql = `${filterSql} ORDER BY created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
       params.push(pagination.pageSize, offset);
 
@@ -60,6 +79,6 @@ export function createStatementsRepo(db: unknown) {
       `;
       const result = await pool.query(sql, [vendorId, pagination.pageSize, offset]);
       return result.rows || [];
-    }
+    },
   };
 }
