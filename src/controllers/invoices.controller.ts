@@ -19,7 +19,8 @@ export function createInvoicesController(service: InvoicesService) {
         }
 
         const invoice = await service.createInvoice(parsed.data);
-        return created(res, invoice);
+        const issued = await service.issueInvoice(invoice.id);
+        return created(res, issued);
       } catch (err) {
         next(err);
       }

@@ -102,7 +102,7 @@ function createFakeRefundQueue(): RefundQueue & { _jobs: RefundJobData[] } {
   const jobs: RefundJobData[] = [];
   return {
     _jobs: jobs,
-    async add(data: RefundJobData) {
+    async add(_name: string, data: RefundJobData) {
       jobs.push(data);
     },
   };
