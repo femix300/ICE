@@ -9,6 +9,7 @@ import MisdirectedPaymentCard, {
 import { api } from '../../lib/api';
 import { createLogger } from '../../lib/logger';
 import { CURRENT_MERCHANT_ID } from '../../lib/session';
+import AnomalyAlertPanel from '../../components/AnomalyAlertPanel';
 
 const log = createLogger('owner-dashboard-page');
 
@@ -184,6 +185,7 @@ export default function OwnerDashboard() {
                 </div>
               )}
             </div>
+            <AnomalyAlertPanel onToast={showToast} />
           </>
         )}
       </div>
