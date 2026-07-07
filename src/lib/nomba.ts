@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import { z } from 'zod';
 import { config } from '../config.js';
 import { AppError } from './errors.js';
@@ -165,6 +166,118 @@ export function createNombaClient() {
           throw new AppError(502, 'NOMBA_ERROR', 'Failed to delete virtual account');
         }
         return (await res.json()) as unknown;
+      } catch (error: unknown) {
+        if (error instanceof AppError) throw error;
+        throw new AppError(
+          502,
+          'NOMBA_ERROR',
+          error instanceof Error ? error.message : 'Unknown error',
+        );
+      }
+    },
+
+    lookupAccount: async ({
+      accountNumber,
+      bankCode,
+    }: {
+      accountNumber: string;
+      bankCode: string;
+    }) => {
+      try {
+        const lookupRes = await fetch(`${NOMBA_BASE_URL}/transfers/bank/lookup`, {
+          method: 'POST',
+          headers: getHeaders(),
+          body: JSON.stringify({ accountNumber, bankCode }),
+        });
+
+        if (!lookupRes.ok) {
+          throw new AppError(502, 'NOMBA_ERROR', 'Failed to lookup recipient account name');
+        }
+
+        const lookupSchema = z.object({
+          data: z
+            .object({
+              accountName: z.string(),
+            })
+            .optional(),
+        });
+
+        const parsedLookup = lookupSchema.safeParse(await lookupRes.json());
+        if (!parsedLookup.success || !parsedLookup.data.data?.accountName) {
+          throw new AppError(502, 'NOMBA_ERROR', 'Could not resolve account name from lookup');
+        }
+
+        return { accountName: parsedLookup.data.data.accountName };
+      } catch (error: unknown) {
+        if (error instanceof AppError) throw error;
+        throw new AppError(
+          502,
+          'NOMBA_ERROR',
+          error instanceof Error ? error.message : 'Unknown error',
+        );
+      }
+    },
+
+    // Standalone transfer for flows that already resolved the recipient name
+    // via lookupAccount() separately (e.g. misdirected payment refunds).
+    transfer: async ({
+      amount,
+      accountNumber,
+      bankCode,
+      narration,
+    }: {
+      amount: number; // Kobo — Rule 1: no conversion
+      accountNumber: string;
+      bankCode: string;
+      narration: string;
+    }) => {
+      try {
+        const lookupRes = await fetch(`${NOMBA_BASE_URL}/transfers/bank/lookup`, {
+          method: 'POST',
+          headers: getHeaders(),
+          body: JSON.stringify({ accountNumber, bankCode }),
+        });
+
+        if (!lookupRes.ok) {
+          throw new AppError(502, 'NOMBA_ERROR', 'Failed to lookup recipient account name');
+        }
+
+        const lookupSchema = z.object({
+          data: z
+            .object({
+              accountName: z.string(),
+            })
+            .optional(),
+        });
+
+        const parsedLookup = lookupSchema.safeParse(await lookupRes.json());
+        if (!parsedLookup.success || !parsedLookup.data.data?.accountName) {
+          throw new AppError(502, 'NOMBA_ERROR', 'Could not resolve account name from lookup');
+        }
+
+        const accountName = parsedLookup.data.data.accountName;
+        const merchantTxRef = `TXN-${crypto.randomUUID()}`;
+
+        const res = await fetch(`${NOMBA_BASE_URL.replace('/v1', '')}/v2/transfers/bank`, {
+          method: 'POST',
+          headers: getHeaders(),
+          body: JSON.stringify({
+            amount,
+            accountNumber,
+            bankCode,
+            merchantTxRef,
+            senderName: 'ICE Platform',
+            accountName,
+            narration,
+          }),
+        });
+
+        if (!res.ok) {
+          throw new AppError(502, 'NOMBA_ERROR', `Nomba transfer failed: ${res.status}`);
+        }
+
+        const data = (await res.json()) as { data?: { transferReference?: string } };
+        return { transferReference: data.data?.transferReference || merchantTxRef };
       } catch (error: unknown) {
         if (error instanceof AppError) throw error;
         throw new AppError(
