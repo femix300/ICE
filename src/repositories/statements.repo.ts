@@ -113,7 +113,17 @@ export function createStatementsRepo(db: unknown) {
     },
 
     getTransactionById: async (id: string) => {
-      const sql = `SELECT * FROM transactions WHERE id = $1`;
+      // Joins through va_map so the caller gets a real vendor_id back —
+      // transactions has no vendor_id column of its own, so without this
+      // join, service-layer vendor scoping on this method silently no-ops.
+      const sql = `
+        ${VA_MAP_CTE}
+        SELECT t.*, m.vendor_id, m.merchant_id
+        FROM transactions t
+        LEFT JOIN va_map m ON m.va_number = t.va_number
+        WHERE t.id = $1
+        LIMIT 1
+      `;
       const result = (await pool.query(sql, [id])) as { rows: unknown[] };
       return result?.rows?.[0] || null;
     },

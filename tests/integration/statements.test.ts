@@ -187,6 +187,63 @@ describe('Statements & Reporting API', () => {
     });
   });
 
+  describe('GET /v1/transactions/:id', () => {
+    let vendorATransactionId = '';
+
+    beforeAll(async () => {
+      // Simulate an inbound Nomba transaction against vendor A's DVA so we
+      // have a real transactions row to look up by id.
+      const vendorA = (
+        await db.query('SELECT nomba_va_number FROM vendors WHERE id = $1', [vendorAId])
+      ).rows[0];
+
+      const txRes = await db.query(
+        `INSERT INTO transactions (id, transaction_id, va_number, amount_kobo, sender_name, sender_account, sender_bank_code, raw_payload)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+         RETURNING id`,
+        [
+          crypto.randomUUID(),
+          crypto.randomUUID(),
+          vendorA.nomba_va_number,
+          150000,
+          'Test Sender',
+          '0123456789',
+          '044',
+          JSON.stringify({ test: true }),
+        ],
+      );
+      vendorATransactionId = txRes.rows[0].id;
+    });
+
+    it('vendor can access their own transaction by id', async () => {
+      const res = await request(app)
+        .get(`/v1/transactions/${vendorATransactionId}`)
+        .set('Authorization', `Bearer ${vendorAApiKey}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.ok).toBe(true);
+      expect(res.body.data.id).toBe(vendorATransactionId);
+    });
+
+    it('vendor key cannot access a transaction belonging to a different vendor (403)', async () => {
+      const res = await request(app)
+        .get(`/v1/transactions/${vendorATransactionId}`)
+        .set('Authorization', `Bearer ${vendorBApiKey}`);
+
+      expect(res.status).toBe(403);
+      expect(res.body.ok).toBe(false);
+    });
+
+    it('master key can access any transaction by id', async () => {
+      const res = await request(app)
+        .get(`/v1/transactions/${vendorATransactionId}`)
+        .set('Authorization', `Bearer ${merchantApiKey}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.ok).toBe(true);
+    });
+  });
+
   describe('GET /v1/merchants/:id/summary', () => {
     it('rejects vendor-scoped key with 403 (master key required)', async () => {
       const merchantId = (
