@@ -322,7 +322,7 @@ export function createMisdirectedService(deps: MisdirectedServiceDeps) {
 
       // 2. Perform the transfer via Nomba Transfer API
       const transfer = await deps.nombaTransfer.transfer({
-        amount: payment.amount_kobo / 100, // Nomba API requires Naira (Float). Math.floor used to prevent precision errors.
+        amount: payment.amount_kobo, // Rule 1: Always use Kobo, no conversion
         accountNumber: recipientAccount,
         bankCode: recipientBankCode,
         narration: `Refund for misdirected payment ref: ${id}`,
