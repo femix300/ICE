@@ -3,6 +3,9 @@ import { describe, it, expect, vi } from 'vitest';
 vi.mock('ioredis', () => {
   return {
     default: vi.fn().mockImplementation(() => ({
+      status: 'ready',
+    })),
+    Redis: vi.fn().mockImplementation(() => ({
       on: vi.fn(),
       status: 'ready',
     })),
