@@ -4,13 +4,9 @@ import { TRANSITIONS, InvoiceStatus as Status } from '../schemas/invoices.schema
 import { AppError } from '../lib/errors.js';
 import { createLogger } from '../lib/logger.js';
 import type { ReconciliationRepo } from '../repositories/reconciliation.repo.js';
-// import type { AuditService } from './audit.service.js';
+import type { AuditService } from './audit.service.js';
 
 const log = createLogger('invoices-service');
-
-interface AuditService {
-  logAction(opts: unknown): Promise<void>;
-}
 
 type InvoicesServiceDeps = {
   invoices: InvoicesRepo;
@@ -155,6 +151,28 @@ export function createInvoicesService(deps: InvoicesServiceDeps) {
       }
 
       return deps.reconciliation.findByInvoiceId(invoiceId);
+    },
+
+    async listReconciliationLogs(status?: string, page = 1, limit = 20) {
+      if (!deps.reconciliation) {
+        throw new AppError(500, 'INTERNAL_ERROR', 'Reconciliation repository not injected');
+      }
+
+      const offset = (page - 1) * limit;
+      const [logs, total] = await Promise.all([
+        deps.reconciliation.findLogs(status, limit, offset),
+        deps.reconciliation.countLogs(status),
+      ]);
+
+      return {
+        data: logs,
+        pagination: {
+          page,
+          limit,
+          total,
+          total_pages: Math.ceil(total / limit),
+        },
+      };
     },
   };
 }
