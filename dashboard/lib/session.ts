@@ -1,6 +1,5 @@
-// The ICE API is key-authenticated; the active identity is resolved from the
-// authenticated session. Until the session layer lands, the current vendor and
-// merchant are supplied here as single sources of truth so data stays scoped to
-// the right tenant on each dashboard.
+// The ICE API is key-authenticated; the active vendor identity is resolved from
+// the authenticated session. Until the session layer lands, the current vendor
+// is supplied here as a single source of truth for the vendor dashboard so all
+// data remains scoped to one vendor.
 export const CURRENT_VENDOR_ID = '11111111-1111-1111-1111-111111111111';
-export const CURRENT_MERCHANT_ID = '22222222-2222-2222-2222-222222222222';
