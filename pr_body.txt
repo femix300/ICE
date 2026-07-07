@@ -1,20 +1,17 @@
 ## Summary
-Implements the auto-refund engine (BullMQ worker) for handling virtual account overpayments. Ensures strict compliance with Nomba's integration rules by enforcing a mandatory recipient account lookup before executing transfers, and processes all monetary values exclusively in Kobo to prevent floating-point errors.
+To prevent unmatched inbound Virtual Account payments from dropping silently or breaking the reconciliation engine, we need a fallback mechanism. This PR implements a safety net that flags payments with no matching invoice/customer as `MISDIRECTED`, securely logs the raw payload and sender details, and immediately queues a webhook alert (`payment.misdirected`) so the platform owner can manually review and resolve the funds.
 
 ## Closes
-Closes ICE-304
+Closes ICE-206
 
 ## Scope
-- `src/workers/refund.worker.ts` — Implemented the core BullMQ worker. Integrates `NombaClient` for `lookupBank` and `transferToBank`. Handles success by queuing a webhook delivery. Removed illegal kobo-to-naira conversions and replaced inline error classes with the shared `AppError` from `src/lib/errors.js`.
-- `src/repositories/refunds.repo.ts` — Created repository to track refund statuses (`COMPLETED`, `FAILED`) and Nomba transfer references.
-- `tests/unit/refund.worker.test.ts` — Added full unit test suite covering the happy path (lookup + exact kobo transfer) and failure state propagation.
+- `src/services/misdirected.service.ts` & `src/repositories/misdirected.repo.ts`: Core storage and detection logic.
+- `src/routes/merchants.routes.ts`: Added paginated `GET /v1/payments/misdirected` endpoint for dashboard visibility.
+- Integrated with the existing outbound webhook queue (E02).
 
 ## Test Plan
-- `npm run format && npm run lint` — passed
-- `npm run typecheck` — passed (0 errors)
-- `npm run test tests/unit/refund.worker.test.ts` — passed (all worker scenarios covered)
+- `npm run format && npm run lint && npm run typecheck` — verified zero errors.
+- `npm run test` — complete coverage for storage, webhook alerting, list endpoint scoping, and default `PENDING_REVIEW` statuses.
 
 ## Risk
-Medium. This feature initiates real outbound transfers via the Nomba Transfer API. This risk is actively mitigated by:
-1. Strict `z.number().int().positive()` Zod validation on the job payload.
-2. The `lookupBank` pre-verification step failing the job before a transfer can even be attempted if the account is invalid.
+Low. Operates as an isolated edge-case handler. Does not mutate the primary successful payment flow, serving strictly as a fallback bucket and notification trigger for unmatched data.

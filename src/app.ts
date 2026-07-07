@@ -10,6 +10,7 @@ import swaggerUi from 'swagger-ui-express';
 import YAML from 'yamljs';
 
 import { config } from './config.js';
+import { createLogger } from './lib/logger.js';
 import { createDbPool } from './db/client.js';
 import { createTransactionsRepo } from './repositories/transactions.repo.js';
 import { createWebhookInboundService } from './services/webhook-inbound.service.js';
@@ -44,6 +45,13 @@ import { createCustomersRepo } from './repositories/customers.repo.js';
 import { createCustomersService } from './services/customers.service.js';
 import { createCustomersController } from './controllers/customers.controller.js';
 import { createCustomersRouter } from './routes/customers.routes.js';
+import { createMisdirectedRepo } from './repositories/misdirected.repo.js';
+import { createMisdirectedService } from './services/misdirected.service.js';
+import { createMisdirectedController } from './controllers/misdirected.controller.js';
+import { createMisdirectedRouter } from './routes/misdirected.routes.js';
+import { createAuditRepo } from './repositories/audit.repo.js';
+import { createAuditService } from './services/audit.service.js';
+import { createNightlyReconciliation } from './jobs/nightly-reconciliation.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -62,6 +70,7 @@ const reconciliationRepo = createReconciliationRepo(db);
 const customersRepo = createCustomersRepo(db);
 const webhookDeliveriesRepo = createWebhookDeliveriesRepo(db);
 const refundsRepo = createRefundsRepo(db);
+const misdirectedRepo = createMisdirectedRepo(db);
 
 const reconciliationService = createReconciliationService({
   reconciliation: reconciliationRepo,
@@ -81,9 +90,12 @@ const merchantsService = createMerchantsService({
   webhookDeliveries: webhookDeliveriesRepo,
 });
 const vendorsService = createVendorsService({ vendors: vendorsRepo, nomba });
+const auditRepo = createAuditRepo(db);
+const auditService = createAuditService({ audit: auditRepo });
 const invoicesService = createInvoicesService({
   invoices: invoicesRepo,
   reconciliation: reconciliationRepo,
+  audit: auditService,
 });
 const customersService = createCustomersService({
   customers: customersRepo,
@@ -91,19 +103,44 @@ const customersService = createCustomersService({
   nomba,
 });
 
+// Adapter: misdirectedService's RefundQueue expects add(data), while the
+// underlying BullMQ Queue expects add(name, data). Wrap rather than change
+// either service's existing type.
+const misdirectedRefundQueue = {
+  add: async (data: {
+    transaction_id: string;
+    amount_kobo: number;
+    recipient_account: string;
+    recipient_bank_code: string;
+  }): Promise<void> => {
+    await refundQueue.add('refund', data);
+  },
+};
+
+const misdirectedService = createMisdirectedService({
+  misdirected: misdirectedRepo,
+  invoices: invoicesRepo,
+  reconciliation: reconciliationRepo,
+  audit: auditRepo,
+  refundQueue: misdirectedRefundQueue,
+  nombaTransfer: nomba,
+});
+
 const merchantsController = createMerchantsController(merchantsService);
 const vendorsController = createVendorsController(vendorsService);
 const webhooksController = createWebhooksController(webhookInboundService);
 const invoicesController = createInvoicesController(invoicesService);
 const customersController = createCustomersController(customersService, vendorsService);
+const misdirectedController = createMisdirectedController(misdirectedService);
 
 const authMiddleware = createAuthMiddleware({ merchants: merchantsRepo, vendors: vendorsRepo });
 
 const merchantsRouter = createMerchantsRouter(merchantsController, authMiddleware);
 
 const webhooksRouter = createWebhooksRouter(webhooksController);
-const invoicesRouter = createInvoicesRouter(invoicesController);
+const invoicesRouter = createInvoicesRouter(invoicesController, authMiddleware);
 const customersRouter = createCustomersRouter(customersController, authMiddleware);
+const misdirectedRouter = createMisdirectedRouter(misdirectedController, authMiddleware);
 
 const vendorsRouter = createVendorsRouter(vendorsController, authMiddleware, customersRouter);
 setupV1Router({ merchantsRouter, vendorsRouter });
@@ -174,6 +211,8 @@ app.get('/redoc', (req, res) => {
 
 // Mount invoices router
 v1Router.use('/invoices', invoicesRouter);
+// Mount misdirected payments router
+v1Router.use('/payments', misdirectedRouter);
 
 // API Routes
 app.use('/v1', v1Router);
@@ -195,5 +234,18 @@ createWebhookDeliveryWorker({
   deliveries: webhookDeliveriesRepo,
   deadLetterQueue: webhookDeliveryQueue,
 });
+
+// Nightly reconciliation diff — runs at midnight, diffs Nomba /transactions against local ledger
+createNightlyReconciliation({
+  nomba,
+  db,
+  alertOps: async (_title, _payload) => {
+    // Alerts routed via webhook delivery queue as system events
+    await webhookDeliveryQueue.add('webhook-delivery', {
+      event_type: 'system.reconciliation_drift',
+      payload: { title: _title, ...(_payload as Record<string, unknown>) },
+    });
+  },
+}).schedule();
 
 export { app, db, nomba };

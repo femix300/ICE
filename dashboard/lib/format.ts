@@ -7,15 +7,6 @@ export const formatKoboToNaira = (kobo: number): string => nairaFormatter.format
 
 export const formatReconciliationRate = (rate: number): string => `${rate.toFixed(1)}%`;
 
-export const formatDate = (value: string | Date): string => {
-  const date = value instanceof Date ? value : new Date(value);
-  return date.toLocaleDateString('en-NG', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
-};
-
 export const formatTimestamp = (value: string): string => {
   const date = new Date(value);
   const datePart = date.toLocaleDateString('en-NG', {

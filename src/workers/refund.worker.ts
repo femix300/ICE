@@ -63,7 +63,7 @@ export function createRefundWorker(deps: {
       let lookupResult: unknown;
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const nombaAny = deps.nomba as any; // Safe fallback if lookupBank type isn't fully merged in lib/nomba.ts yet
+        const nombaAny = deps.nomba as any; // Safe fallback if lookupBank type isn't fully merged in lib/nomba.ts yet
         if (nombaAny.lookupBank) {
           lookupResult = await nombaAny.lookupBank({
             accountNumber: recipient_account,
@@ -126,7 +126,7 @@ export function createRefundWorker(deps: {
     },
     {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      connection: redis as any
+      connection: redis as any,
     },
   );
 
