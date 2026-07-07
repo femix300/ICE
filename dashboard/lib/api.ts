@@ -17,6 +17,7 @@ export type ApiResponse = z.infer<typeof apiResponseSchema>;
 
 interface ApiRequestOptions<T> {
   schema: z.Schema<T>;
+  key?: string;
 }
 
 export const api = {
@@ -158,6 +159,71 @@ export const api = {
     }
 
     // Fallback if envelope does not match standard backend structure
+    if (options?.schema) {
+      return options.schema.parse(result);
+    }
+    return result as T;
+  },
+  delete: async <T>(path: string, options?: ApiRequestOptions<T>): Promise<T> => {
+    const headers: Record<string, string> = {
+      Accept: 'application/json',
+    };
+    if (options?.key) {
+      headers['Authorization'] = `Bearer ${options.key}`;
+    }
+
+    const cleanPath = path.startsWith('/') ? path : `/${path}`;
+    const response = await fetch(`${BASE}${cleanPath}`, {
+      method: 'DELETE',
+      headers,
+    });
+
+    if (response.status === 401) {
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login';
+      }
+      throw new AppError('UNAUTHORIZED', 'Unauthorized');
+    }
+
+    if (!response.ok) {
+      let errorMessage = `HTTP error! Status: ${response.status}`;
+      try {
+        const errorData = await response.json();
+        if (errorData && typeof errorData === 'object') {
+          if ('message' in errorData && typeof errorData.message === 'string') {
+            errorMessage = errorData.message;
+          } else if ('error' in errorData && typeof errorData.error === 'string') {
+            errorMessage = errorData.error;
+          } else if (
+            'data' in errorData &&
+            errorData.data &&
+            typeof errorData.data === 'object' &&
+            'message' in errorData.data &&
+            typeof errorData.data.message === 'string'
+          ) {
+            errorMessage = errorData.data.message;
+          }
+        }
+      } catch (err) {
+        log.error({ err, status: response.status }, 'Failed to parse DELETE error response JSON');
+      }
+      throw new AppError('HTTP_ERROR', errorMessage);
+    }
+
+    const result = await response.json();
+
+    const parsedEnvelope = apiResponseSchema.safeParse(result);
+    if (parsedEnvelope.success) {
+      if (!parsedEnvelope.data.ok) {
+        throw new AppError('API_ERROR', parsedEnvelope.data.error || 'API returned ok=false');
+      }
+      const rawData = parsedEnvelope.data.data;
+      if (options?.schema) {
+        return options.schema.parse(rawData);
+      }
+      return rawData as T;
+    }
+
     if (options?.schema) {
       return options.schema.parse(result);
     }

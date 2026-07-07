@@ -1,4 +1,5 @@
 import React from 'react';
+import RefundStatusBadge, { type RefundStatus } from './RefundStatusBadge';
 
 export type ReconciliationStatus =
   | 'MATCHED'
@@ -20,6 +21,7 @@ export type TransactionDetail = {
   raw_payload: unknown;
   created_at: string;
   invoice_id?: string | null;
+  refund_status?: RefundStatus;
 };
 
 export type ReconciliationDetail = {
@@ -199,12 +201,17 @@ export default function TransactionDetail({ transaction, reconciliation }: Trans
             {transaction.transaction_id}
           </p>
         </div>
-        <span
-          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold tracking-wide uppercase border ${statusConfig.color}`}
-        >
-          {statusConfig.icon}
-          {statusConfig.label}
-        </span>
+        <div className="flex items-center gap-2">
+          <span
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold tracking-wide uppercase border ${statusConfig.color}`}
+          >
+            {statusConfig.icon}
+            {statusConfig.label}
+          </span>
+          {transaction.refund_status && (
+            <RefundStatusBadge status={transaction.refund_status} />
+          )}
+        </div>
       </div>
 
       <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-sm">
