@@ -21,9 +21,7 @@ export default function StatCard({ label, value, subtext, icon }: StatCardProps)
         )}
       </div>
       <div className="mt-4">
-        <p className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">
-          {value}
-        </p>
+        <p className={`text-2xl font-bold tracking-tight ${valueColor}`}>{value}</p>
         {subtext && (
           <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{subtext}</p>
         )}
