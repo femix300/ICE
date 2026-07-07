@@ -1,9 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
 
-import {
-  misdirectedIdParamSchema,
-  matchPaymentBodySchema,
-} from '../schemas/misdirected.schema.js';
+import { misdirectedIdParamSchema, matchPaymentBodySchema } from '../schemas/misdirected.schema.js';
 import type { MisdirectedService } from '../services/misdirected.service.js';
 import { AppError } from '../lib/errors.js';
 import { ok } from '../lib/respond.js';
