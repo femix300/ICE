@@ -34,12 +34,18 @@ export function createStatementsController(deps: { service: StatementsService })
     return parsed.data;
   };
 
+  const paramStr = (v: string | string[] | undefined, name: string): string => {
+    if (typeof v !== 'string' || !v) {
+      throw new AppError(400, 'VALIDATION_ERROR', `${name} is required`);
+    }
+    return v;
+  };
+
   return {
     getVendorStatement: async (req: Request, res: Response, next: NextFunction) => {
       try {
-        const vendorId = req.params.id;
-        if (!vendorId) throw new AppError(400, 'VALIDATION_ERROR', 'Vendor ID is required');
-        
+        const vendorId = paramStr(req.params.id, 'Vendor ID');
+
         const query = validateQuery(req);
         const data = await deps.service.getVendorStatement(
           getAuthVendorId(req), 
@@ -54,8 +60,8 @@ export function createStatementsController(deps: { service: StatementsService })
     },
     getCustomerStatement: async (req: Request, res: Response, next: NextFunction) => {
       try {
-        const { id: vendorId, cid: customerId } = req.params;
-        if (!vendorId || !customerId) throw new AppError(400, 'VALIDATION_ERROR', 'Vendor ID and Customer ID are required');
+        const vendorId = paramStr(req.params.id, 'Vendor ID');
+        const customerId = paramStr(req.params.cid, 'Customer ID');
         
         const query = validateQuery(req);
         const data = await deps.service.getCustomerStatement(
@@ -72,9 +78,8 @@ export function createStatementsController(deps: { service: StatementsService })
     },
     getTransactions: async (req: Request, res: Response, next: NextFunction) => {
       try {
-        const vendorId = req.params.id;
-        if (!vendorId) throw new AppError(400, 'VALIDATION_ERROR', 'Vendor ID is required');
-        
+        const vendorId = paramStr(req.params.id, 'Vendor ID');
+
         const query = validateQuery(req);
         const data = await deps.service.getTransactions(
           getAuthVendorId(req), 
@@ -88,15 +93,14 @@ export function createStatementsController(deps: { service: StatementsService })
     },
     getPlatformSummary: async (req: Request, res: Response, next: NextFunction) => {
       try {
-        const merchantId = req.params.id;
-        if (!merchantId) throw new AppError(400, 'VALIDATION_ERROR', 'Merchant ID is required');
+        const merchantId = paramStr(req.params.id, 'Merchant ID');
         
         const isMasterKey = !getAuthVendorId(req) && req.principal?.tier === 'merchant';
         if (!isMasterKey) {
             throw new AppError(403, 'FORBIDDEN', 'Platform master key required');
         }
 
-        const data = await deps.service.getPlatformSummary(merchantId);
+        const data = await deps.service.getPlatformSummary(isMasterKey, merchantId);
         return ok(res, data);
       } catch (err) {
         next(err);
@@ -104,8 +108,7 @@ export function createStatementsController(deps: { service: StatementsService })
     },
     getTransactionById: async (req: Request, res: Response, next: NextFunction) => {
       try {
-        const { id } = req.params;
-        if (!id) throw new AppError(400, 'VALIDATION_ERROR', 'Transaction ID is required');
+        const id = paramStr(req.params.id, 'Transaction ID');
         
         const data = await deps.service.getTransactionById(getAuthVendorId(req), id);
         if (!data) {
@@ -118,3 +121,5 @@ export function createStatementsController(deps: { service: StatementsService })
     }
   };
 }
+
+export type StatementsController = ReturnType<typeof createStatementsController>;

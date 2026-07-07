@@ -52,6 +52,12 @@ import { createMisdirectedRouter } from './routes/misdirected.routes.js';
 import { createAuditRepo } from './repositories/audit.repo.js';
 import { createAuditService } from './services/audit.service.js';
 import { createNightlyReconciliation } from './jobs/nightly-reconciliation.js';
+import { createStatementsRepo } from './repositories/statements.repo.js';
+import { createStatementsService } from './services/statements.service.js';
+import { createStatementsController } from './controllers/statements.controller.js';
+import { createStatementsRouter } from './routes/statements.routes.js';
+import { createWebhookDeliveriesController } from './controllers/webhook-deliveries.controller.js';
+import { createWebhookDeliveriesRouter } from './routes/webhook-deliveries.routes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -92,6 +98,13 @@ const merchantsService = createMerchantsService({
 const vendorsService = createVendorsService({ vendors: vendorsRepo, nomba });
 const auditRepo = createAuditRepo(db);
 const auditService = createAuditService({ audit: auditRepo });
+const statementsRepo = createStatementsRepo(db);
+const statementsService = createStatementsService({ repo: statementsRepo });
+const statementsController = createStatementsController({ service: statementsService });
+const webhookDeliveriesController = createWebhookDeliveriesController({
+  repo: webhookDeliveriesRepo,
+  webhookDeliveryQueue,
+});
 const invoicesService = createInvoicesService({
   invoices: invoicesRepo,
   reconciliation: reconciliationRepo,
@@ -141,6 +154,8 @@ const webhooksRouter = createWebhooksRouter(webhooksController);
 const invoicesRouter = createInvoicesRouter(invoicesController, authMiddleware);
 const customersRouter = createCustomersRouter(customersController, authMiddleware);
 const misdirectedRouter = createMisdirectedRouter(misdirectedController, authMiddleware);
+const statementsRouter = createStatementsRouter(statementsController, authMiddleware);
+const webhookDeliveriesRouter = createWebhookDeliveriesRouter(webhookDeliveriesController, authMiddleware);
 
 const vendorsRouter = createVendorsRouter(vendorsController, authMiddleware, customersRouter);
 setupV1Router({ merchantsRouter, vendorsRouter });
@@ -213,6 +228,8 @@ app.get('/redoc', (req, res) => {
 v1Router.use('/invoices', invoicesRouter);
 // Mount misdirected payments router
 v1Router.use('/payments', misdirectedRouter);
+v1Router.use('/webhook-deliveries', webhookDeliveriesRouter);
+v1Router.use('/', statementsRouter);
 
 // API Routes
 app.use('/v1', v1Router);
