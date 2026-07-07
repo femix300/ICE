@@ -49,6 +49,9 @@ import { createMisdirectedRepo } from './repositories/misdirected.repo.js';
 import { createMisdirectedService } from './services/misdirected.service.js';
 import { createMisdirectedController } from './controllers/misdirected.controller.js';
 import { createMisdirectedRouter } from './routes/misdirected.routes.js';
+import { createAuditRepo } from './repositories/audit.repo.js';
+import { createAuditService } from './services/audit.service.js';
+import { createNightlyReconciliation } from './jobs/nightly-reconciliation.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -87,22 +90,18 @@ const merchantsService = createMerchantsService({
   webhookDeliveries: webhookDeliveriesRepo,
 });
 const vendorsService = createVendorsService({ vendors: vendorsRepo, nomba });
+const auditRepo = createAuditRepo(db);
+const auditService = createAuditService({ audit: auditRepo });
 const invoicesService = createInvoicesService({
   invoices: invoicesRepo,
   reconciliation: reconciliationRepo,
+  audit: auditService,
 });
 const customersService = createCustomersService({
   customers: customersRepo,
   vendors: vendorsRepo,
   nomba,
 });
-
-// Stub audit sink until M08 (Audit Overrides) builds real persistence
-const auditRepo = {
-  async create(entry: unknown) {
-    createLogger('audit-stub').info(entry as object, 'audit event (stub, not yet persisted)');
-  },
-};
 
 // Adapter: misdirectedService's RefundQueue expects add(data), while the
 // underlying BullMQ Queue expects add(name, data). Wrap rather than change
@@ -139,7 +138,7 @@ const authMiddleware = createAuthMiddleware({ merchants: merchantsRepo, vendors:
 const merchantsRouter = createMerchantsRouter(merchantsController, authMiddleware);
 
 const webhooksRouter = createWebhooksRouter(webhooksController);
-const invoicesRouter = createInvoicesRouter(invoicesController);
+const invoicesRouter = createInvoicesRouter(invoicesController, authMiddleware);
 const customersRouter = createCustomersRouter(customersController, authMiddleware);
 const misdirectedRouter = createMisdirectedRouter(misdirectedController, authMiddleware);
 
@@ -235,5 +234,18 @@ createWebhookDeliveryWorker({
   deliveries: webhookDeliveriesRepo,
   deadLetterQueue: webhookDeliveryQueue,
 });
+
+// Nightly reconciliation diff — runs at midnight, diffs Nomba /transactions against local ledger
+createNightlyReconciliation({
+  nomba,
+  db,
+  alertOps: async (_title, _payload) => {
+    // Alerts routed via webhook delivery queue as system events
+    await webhookDeliveryQueue.add('webhook-delivery', {
+      event_type: 'system.reconciliation_drift',
+      payload: { title: _title, ...(_payload as Record<string, unknown>) },
+    });
+  },
+}).schedule();
 
 export { app, db, nomba };
