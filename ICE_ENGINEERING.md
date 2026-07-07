@@ -12,16 +12,21 @@ This document covers the operational standards every developer and AI agent must
 
 ### 1.1 Branching
 
-Trunk-based development with short-lived feature branches.
+Trunk-based development with short-lived feature branches, utilizing a dual-branch structure during the hackathon.
 
 ```
 main                 production-ready, always green
-├── feat/<scope>     one branch per feature (e.g. feat/scaffold)
-├── fix/<scope>      bug fix
-└── chore/<scope>    tooling, deps, docs
+├── dev              active integration branch (acts as 'main' during dev)
+    ├── feat/<scope> one branch per feature (e.g. feat/scaffold)
+    ├── fix/<scope>  bug fix
+    └── chore/<scope> tooling, deps, docs
 ```
 
-Branches live no more than a few days. If a branch is open longer, rebase on `main` daily.
+**Workflow:**
+- All feature branches branch off `dev`.
+- All feature PRs merge into `dev`.
+- At the end of the day, if `dev` is stable and tested, it is merged into `main`.
+- Branches live no more than a few days. Rebase on `dev` daily if open longer.
 
 ### 1.2 Commits
 
@@ -53,14 +58,20 @@ The author is the human who decided to land the change and is accountable for it
 
 ### 1.4 Pull Requests
 
-A PR must have:
+A PR must follow this exact template and structure:
 
-- A short title in the same style as a commit message
-- A description explaining the problem and the approach
-- A `## Test Plan` section showing what you verified
-- All checks passing locally: `npm run typecheck && npm run lint && npm test`
-- Self-review against the [Definition of Done](#3-definition-of-done) checklist
-- **Peter's review and approval** before merging
+1. **Summary:** A clear explanation of what the PR accomplishes and what it changes.
+2. **Closes:** Link directly to the Linear issue when applicable (e.g., `Closes ICE-101`); otherwise `Closes: N/A`.
+3. **Scope:** Confirm no feature drift, list any new environment variables, and highlight deliberate architectural choices or structure notes.
+4. **Test Plan:** List what was tested/verified; if not applicable (e.g., docs-only), state why, and note lint/typecheck/tests status as applicable.
+5. **Risk:** Assess the risk level (Low/Medium/High) and point the reviewer to the most critical parts of the code.
+
+Additionally:
+- A short title in the same style as a commit message.
+- All checks passing locally: `npm run typecheck && npm run lint && npm test`.
+- Self-review against the [Definition of Done](#3-definition-of-done) checklist.
+- **Peter's review and approval** before merging.
+- **Auto-Review:** You MUST leave a follow-up comment on your PR tagging `@copilot` to trigger an automated AI code review immediately after opening it.
 
 Squash-merge into `main`. The squash message becomes the commit on trunk — edit it to read well.
 
@@ -181,6 +192,16 @@ Prettier owns formatting. Run `npm run format` before pushing. Don't argue with 
 
 Never use emojis in the codebase, commit messages, documentation, or anywhere in the repository. Stick strictly to plain text and ASCII characters.
 
+### 2.11 Frontend Security Standards
+
+- Enforce native auto-escaping for React/Next.js.
+- Strictly prohibit `dangerouslySetInnerHTML` unless explicitly approved and sanitized via `DOMPurify`.
+- Mandate that authentication tokens (like JWTs or Session IDs) must be stored in `HttpOnly`, `Secure`, `SameSite=Lax` or `SameSite=Strict` cookies, and **never** in `localStorage` or `sessionStorage`.
+
+### 2.12 Dependency Security
+
+- Mandate that all new npm packages must be vetted/scanned for vulnerabilities before being added to `package.json` (e.g. `npm audit`, OSV Scanner, and/or reviewing GitHub Dependabot alerts).
+
 ---
 
 ## 3. Definition of Done
@@ -237,11 +258,12 @@ Before opening a PR, the developer (or their AI agent) must verify **ALL** of th
 
 ### 3.6 Integration Safety
 
-- [ ] Pulled latest `main` and rebased — no merge conflicts
+- [ ] Pulled latest `dev` and rebased your branch on `dev` — no merge conflicts
 - [ ] Existing tests still pass after rebase: `npm test`
 - [ ] App starts without errors: `npm run dev`
 - [ ] `/healthz` still returns 200 (if app is bootable at this stage)
 - [ ] No regressions in previously working features
+- [ ] PR targets `dev` (not `main`) during active development
 
 ### 3.7 Security
 
@@ -252,11 +274,15 @@ Before opening a PR, the developer (or their AI agent) must verify **ALL** of th
 - [ ] Webhook verification uses `crypto.timingSafeEqual` (never `===`)
 - [ ] No sensitive data logged (passwords, tokens, full request bodies)
 - [ ] New env vars added to `.env.example`
+- [ ] **Frontend**: Native escaping used, no `dangerouslySetInnerHTML` bypasses, tokens stored in secure cookies (not `localStorage`).
+- [ ] **Dependencies**: No new packages added without explicit vulnerability scanning.
 
 ### 3.8 Handoff
 
-- [ ] Updated `HANDOFF.md` with: what was built, files changed, decisions made
-- [ ] If any task requirements changed during implementation, noted in HANDOFF.md
+- [ ] Updated your personal handoff file in your **local scratch directory** (e.g., `handoffs/` folder inside your `.gemini/antigravity-ide/brain/<chat-id>/scratch/` directory) with: what was built, files changed, decisions made.
+- [ ] If you are working on the main documentation, append your updates to the master `HANDOFF.md` in the shared local scratch directory.
+- [ ] **NEVER** push any `handoffs/` files or `HANDOFF.md` to GitHub. They must remain strictly in local scratch directories to prevent repo clutter.
+- [ ] If any task requirements changed during implementation, noted in your personal handoff file.
 
 > **Review flow:** Self-review with this checklist → Open PR → Request Peter's review → Merge after approval.
 
@@ -264,16 +290,16 @@ Before opening a PR, the developer (or their AI agent) must verify **ALL** of th
 
 ## 4. Task Breakdown
 
-All 36 tasks are tracked in Linear under the ICE project. Each task has a unique ID, assignee, dependencies, and the full DoD checklist.
+All 37 tasks are tracked in Linear under the ICE project. Each task has a unique ID, assignee, dependencies, and the full DoD checklist.
 
 ### 4.1 Task Assignment
 
 | Dev | Task Series | Linear Issues | Count |
 |-----|-------------|---------------|-------|
-| **Peter Ajimoti** (Lead) | P01–P10 | ICE-29 to ICE-38 | 10 |
-| **Marvelous** (Payments) | M01–M08 | ICE-39 to ICE-46 | 8 |
-| **Emmanuel** (Async) | E01–E08 | ICE-47 to ICE-54 | 8 |
-| **Samkiel** (Frontend) | S01–S10 | ICE-55 to ICE-64 | 10 |
+| **Peter Ajimoti** (Lead) | P01–P10 | ICE-166 to ICE-175 | 10 |
+| **Marvelous** (Payments) | M01–M08 | ICE-176 to ICE-183 | 8 |
+| **Emmanuel** (Async) | E01–E09 | ICE-184 to ICE-191, ICE-202 | 9 |
+| **Samkiel** (Frontend) | S01–S10 | ICE-192 to ICE-201 | 10 |
 
 ### 4.2 Day 1 Parallelism
 
@@ -293,7 +319,7 @@ All 4 devs start Day 1 independently — nobody waits:
 | **Phase 1 — Foundation** (Day 1) | Scaffold, DB, Redis, Auth | P01, M01, E01, S01 |
 | **Phase 2 — Core Entities** (Day 2-3) | Merchants, Vendors, Customers | P02–P08, S02, S03 |
 | **Phase 3 — Payments Core** (Day 3-4) | Webhooks, Reconciliation, Invoices | M02–M05, E02, E03, S04–S06 |
-| **Phase 4 — Extended** (Day 5-6) | Misdirected, Refunds, Statements | M06–M08, E04–E08, S07–S10 |
+| **Phase 4 — Extended** (Day 5-6) | Misdirected, Refunds, Statements | M06–M08, E04–E09, S07–S10 |
 | **Phase 5 — Polish & Demo** (Day 6-7) | Swagger, Deploy, E2E Test | P09, P10 |
 
 ### 4.4 Dependency Map
@@ -324,12 +350,35 @@ Day 5-6 (Extended):
   M06 → M07 → M08 (misdirected actions + audit)
   E01 + M05 → E04 (auto-refund engine)
   M08 → E05, E06 (statements, summary)
+  E06 → E09 (nightly reconciliation diff)
   S04 → S05, S06, S07, S08, S09, S10
 
 Day 6-7 (Polish):
   P06 + M08 → P09 (Swagger + health check)
   P09 → P10 (deployment + E2E)
 ```
+
+---
+
+## 5. Nomba Developer Cheat Sheet (Certification Golden Rules)
+
+To ensure our integration meets the standard required by the hackathon judges (matching the Nomba Certification), strictly follow these rules:
+
+### Core Environment
+- **Sandbox Base URL:** `https://sandbox.nomba.com/v1` (Use this for all hackathon work)
+- **Production Base URL:** `https://api.nomba.com/v1` (Do not use until post-hackathon KYC)
+- **Secrets Management:** `clientSecret` and webhook secrets must **never** be committed to source code. Always load from environment variables (e.g., `process.env.NOMBA_CLIENT_SECRET`).
+
+### Test Instruments
+- **Test Card (Success):** `5060 6666 6666 6666 666` (Any future expiry, any CVV)
+- **Test Card (Insufficient Funds):** `5060 6666 6666 6666 674`
+- **Test Bank (Virtual Account Inbound):** Wema Bank, account `0000000000` (Use this to simulate inbound transfers to Virtual Accounts for webhook testing)
+
+### The 4 Golden Rules
+1. **Always use Kobo:** All monetary amounts MUST be sent and stored in Kobo (e.g., ₦1,500 = `150000`). Never use floats or decimals.
+2. **The 55-Minute Token Cache:** Do **not** request a new token per API call. Server-to-server OAuth `client_credentials` tokens last 60 minutes. Cache them in memory/Redis and refresh automatically [...]
+3. **Webhook Verification & Idempotency:** Webhook signatures MUST be verified using HMAC-SHA256 (`nomba-signature` header). Furthermore, Nomba may send the same event twice; you must use `event.reque[...]
+4. **Always Lookup Before Transfers:** Never blindly hit `/transfers/bank`. You MUST call `/transfers/bank/lookup` to verify the recipient `accountName` first to prevent irreversible loss.
 
 ---
 

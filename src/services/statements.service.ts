@@ -11,9 +11,7 @@ export type PaginationParams = {
   pageSize: number;
 };
 
-// Stub AppError until P01 is merged
 
-}
 
 export interface StatementsRepoStub {
   getVendorStatement: (vendorId: string, filters: StatementFilters, pagination: PaginationParams) => Promise<unknown>;
