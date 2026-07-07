@@ -1,16 +1,26 @@
+import { AppError } from '../lib/errors.js';
+
+export type StatementFilters = {
+  from?: string;
+  to?: string;
+  status?: string;
+};
+
+export type PaginationParams = {
+  page: number;
+  pageSize: number;
+};
+
 // Stub AppError until P01 is merged
-class AppError extends Error {
-  constructor(public code: string, message: string) {
-    super(message);
-  }
+
 }
 
 export interface StatementsRepoStub {
-  getVendorStatement: (vendorId: string, filters: any, pagination: any) => Promise<any>;
-  getCustomerStatement: (vendorId: string, customerId: string, filters: any, pagination: any) => Promise<any>;
-  getTransactions: (vendorId: string, pagination: any) => Promise<any>;
-  getPlatformSummary: (merchantId: string) => Promise<any>;
-  getTransactionById: (id: string) => Promise<any>;
+  getVendorStatement: (vendorId: string, filters: StatementFilters, pagination: PaginationParams) => Promise<unknown>;
+  getCustomerStatement: (vendorId: string, customerId: string, filters: StatementFilters, pagination: PaginationParams) => Promise<unknown>;
+  getTransactions: (vendorId: string, pagination: PaginationParams) => Promise<unknown>;
+  getPlatformSummary: (merchantId: string) => Promise<unknown>;
+  getTransactionById: (id: string) => Promise<unknown>;
 }
 
 export function createStatementsService(deps: { repo: StatementsRepoStub }) {
@@ -22,17 +32,17 @@ export function createStatementsService(deps: { repo: StatementsRepoStub }) {
   };
 
   return {
-    getVendorStatement: async (authVendorId: string | null, vendorId: string, filters: any, pagination: any) => {
+    getVendorStatement: async (authVendorId: string | null, vendorId: string, filters: StatementFilters, pagination: PaginationParams) => {
       enforceScope(authVendorId, vendorId);
       const data = await deps.repo.getVendorStatement(vendorId, filters, pagination);
       // DB handles kobo conversions natively
       return data;
     },
-    getCustomerStatement: async (authVendorId: string | null, vendorId: string, customerId: string, filters: any, pagination: any) => {
+    getCustomerStatement: async (authVendorId: string | null, vendorId: string, customerId: string, filters: StatementFilters, pagination: PaginationParams) => {
       enforceScope(authVendorId, vendorId);
       return await deps.repo.getCustomerStatement(vendorId, customerId, filters, pagination);
     },
-    getTransactions: async (authVendorId: string | null, vendorId: string, pagination: any) => {
+    getTransactions: async (authVendorId: string | null, vendorId: string, pagination: PaginationParams) => {
       enforceScope(authVendorId, vendorId);
       return await deps.repo.getTransactions(vendorId, pagination);
     },
@@ -49,7 +59,7 @@ export function createStatementsService(deps: { repo: StatementsRepoStub }) {
         throw new AppError('NOT_FOUND', 'Transaction not found');
       }
       // Vendor-scoped keys can only view their own transactions
-      const txVendorId = (transaction as any).vendor_id;
+      const txVendorId = (transaction as Record<string, unknown>).vendor_id;
       if (authVendorId && authVendorId !== txVendorId) {
         throw new AppError('UNAUTHORIZED', 'Cannot access this transaction');
       }
@@ -57,3 +67,4 @@ export function createStatementsService(deps: { repo: StatementsRepoStub }) {
     }
   };
 }
+export type StatementsService = ReturnType<typeof createStatementsService>;
