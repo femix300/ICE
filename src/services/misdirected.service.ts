@@ -31,7 +31,10 @@ export type NombaTransferClient = {
   transfer(data: {
     amount: number;
     accountNumber: string;
+    accountName: string;
     bankCode: string;
+    merchantTxRef: string;
+    senderName: string;
     narration: string;
   }): Promise<{ transferReference: string }>;
 };
@@ -322,9 +325,12 @@ export function createMisdirectedService(deps: MisdirectedServiceDeps) {
 
       // 2. Perform the transfer via Nomba Transfer API
       const transfer = await deps.nombaTransfer.transfer({
-        amount: payment.amount_kobo / 100, // Nomba Transfer API expects Naira (double/float)
+        amount: payment.amount_kobo, // Rule 1: Always use Kobo, no conversion
         accountNumber: recipientAccount,
+        accountName: lookup.accountName,
         bankCode: recipientBankCode,
+        merchantTxRef: `REFUND-${id}`,
+        senderName: payment.sender_name,
         narration: `Refund for misdirected payment ref: ${id}`,
       });
 

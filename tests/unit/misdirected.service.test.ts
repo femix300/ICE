@@ -300,9 +300,12 @@ describe('MisdirectedService with actions', () => {
 
       expect(fakeNombaClient._transfers).toHaveLength(1);
       expect(fakeNombaClient._transfers[0]).toEqual({
-        amount: 4500, // converted to Naira
+        amount: 450000, // Rule 1: Kobo, no conversion
         accountNumber: '1112223334',
+        accountName: 'VERIFIED ACCOUNT NAME',
         bankCode: '058',
+        merchantTxRef: `REFUND-${payment.id}`,
+        senderName: payment.sender_name,
         narration: `Refund for misdirected payment ref: ${payment.id}`,
       });
 
