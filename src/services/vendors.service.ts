@@ -71,7 +71,7 @@ export function createVendorsService(deps: { vendors: VendorsRepo; nomba: NombaC
       }
 
       const rawKey = generate();
-      const prefix = rawKey.substring(0, 12);
+      const prefix = rawKey.slice(0, 8);
       const hashedKey = await hash(rawKey);
 
       await deps.vendors.updateApiKey(id, hashedKey, prefix);
