@@ -17,6 +17,7 @@ describe('webhookDeliveriesController', () => {
     });
     req = { body: {} };
     res = {
+      locals: {},
       status: vi.fn().mockReturnThis(),
       json: vi.fn()
     };

@@ -25,7 +25,7 @@ export function createStatementsService(deps: { repo: StatementsRepoStub }) {
   const enforceScope = (authVendorId: string | null, requestedVendorId: string) => {
     // If the caller is authenticated as a specific vendor, they can't request another vendor's data
     if (authVendorId && authVendorId !== requestedVendorId) {
-      throw new AppError('UNAUTHORIZED', 'Cannot access statements for a different vendor');
+      throw new AppError(403, 'UNAUTHORIZED', 'Cannot access statements for a different vendor');
     }
   };
 
@@ -47,19 +47,19 @@ export function createStatementsService(deps: { repo: StatementsRepoStub }) {
     getPlatformSummary: async (isMasterKey: boolean, merchantId: string) => {
       // Summary endpoint is master key only
       if (!isMasterKey) {
-        throw new AppError('UNAUTHORIZED', 'Platform summary requires master key access');
+        throw new AppError(403, 'UNAUTHORIZED', 'Platform summary requires master key access');
       }
       return await deps.repo.getPlatformSummary(merchantId);
     },
     getTransactionById: async (authVendorId: string | null, id: string) => {
       const transaction = await deps.repo.getTransactionById(id);
       if (!transaction) {
-        throw new AppError('NOT_FOUND', 'Transaction not found');
+        throw new AppError(404, 'NOT_FOUND', 'Transaction not found');
       }
       // Vendor-scoped keys can only view their own transactions
       const txVendorId = (transaction as Record<string, unknown>).vendor_id;
       if (authVendorId && authVendorId !== txVendorId) {
-        throw new AppError('UNAUTHORIZED', 'Cannot access this transaction');
+        throw new AppError(403, 'UNAUTHORIZED', 'Cannot access this transaction');
       }
       return transaction;
     }
