@@ -8,24 +8,38 @@ export const NombaEventType = {
 
 export type NombaEventType = (typeof NombaEventType)[keyof typeof NombaEventType];
 
-export const nombaWebhookPayload = z.object({
-  event: z.enum([
-    NombaEventType.PAYMENT_SUCCESS,
-    NombaEventType.PAYMENT_FAILED,
-    NombaEventType.PAYMENT_REVERSAL,
-  ]),
-  data: z.object({
-    transactionId: z.string().min(1),
-    amount: z.number().positive(), // Nomba sends in Naira; converted to Kobo at storage
-    accountNumber: z.string().min(1),
-    senderName: z.string().min(1),
-    senderAccountNumber: z.string().min(1),
-    senderBankCode: z.string().min(1),
-    status: z.string().min(1),
-    currency: z.string().default('NGN'),
-    timeCreated: z.string().optional(),
-    paymentReference: z.string().optional(),
-  }),
-});
+// NOTE: merchant/transaction required fields below are confirmed from Nomba's
+// signature spec. Other transaction fields (amount, accountNumber, etc.) are
+// unconfirmed guesses until we capture a real payload — see raw payload log
+// in webhook-inbound.service.ts. Using passthrough() so unknown fields don't
+// cause validation to reject the payload.
+export const nombaWebhookPayload = z
+  .object({
+    event_type: z.enum([
+      NombaEventType.PAYMENT_SUCCESS,
+      NombaEventType.PAYMENT_FAILED,
+      NombaEventType.PAYMENT_REVERSAL,
+    ]),
+    requestId: z.string().min(1),
+    data: z
+      .object({
+        merchant: z
+          .object({
+            userId: z.string().min(1),
+            walletId: z.string().min(1),
+          })
+          .passthrough(),
+        transaction: z
+          .object({
+            transactionId: z.string().min(1),
+            type: z.string().min(1),
+            time: z.string().min(1),
+            responseCode: z.string().optional(),
+          })
+          .passthrough(),
+      })
+      .passthrough(),
+  })
+  .passthrough();
 
 export type NombaWebhookPayload = z.infer<typeof nombaWebhookPayload>;
