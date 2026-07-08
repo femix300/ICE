@@ -5,6 +5,7 @@ import type {
 } from '../repositories/reconciliation.repo.js';
 import type { TransactionRow } from '../repositories/transactions.repo.js';
 import type { RefundsRepo } from '../repositories/refunds.repo.js';
+import type { MisdirectedService } from './misdirected.service.js';
 import { InvoiceStatus } from '../schemas/invoices.schema.js';
 import { transition } from './invoices.service.js';
 import { createLogger } from '../lib/logger.js';
@@ -47,6 +48,7 @@ type ReconciliationDeps = {
   invoices: InvoicesRepo;
   refunds?: RefundsRepo;
   refundQueue?: RefundQueue;
+  misdirected?: MisdirectedService;
 };
 
 export function createReconciliationService(deps: ReconciliationDeps) {
@@ -82,6 +84,21 @@ export function createReconciliationService(deps: ReconciliationDeps) {
           { transactionId: transaction.transaction_id, vaNumber: transaction.va_number },
           'unmatched payment',
         );
+
+        // Flag as misdirected + alert platform owner. Failure here must not
+        // break webhook ack — this is a fallback/review path, not the primary
+        // payment flow (see M06 PRD 6.4).
+        if (deps.misdirected) {
+          try {
+            await deps.misdirected.flagMisdirected(transaction);
+          } catch (err) {
+            log.error(
+              { err, transactionId: transaction.transaction_id },
+              'failed to flag misdirected payment',
+            );
+          }
+        }
+
         return { status: ReconciliationStatus.UNMATCHED, action: 'flagged' };
       }
 
