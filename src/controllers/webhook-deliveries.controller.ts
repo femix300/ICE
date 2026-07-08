@@ -26,7 +26,7 @@ export function createWebhookDeliveriesController(deps: {
 }) {
   return {
     replay: async (req: Request, res: Response) => {
-      const parsed = ReplayPayloadSchema.safeParse(req.body);
+      const parsed = ReplayPayloadSchema.safeParse(req.params);
       if (!parsed.success) {
         throw new AppError(400, 'VALIDATION_ERROR', 'Invalid replay payload');
       }
