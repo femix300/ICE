@@ -15,7 +15,7 @@ describe('webhookDeliveriesController', () => {
       repo: mockRepo,
       webhookDeliveryQueue: mockQueue
     });
-    req = { body: {} };
+    req = { body: {}, params: {} };
     res = {
       locals: {},
       status: vi.fn().mockReturnThis(),
@@ -28,13 +28,13 @@ describe('webhookDeliveriesController', () => {
   });
 
   it('throws AppError (NOT_FOUND) when delivery is not found', async () => {
-    req.body = { id: 'invalid-id' };
+    req.params = { id: 'invalid-id' };
     mockRepo.byId.mockResolvedValue(null);
     await expect(controller.replay(req, res)).rejects.toThrow('Webhook delivery record not found');
   });
 
   it('enqueues delivery and returns success response', async () => {
-    req.body = { id: 'valid-id' };
+    req.params = { id: 'valid-id' };
     mockRepo.byId.mockResolvedValue({
       id: 'valid-id',
       merchant_id: 'm-123',
