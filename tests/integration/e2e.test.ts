@@ -24,11 +24,33 @@ async function pollUntil(
   return false;
 }
 
-function signWebhook(body: string): string {
+function signWebhook(
+  payload: {
+    event_type: string;
+    requestId: string;
+    data: {
+      merchant: { userId: string; walletId: string };
+      transaction: { transactionId: string; type: string; time: string; responseCode?: string };
+    };
+  },
+  timestamp: string,
+): string {
+  const { merchant: m, transaction: t } = payload.data;
+  const signedString = [
+    payload.event_type,
+    payload.requestId,
+    m.userId,
+    m.walletId,
+    t.transactionId,
+    t.type,
+    t.time,
+    t.responseCode ?? '',
+    timestamp,
+  ].join(':');
   return crypto
     .createHmac('sha256', config.NOMBA_WEBHOOK_SECRET)
-    .update(body)
-    .digest('hex');
+    .update(signedString)
+    .digest('base64');
 }
 
 describe('E2E Demo Flow: P10', () => {
@@ -152,27 +174,38 @@ describe('E2E Demo Flow: P10', () => {
 
   it('Step 4 — Simulate ₦16,000 Nomba Webhook', async () => {
     // Nomba sends amount in Naira: 16000
+    const timestamp = String(Date.now());
     const payload = {
-      event: 'payment_success',
+      event_type: 'payment_success',
+      requestId: `req-${crypto.randomUUID()}`,
       data: {
-        transactionId: `TXN-${crypto.randomUUID()}`,
-        amount: 16000,
-        accountNumber: vaNumber, // the customer's DVA provisioned in Step 2.5
-        senderName: 'John Doe',
-        senderAccountNumber: '0123456789',
-        senderBankCode: '058',
-        status: 'SUCCESS',
-        currency: 'NGN',
+        merchant: {
+          userId: 'user-1',
+          walletId: 'wallet-1',
+        },
+        transaction: {
+          transactionId: `TXN-${crypto.randomUUID()}`,
+          type: 'credit',
+          time: new Date().toISOString(),
+          amount: 16000,
+          accountNumber: vaNumber, // the customer's DVA provisioned in Step 2.5
+          senderName: 'John Doe',
+          senderAccountNumber: '0123456789',
+          senderBankCode: '058',
+          status: 'SUCCESS',
+          currency: 'NGN',
+        },
       },
     };
 
     const body = JSON.stringify(payload);
-    const signature = signWebhook(body);
+    const signature = signWebhook(payload, timestamp);
 
     const res = await request(app)
       .post('/v1/webhooks/nomba')
       .set('Content-Type', 'application/json')
-      .set('x-nomba-signature', signature)
+      .set('nomba-signature', signature)
+      .set('nomba-timestamp', timestamp)
       .send(body);
 
     expect(res.status).toBe(200);
@@ -204,22 +237,35 @@ describe('E2E Demo Flow: P10', () => {
     expect(log.action_taken).toBe('refund_queued');
   });
 
-  it('Step 6 — Verify Outbound Webhook Delivery queued', async () => {
-    // Webhook deliveries ARE async (BullMQ via E02), so we poll here
-    const success = await pollUntil(async () => {
+  it(
+    'Step 6 — Verify Outbound Webhook Delivery queued',
+    async () => {
+      // Webhook deliveries ARE async (BullMQ via E02), so we poll here.
+      // Real Nomba sandbox calls (lookupBank/transferToBank) + a real
+      // webhook.site POST are in this chain, so the budget is generous.
+      const success = await pollUntil(
+        async () => {
+          const res = await request(app)
+            .get(`/v1/merchants/${merchantId}/webhook-deliveries`)
+            .set('Authorization', `Bearer ${merchantApiKey}`);
+
+          if (!res.body.data) return false;
+          return res.body.data.some((d: any) => d.event_type === 'payment.overpayment.refunded');
+        },
+        1000,
+        25,
+      );
+
       const res = await request(app)
         .get(`/v1/merchants/${merchantId}/webhook-deliveries`)
         .set('Authorization', `Bearer ${merchantApiKey}`);
 
-      if (!res.body.data) return false;
-      return res.body.data.some((d: any) => d.event_type === 'payment.overpayment.refunded');
-    });
-
-    const res = await request(app)
-      .get(`/v1/merchants/${merchantId}/webhook-deliveries`)
-      .set('Authorization', `Bearer ${merchantApiKey}`);
-
-    expect(res.status).toBe(200);
-    expect(res.body.data.length).toBeGreaterThanOrEqual(0);
-  });
+      expect(res.status).toBe(200);
+      expect(res.body.data.length).toBeGreaterThanOrEqual(0);
+      // deliberately NOT asserting success === true here —
+      // webhook.site's uptime is outside our control (open judgment
+      // call, flagged for Peter: strict vs lenient — see handoff §1)
+    },
+    30_000,
+  );
 });
