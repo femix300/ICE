@@ -9,6 +9,10 @@ export function createMisdirectedRouter(
 ) {
   const router = Router();
 
+  router.get('/', authMiddleware, (req, res, next) => {
+    controller.list(req, res, next).catch(next);
+  });
+
   router.post('/:id/match', authMiddleware, (req, res, next) => {
     controller.match(req, res, next).catch(next);
   });

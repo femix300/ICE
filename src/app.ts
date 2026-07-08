@@ -155,7 +155,10 @@ const invoicesRouter = createInvoicesRouter(invoicesController, authMiddleware);
 const customersRouter = createCustomersRouter(customersController, authMiddleware);
 const misdirectedRouter = createMisdirectedRouter(misdirectedController, authMiddleware);
 const statementsRouter = createStatementsRouter(statementsController, authMiddleware);
-const webhookDeliveriesRouter = createWebhookDeliveriesRouter(webhookDeliveriesController, authMiddleware);
+const webhookDeliveriesRouter = createWebhookDeliveriesRouter(
+  webhookDeliveriesController,
+  authMiddleware,
+);
 
 const vendorsRouter = createVendorsRouter(vendorsController, authMiddleware, customersRouter);
 setupV1Router({ merchantsRouter, vendorsRouter });
