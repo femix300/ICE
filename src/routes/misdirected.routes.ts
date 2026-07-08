@@ -9,7 +9,7 @@ export function createMisdirectedRouter(
 ) {
   const router = Router();
 
-  router.get('/', authMiddleware, (req, res, next) => {
+  router.get('/misdirected', authMiddleware, (req, res, next) => {
     controller.list(req, res, next).catch(next);
   });
 
