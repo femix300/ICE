@@ -5,7 +5,10 @@ import { useMockFallback } from '../../lib/mockData';
 describe('useMockFallback', () => {
   it('returns real data on successful fetch', async () => {
     const mockFetcher = vi.fn().mockResolvedValue([{ id: 1, name: 'real' }]);
-    const { result } = renderHook(() => useMockFallback(mockFetcher, [{ id: 0, name: 'mock' }]));
+    const { result } = renderHook(() => useMockFallback({
+      fetcher: mockFetcher,
+      mock: [{ id: 0, name: 'mock' }]
+    }));
     
     await waitFor(() => {
       expect(result.current.data).toEqual([{ id: 1, name: 'real' }]);
@@ -15,7 +18,10 @@ describe('useMockFallback', () => {
 
   it('falls back to mock data on fetch failure', async () => {
     const mockFetcher = vi.fn().mockRejectedValue(new Error('Network error'));
-    const { result } = renderHook(() => useMockFallback(mockFetcher, [{ id: 0, name: 'mock' }]));
+    const { result } = renderHook(() => useMockFallback({
+      fetcher: mockFetcher,
+      mock: [{ id: 0, name: 'mock' }]
+    }));
     
     await waitFor(() => {
       expect(result.current.data).toEqual([{ id: 0, name: 'mock' }]);
@@ -25,7 +31,11 @@ describe('useMockFallback', () => {
 
   it('falls back to mock data if response is empty array', async () => {
     const mockFetcher = vi.fn().mockResolvedValue([]);
-    const { result } = renderHook(() => useMockFallback(mockFetcher, [{ id: 0, name: 'mock' }]));
+    const { result } = renderHook(() => useMockFallback({
+      fetcher: mockFetcher,
+      mock: [{ id: 0, name: 'mock' }],
+      isEmpty: (data) => Array.isArray(data) && data.length === 0
+    }));
     
     await waitFor(() => {
       expect(result.current.data).toEqual([{ id: 0, name: 'mock' }]);
