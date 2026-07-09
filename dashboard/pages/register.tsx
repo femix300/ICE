@@ -107,6 +107,7 @@ export default function Register() {
 
       if (generatedKey) {
         persistApiKey(generatedKey);
+        setApiKey(generatedKey); // <-- Fix: Update local state to render the success screen
         if (merchantId) {
           setMerchantId(merchantId);
         }

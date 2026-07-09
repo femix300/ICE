@@ -2,7 +2,6 @@ import { z } from 'zod';
 import { config } from './config';
 import { AppError } from './errors';
 import { createLogger } from './logger';
-import { getApiKey } from './auth';
 
 const log = createLogger('api-client');
 
@@ -32,12 +31,7 @@ function buildHeaders(options?: ApiRequestOptions<unknown>, includeJsonBody = fa
   if (includeJsonBody) {
     headers['Content-Type'] = 'application/json';
   }
-  // Prefer an explicit key; otherwise fall back to the key persisted after
-  // registration / vendor key generation so the UI can reach live data.
-  const key = options?.key ?? getApiKey() ?? undefined;
-  if (key) {
-    headers['Authorization'] = `Bearer ${key}`;
-  }
+
   return headers;
 }
 

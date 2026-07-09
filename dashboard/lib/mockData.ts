@@ -446,10 +446,10 @@ export const mockTransactionList: MockTransactionListItem[] = Array.from(
     transaction_id: `TXN-2026-${String(4821 + i)}`,
     va_number: '8023456781',
     amount_kobo: [75_000_00, 45_000_00, 15_000_00, 120_000_00, 250_000_00, 30_500_00, 18_750_00, 60_000_00, 200_000_00, 87_500_00][i] ?? 50_000_00,
-    sender_name: NIGERIAN_NAMES[i] ?? NIGERIAN_NAMES[0]!,
+    sender_name: NIGERIAN_NAMES[i] ?? NIGERIAN_NAMES[0] ?? 'Unknown',
     sender_account: `0${100000000 + i * 137}${i}`,
     sender_bank_code: String(11 + i),
-    sender_bank_name: BANKS[i % BANKS.length]!,
+    sender_bank_name: BANKS[i % BANKS.length] ?? { code: '000', name: 'Unknown Bank' },
     created_at: daysAgo(i % 7, 9 + (i % 8), i * 7),
     status: TRANSACTION_STATUSES[i] ?? 'MATCHED',
     invoice_id:
