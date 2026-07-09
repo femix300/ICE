@@ -1,171 +1,165 @@
-import React from 'react';
-import { useRouter } from 'next/router';
-import Link from 'next/link';
+import React, { useState, useEffect } from 'react';
 import Layout from '../../components/layout';
+import TransactionTable, { Transaction } from '../../components/transaction-table';
+import { ReconciliationStatus } from '../../components/reconciliation-badge';
 import { api } from '../../lib/api';
 import { createLogger } from '../../lib/logger';
-import { formatKoboToNaira, formatTimestamp } from '../../lib/format';
-import { useMockFallback, mockTransactionList } from '../../lib/mockData';
 
-const log = createLogger('transactions-list-page');
+const log = createLogger('transactions-feed');
+const ITEMS_PER_PAGE = 20;
+const REFRESH_INTERVAL_MS = 10000; // 10 seconds per requirements
 
-type TransactionStatus = 'MATCHED' | 'UNMATCHED' | 'REFUNDED';
+const STATUS_FILTERS: { value: 'ALL' | ReconciliationStatus; label: string }[] = [
+  { value: 'ALL', label: 'All' },
+  { value: 'EXACT_MATCH', label: 'Exact Match' },
+  { value: 'OVERPAYMENT', label: 'Overpayment' },
+  { value: 'UNDERPAYMENT', label: 'Underpayment' },
+  { value: 'MISDIRECTED', label: 'Misdirected' },
+  { value: 'DUPLICATE', label: 'Duplicate' },
+  { value: 'REFUNDED', label: 'Refunded' },
+];
 
-type TransactionListItem = {
-  id: string;
-  transaction_id: string;
-  va_number: string;
-  amount_kobo: number;
-  sender_name: string;
-  sender_account: string;
-  sender_bank_code: string;
-  sender_bank_name: string;
-  created_at: string;
-  status: TransactionStatus;
-  invoice_id: string | null;
-};
+export default function TransactionsIndex() {
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [statusFilter, setStatusFilter] = useState<'ALL' | ReconciliationStatus>('ALL');
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-const getStatusStyle = (status: TransactionStatus): string => {
-  switch (status) {
-    case 'MATCHED':
-      return 'text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200/50 dark:border-emerald-500/20';
-    case 'UNMATCHED':
-      return 'text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 border-amber-200/50 dark:border-amber-500/20';
-    case 'REFUNDED':
-      return 'text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 border-blue-200/50 dark:border-blue-500/20';
-  }
-};
+  const fetchTransactions = async (showLoadingState = true) => {
+    if (showLoadingState) setIsLoading(true);
+    setErrorMsg(null);
+    try {
+      const offset = (page - 1) * ITEMS_PER_PAGE;
+      const res = await api.get<{ rows: Transaction[]; total: number }>(
+        `/v1/transactions?limit=${ITEMS_PER_PAGE}&offset=${offset}`,
+      );
+      if (res) {
+        setTransactions(res.rows);
+        setTotal(res.total);
+      }
+    } catch (err: unknown) {
+      log.error({ err }, 'Failed to fetch transactions');
+      if (showLoadingState) {
+        setErrorMsg(
+          err instanceof Error
+            ? err.message
+            : 'An error occurred while loading transactions.',
+        );
+      }
+    } finally {
+      if (showLoadingState) setIsLoading(false);
+    }
+  };
 
-const PAGE_SIZE = 10;
+  // Initial fetch and dependency on page change
+  useEffect(() => {
+    fetchTransactions(true);
+  }, [page]);
 
-export default function TransactionsList() {
-  const router = useRouter();
+  // Polling setup (10s auto-refresh)
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      // Pass false to avoid flashing loading state during background refresh
+      fetchTransactions(false);
+    }, REFRESH_INTERVAL_MS);
 
-  const { data, isLoading } = useMockFallback<TransactionListItem[]>({
-    fetcher: () => api.get<TransactionListItem[]>(`/v1/transactions?limit=${PAGE_SIZE}`),
-    mock: mockTransactionList,
-    isEmpty: (rows) => rows.length === 0,
+    return () => clearInterval(intervalId);
+  }, [page]); // Re-bind interval if page changes so we refresh the correct page
+
+  // Client-side filtering for MVP (instant visual feedback)
+  const filteredTransactions = transactions.filter((tx) => {
+    if (statusFilter === 'ALL') return true;
+    return tx.reconciliation_status === statusFilter;
   });
 
-  const transactions = data ?? [];
+  const totalPages = Math.ceil(total / ITEMS_PER_PAGE);
 
   return (
-    <Layout variant="owner" breadcrumbs={[{ label: 'Transactions' }]}>
+    <Layout variant="owner">
       <div className="space-y-6">
-        <div className="flex flex-col gap-1">
-          <h2 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">
-            Transactions
-          </h2>
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">
-            Every inbound payment routed through your virtual accounts, with reconciliation status.
-          </p>
-        </div>
-
-        {isLoading ? (
-          <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-            <div className="animate-pulse divide-y divide-zinc-200/60 dark:divide-zinc-800/60">
-              {[...Array(PAGE_SIZE)].map((_, i) => (
-                <div
-                  key={i}
-                  className={`h-16 ${i % 2 === 0 ? 'bg-zinc-50 dark:bg-zinc-900/40' : 'bg-white dark:bg-zinc-900'}`}
-                />
-              ))}
-            </div>
-          </div>
-        ) : transactions.length === 0 ? (
-          <div className="mx-auto max-w-lg space-y-4 rounded-2xl border border-zinc-200/60 bg-white p-8 text-center dark:border-zinc-800/60 dark:bg-zinc-900/20">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-zinc-200 bg-zinc-100 text-zinc-400 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-600">
-              <svg className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
-                />
-              </svg>
-            </div>
-            <h3 className="text-base font-bold text-zinc-900 dark:text-white">
-              No transactions yet
-            </h3>
-            <p className="mx-auto mt-1 max-w-sm text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
-              Inbound payments will appear here once Nomba starts routing transfers to your
-              virtual accounts.
+        {/* Top Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">
+              Reconciliation Feed
+            </h2>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
+              Live view of incoming transactions and their reconciliation status.
             </p>
           </div>
+          <div className="flex items-center gap-2 text-xs font-medium text-zinc-500 bg-zinc-100 dark:bg-zinc-900/50 px-3 py-1.5 rounded-full border border-zinc-200 dark:border-zinc-800">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+            Live (10s)
+          </div>
+        </div>
+
+        {/* Filter Toolbar */}
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-zinc-200 dark:border-zinc-800 pb-4">
+          <div className="flex flex-wrap gap-1.5 bg-zinc-100 dark:bg-zinc-900/60 p-1 rounded-xl border border-zinc-200/50 dark:border-zinc-800/40">
+            {STATUS_FILTERS.map((status) => (
+              <button
+                key={status.value}
+                type="button"
+                onClick={() => setStatusFilter(status.value)}
+                className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold tracking-wide transition-all uppercase ${
+                  statusFilter === status.value
+                    ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm'
+                    : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
+                }`}
+              >
+                {status.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Main Workspace */}
+        {errorMsg && transactions.length === 0 ? (
+          <div className="bg-red-500/10 border border-red-500/25 rounded-2xl p-6 text-center max-w-xl mx-auto space-y-3">
+            <p className="text-sm font-semibold text-red-500">{errorMsg}</p>
+            <button
+              type="button"
+              onClick={() => fetchTransactions(true)}
+              className="px-4 py-2 rounded-xl text-xs font-bold bg-zinc-800 border border-zinc-700 hover:bg-zinc-750 text-white transition-all"
+            >
+              Retry Connection
+            </button>
+          </div>
         ) : (
-          <div className="w-full overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-left">
-                <thead>
-                  <tr className="border-b border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950/50">
-                    <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 whitespace-nowrap">
-                      Transaction
-                    </th>
-                    <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 whitespace-nowrap">
-                      Sender
-                    </th>
-                    <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 whitespace-nowrap">
-                      Bank
-                    </th>
-                    <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 whitespace-nowrap">
-                      Amount
-                    </th>
-                    <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 whitespace-nowrap">
-                      Status
-                    </th>
-                    <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 whitespace-nowrap">
-                      Date
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-zinc-200/60 dark:divide-zinc-800/60">
-                  {transactions.map((tx) => (
-                    <tr
-                      key={tx.id}
-                      onClick={() => router.push(`/transactions/${tx.id}`)}
-                      className="cursor-pointer transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/40"
-                    >
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm font-mono font-semibold text-zinc-900 dark:text-white">
-                          {tx.transaction_id}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <p className="text-sm font-semibold text-zinc-900 dark:text-white">
-                          {tx.sender_name}
-                        </p>
-                        <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                          {tx.sender_account}
-                        </p>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm text-zinc-700 dark:text-zinc-300">
-                          {tx.sender_bank_name}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm font-mono font-semibold text-zinc-900 dark:text-white">
-                          {formatKoboToNaira(tx.amount_kobo)}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-bold tracking-wide uppercase ${getStatusStyle(
-                            tx.status,
-                          )}`}
-                        >
-                          {tx.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-xs text-zinc-500 dark:text-zinc-400">
-                          {formatTimestamp(tx.created_at)}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+          <div className="space-y-6">
+            <TransactionTable transactions={filteredTransactions} isLoading={isLoading && transactions.length === 0} />
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between border-t border-zinc-200 dark:border-zinc-800 pt-5">
+                <p className="text-xs font-semibold text-zinc-500">
+                  Showing page {page} of {totalPages} ({total} total transactions)
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    disabled={page === 1}
+                    onClick={() => setPage((p) => p - 1)}
+                    className="px-3 py-1.5 border border-zinc-200 dark:border-zinc-800 rounded-lg text-xs font-semibold text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-900 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                  >
+                    Previous
+                  </button>
+                  <button
+                    type="button"
+                    disabled={page === totalPages}
+                    onClick={() => setPage((p) => p + 1)}
+                    className="px-3 py-1.5 border border-zinc-200 dark:border-zinc-800 rounded-lg text-xs font-semibold text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-900 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
