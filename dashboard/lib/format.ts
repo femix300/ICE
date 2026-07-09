@@ -21,3 +21,12 @@ export const formatTimestamp = (value: string): string => {
   });
   return `${datePart} · ${timePart}`;
 };
+
+export const formatDate = (value: Date | string): string => {
+  const date = typeof value === 'string' ? new Date(value) : value;
+  return date.toLocaleDateString('en-NG', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  });
+};

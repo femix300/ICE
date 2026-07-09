@@ -73,32 +73,39 @@ export default function SummaryMetrics({ summary }: SummaryMetricsProps) {
         label="Total Collected"
         value={formatKoboToNaira(summary.total_collected_kobo)}
         subtext="Across all vendors"
+        trend="This month"
         icon={<WalletIcon />}
       />
       <StatCard
         label="Reconciliation Rate"
         value={formatReconciliationRate(summary.reconciliation_rate)}
-        subtext="Payments matched"
+        subtext="Payments matched to invoices"
+        trend="This month"
         icon={<ChartIcon />}
+        tone={summary.reconciliation_rate >= 90 ? 'success' : 'warning'}
       />
       <StatCard
         label="Active Vendors"
         value={summary.active_vendors}
         subtext="Collecting payments"
+        trend="Live"
         icon={<UsersIcon />}
       />
       <StatCard
         label="Total Refunds Issued"
         value={formatKoboToNaira(summary.total_refunds_kobo)}
         subtext="Returned to payers"
+        trend="This month"
         icon={<RefundIcon />}
+        tone="warning"
       />
       <StatCard
         label="Pending Misdirected"
         value={summary.misdirected_count}
         subtext={hasMisdirected ? 'Needs review' : 'All clear'}
+        trend="Requires action"
         icon={<AlertIcon />}
-        tone={hasMisdirected ? 'danger' : 'default'}
+        tone={hasMisdirected ? 'danger' : 'success'}
       />
     </div>
   );

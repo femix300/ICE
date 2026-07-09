@@ -5,6 +5,10 @@ import Layout from '../components/layout';
 import ApiKeyDisplay from '../components/api-key-display';
 import { api } from '../lib/api';
 import { AppError } from '../lib/errors';
+import {
+  setApiKey as persistApiKey,
+  setMerchantId,
+} from '../lib/auth';
 
 // Validation Schema with Zod
 const registerSchema = z.object({
@@ -79,16 +83,33 @@ export default function Register() {
     setFormError(null);
 
     try {
-      // Calls typed API client post function from lib/api.ts
-      const response = await api.post<{ apiKey: string } | string>(
+      // Calls typed API client post function from lib/api.ts. The backend
+      // returns snake_case (api_key, merchant.id), so accept both shapes.
+      const response = await api.post<unknown>(
         '/v1/merchants/register',
         values,
-        { schema: z.union([z.object({ apiKey: z.string() }), z.string()]) }
+        {
+          schema: z.union([
+            z.object({ api_key: z.string(), merchant: z.object({ id: z.string() }).passthrough() }),
+            z.object({ apiKey: z.string(), merchant: z.object({ id: z.string() }).passthrough() }),
+            z.string(),
+          ]),
+        },
       );
-      const generatedKey = typeof response === 'string' ? response : response?.apiKey;
+      const raw = response as {
+        api_key?: string;
+        apiKey?: string;
+        merchant?: { id?: string };
+      } | string;
+      const generatedKey =
+        typeof raw === 'string' ? raw : raw?.api_key ?? raw?.apiKey;
+      const merchantId = typeof raw === 'string' ? undefined : raw?.merchant?.id;
 
       if (generatedKey) {
-        setApiKey(generatedKey);
+        persistApiKey(generatedKey);
+        if (merchantId) {
+          setMerchantId(merchantId);
+        }
       } else {
         throw new AppError('REGISTRATION_FAILED', 'API key was not returned by the server');
       }

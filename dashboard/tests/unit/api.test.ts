@@ -76,7 +76,7 @@ describe('API Client Utility', () => {
     await expect(api.get('/test-route', { schema })).rejects.toThrow();
   });
 
-  it('throws AppError on 401 Unauthorized and redirects to login', async () => {
+  it('throws AppError on 401 Unauthorized so callers can fall back gracefully', async () => {
     const mockRedirect = { href: '' };
     vi.stubGlobal('window', { location: mockRedirect });
 
@@ -87,7 +87,9 @@ describe('API Client Utility', () => {
     vi.stubGlobal('fetch', mockFetch);
 
     await expect(api.get('/test-route')).rejects.toThrowError(AppError);
-    expect(mockRedirect.href).toBe('/login');
+    // No forced navigation: the UI (e.g. useMockFallback) decides how to
+    // degrade instead of bouncing the user to a non-existent login page.
+    expect(mockRedirect.href).toBe('');
   });
 
   it('throws AppError on HTTP failure status codes', async () => {

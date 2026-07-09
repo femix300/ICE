@@ -2,8 +2,13 @@ import { z } from 'zod';
 import { config } from './config';
 import { AppError } from './errors';
 import { createLogger } from './logger';
+import { getApiKey } from './auth';
 
 const log = createLogger('api-client');
+
+// Give up on a backend request after this long so the UI can fall back to demo
+// data instead of hanging on a spinner forever.
+const REQUEST_TIMEOUT_MS = 10_000;
 
 const BASE = config.NEXT_PUBLIC_API_URL.replace(/\/$/, '');
 
@@ -16,217 +21,117 @@ const apiResponseSchema = z.object({
 export type ApiResponse = z.infer<typeof apiResponseSchema>;
 
 interface ApiRequestOptions<T> {
-  schema: z.Schema<T>;
+  schema?: z.Schema<T>;
   key?: string;
 }
 
+function buildHeaders(options?: ApiRequestOptions<unknown>, includeJsonBody = false): Record<string, string> {
+  const headers: Record<string, string> = {
+    Accept: 'application/json',
+  };
+  if (includeJsonBody) {
+    headers['Content-Type'] = 'application/json';
+  }
+  // Prefer an explicit key; otherwise fall back to the key persisted after
+  // registration / vendor key generation so the UI can reach live data.
+  const key = options?.key ?? getApiKey() ?? undefined;
+  if (key) {
+    headers['Authorization'] = `Bearer ${key}`;
+  }
+  return headers;
+}
+
+function extractErrorMessage(response: Response, body: unknown): string {
+  let errorMessage = `HTTP error! Status: ${response.status}`;
+  if (body && typeof body === 'object') {
+    const data = body as Record<string, unknown>;
+    if ('message' in data && typeof data.message === 'string') {
+      errorMessage = data.message;
+    } else if ('error' in data && typeof data.error === 'string') {
+      errorMessage = data.error;
+    } else if (
+      'data' in data &&
+      data.data &&
+      typeof data.data === 'object' &&
+      'message' in (data.data as Record<string, unknown>) &&
+      typeof (data.data as Record<string, unknown>).message === 'string'
+    ) {
+      errorMessage = (data.data as Record<string, unknown>).message as string;
+    }
+  }
+  return errorMessage;
+}
+
+async function handleResponse<T>(response: Response, options?: ApiRequestOptions<T>): Promise<T> {
+  if (response.status === 401) {
+    throw new AppError('UNAUTHORIZED', 'Unauthorized');
+  }
+
+  if (!response.ok) {
+    let errorMessage = `HTTP error! Status: ${response.status}`;
+    try {
+      const errorData = await response.json();
+      // Intentionally swallowed if the body is not valid JSON (e.g. an HTML
+      // gateway error page) — we fall through to a generic status error.
+      errorMessage = extractErrorMessage(response, errorData);
+    } catch (err) {
+      log.error({ err, status: response.status }, 'Failed to parse error response JSON');
+    }
+    throw new AppError('HTTP_ERROR', errorMessage);
+  }
+
+  const result = await response.json();
+
+  const parsedEnvelope = apiResponseSchema.safeParse(result);
+  if (parsedEnvelope.success) {
+    if (!parsedEnvelope.data.ok) {
+      throw new AppError('API_ERROR', parsedEnvelope.data.error || 'API returned ok=false');
+    }
+    const rawData = parsedEnvelope.data.data;
+    if (options?.schema) {
+      return options.schema.parse(rawData);
+    }
+    return rawData as T;
+  }
+
+  // Fallback if the envelope does not match the standard backend structure
+  if (options?.schema) {
+    return options.schema.parse(result);
+  }
+  return result as T;
+}
+
+async function request<T>(
+  method: string,
+  path: string,
+  body: unknown,
+  options?: ApiRequestOptions<T>,
+): Promise<T> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+
+  try {
+    const response = await fetch(`${BASE}${cleanPath}`, {
+      method,
+      headers: buildHeaders(options, body !== undefined),
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+      signal: controller.signal,
+    });
+    return await handleResponse<T>(response, options);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export const api = {
-  get: async <T>(path: string, options?: ApiRequestOptions<T>): Promise<T> => {
-    const headers: Record<string, string> = {
-      Accept: 'application/json',
-    };
-    if (options?.key) {
-      headers['Authorization'] = `Bearer ${options.key}`;
-    }
+  get: <T>(path: string, options?: ApiRequestOptions<T>): Promise<T> =>
+    request<T>('GET', path, undefined, options),
 
-    const cleanPath = path.startsWith('/') ? path : `/${path}`;
-    const response = await fetch(`${BASE}${cleanPath}`, {
-      method: 'GET',
-      headers,
-    });
+  post: <T>(path: string, body: unknown, options?: ApiRequestOptions<T>): Promise<T> =>
+    request<T>('POST', path, body, options),
 
-    if (response.status === 401) {
-      if (typeof window !== 'undefined') {
-        window.location.href = '/login';
-      }
-      throw new AppError('UNAUTHORIZED', 'Unauthorized');
-    }
-
-    if (!response.ok) {
-      let errorMessage = `HTTP error! Status: ${response.status}`;
-      try {
-        const errorData = await response.json();
-        if (errorData && typeof errorData === 'object') {
-          if ('message' in errorData && typeof errorData.message === 'string') {
-            errorMessage = errorData.message;
-          } else if ('error' in errorData && typeof errorData.error === 'string') {
-            errorMessage = errorData.error;
-          } else if (
-            'data' in errorData &&
-            errorData.data &&
-            typeof errorData.data === 'object' &&
-            'message' in errorData.data &&
-            typeof errorData.data.message === 'string'
-          ) {
-            errorMessage = errorData.data.message;
-          }
-        }
-      } catch (err) {
-        // Intentionally swallowed: the error response body may not be valid JSON
-        // (e.g. HTML error pages from a gateway). We log the failure and fall
-        // through to throw a generic HTTP_ERROR with the status code instead.
-        log.error({ err, status: response.status }, 'Failed to parse GET error response JSON');
-      }
-      throw new AppError('HTTP_ERROR', errorMessage);
-    }
-
-    const result = await response.json();
-
-    // Validate the response envelope
-    const parsedEnvelope = apiResponseSchema.safeParse(result);
-    if (parsedEnvelope.success) {
-      if (!parsedEnvelope.data.ok) {
-        throw new AppError('API_ERROR', parsedEnvelope.data.error || 'API returned ok=false');
-      }
-      const rawData = parsedEnvelope.data.data;
-      if (options?.schema) {
-        return options.schema.parse(rawData);
-      }
-      return rawData as T;
-    }
-
-    // Fallback if envelope does not match standard backend structure
-    if (options?.schema) {
-      return options.schema.parse(result);
-    }
-    return result as T;
-  },
-
-  post: async <T>(path: string, body: unknown, options?: ApiRequestOptions<T>): Promise<T> => {
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-    };
-    if (options?.key) {
-      headers['Authorization'] = `Bearer ${options.key}`;
-    }
-
-    const cleanPath = path.startsWith('/') ? path : `/${path}`;
-    const response = await fetch(`${BASE}${cleanPath}`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(body),
-    });
-
-    if (response.status === 401) {
-      if (typeof window !== 'undefined') {
-        window.location.href = '/login';
-      }
-      throw new AppError('UNAUTHORIZED', 'Unauthorized');
-    }
-
-    if (!response.ok) {
-      let errorMessage = `HTTP error! Status: ${response.status}`;
-      try {
-        const errorData = await response.json();
-        if (errorData && typeof errorData === 'object') {
-          if ('message' in errorData && typeof errorData.message === 'string') {
-            errorMessage = errorData.message;
-          } else if ('error' in errorData && typeof errorData.error === 'string') {
-            errorMessage = errorData.error;
-          } else if (
-            'data' in errorData &&
-            errorData.data &&
-            typeof errorData.data === 'object' &&
-            'message' in errorData.data &&
-            typeof errorData.data.message === 'string'
-          ) {
-            errorMessage = errorData.data.message;
-          }
-        }
-      } catch (err) {
-        // Intentionally swallowed: the error response body may not be valid JSON
-        // (e.g. HTML error pages from a gateway). We log the failure and fall
-        // through to throw a generic HTTP_ERROR with the status code instead.
-        log.error({ err, status: response.status }, 'Failed to parse POST error response JSON');
-      }
-      throw new AppError('HTTP_ERROR', errorMessage);
-    }
-
-    const result = await response.json();
-
-    // Validate the response envelope
-    const parsedEnvelope = apiResponseSchema.safeParse(result);
-    if (parsedEnvelope.success) {
-      if (!parsedEnvelope.data.ok) {
-        throw new AppError('API_ERROR', parsedEnvelope.data.error || 'API returned ok=false');
-      }
-      const rawData = parsedEnvelope.data.data;
-      if (options?.schema) {
-        return options.schema.parse(rawData);
-      }
-      return rawData as T;
-    }
-
-    // Fallback if envelope does not match standard backend structure
-    if (options?.schema) {
-      return options.schema.parse(result);
-    }
-    return result as T;
-  },
-  delete: async <T>(path: string, options?: ApiRequestOptions<T>): Promise<T> => {
-    const headers: Record<string, string> = {
-      Accept: 'application/json',
-    };
-    if (options?.key) {
-      headers['Authorization'] = `Bearer ${options.key}`;
-    }
-
-    const cleanPath = path.startsWith('/') ? path : `/${path}`;
-    const response = await fetch(`${BASE}${cleanPath}`, {
-      method: 'DELETE',
-      headers,
-    });
-
-    if (response.status === 401) {
-      if (typeof window !== 'undefined') {
-        window.location.href = '/login';
-      }
-      throw new AppError('UNAUTHORIZED', 'Unauthorized');
-    }
-
-    if (!response.ok) {
-      let errorMessage = `HTTP error! Status: ${response.status}`;
-      try {
-        const errorData = await response.json();
-        if (errorData && typeof errorData === 'object') {
-          if ('message' in errorData && typeof errorData.message === 'string') {
-            errorMessage = errorData.message;
-          } else if ('error' in errorData && typeof errorData.error === 'string') {
-            errorMessage = errorData.error;
-          } else if (
-            'data' in errorData &&
-            errorData.data &&
-            typeof errorData.data === 'object' &&
-            'message' in errorData.data &&
-            typeof errorData.data.message === 'string'
-          ) {
-            errorMessage = errorData.data.message;
-          }
-        }
-      } catch (err) {
-        log.error({ err, status: response.status }, 'Failed to parse DELETE error response JSON');
-      }
-      throw new AppError('HTTP_ERROR', errorMessage);
-    }
-
-    const result = await response.json();
-
-    const parsedEnvelope = apiResponseSchema.safeParse(result);
-    if (parsedEnvelope.success) {
-      if (!parsedEnvelope.data.ok) {
-        throw new AppError('API_ERROR', parsedEnvelope.data.error || 'API returned ok=false');
-      }
-      const rawData = parsedEnvelope.data.data;
-      if (options?.schema) {
-        return options.schema.parse(rawData);
-      }
-      return rawData as T;
-    }
-
-    if (options?.schema) {
-      return options.schema.parse(result);
-    }
-    return result as T;
-  },
+  delete: <T>(path: string, options?: ApiRequestOptions<T>): Promise<T> =>
+    request<T>('DELETE', path, undefined, options),
 };

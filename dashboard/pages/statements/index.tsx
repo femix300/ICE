@@ -8,7 +8,13 @@ import StatementTable, {
 import { api } from '../../lib/api';
 import { createLogger } from '../../lib/logger';
 import { formatKoboToNaira, formatDate } from '../../lib/format';
-import { CURRENT_VENDOR_ID } from '../../lib/session';
+import { getVendorId } from '../../lib/auth';
+import {
+  useMockFallback,
+  mockVendorStatementResponse,
+  mockCustomerStatementResponse,
+  mockCustomers,
+} from '../../lib/mockData';
 
 const log = createLogger('statements-page');
 
@@ -47,9 +53,13 @@ type CustomerOption = {
   name: string;
 };
 
+type StatementResponse = VendorStatementResponse | CustomerStatementResponse;
+
 const normalizeStatus = (status: string): StatementStatus => {
   const upper = status.toUpperCase();
-  return (STATUS_VALUES as readonly string[]).includes(upper) ? (upper as StatementStatus) : 'UNMATCHED';
+  return (STATUS_VALUES as readonly string[]).includes(upper)
+    ? (upper as StatementStatus)
+    : 'UNMATCHED';
 };
 
 const statusLabel = (status: string): string =>
@@ -94,14 +104,10 @@ export default function StatementsPage() {
 
   const [applied, setApplied] = useState({ from: draftFrom, to: draftTo, status: draftStatus });
 
-  const [isLoading, setIsLoading] = useState(true);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-
   const [vendorName, setVendorName] = useState<string>('');
   const [openingBalance, setOpeningBalance] = useState(0);
   const [transactions, setTransactions] = useState<StatementTransaction[]>([]);
 
-  const [customers, setCustomers] = useState<CustomerOption[]>([]);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
   const [selectedCustomerName, setSelectedCustomerName] = useState<string>('');
 
@@ -109,78 +115,63 @@ export default function StatementsPage() {
     setApplied({ from: draftFrom, to: draftTo, status: draftStatus });
   }, [draftFrom, draftTo, draftStatus]);
 
-  useEffect(() => {
-    const isMounted = { current: true };
-    void (async () => {
+  const customersHook = useMockFallback<{ rows: CustomerOption[] }>({
+    fetcher: () =>
+      api.get<{ rows: CustomerOption[] }>(`/v1/vendors/${getVendorId()}/customers`),
+    mock: mockCustomers,
+    deps: [tab],
+  });
+  const customers = customersHook.data?.rows ?? [];
+
+  const statementHook = useMockFallback<StatementResponse>({
+    fetcher: () => {
       if (tab === 'customer' && !selectedCustomerId) {
-        setIsLoading(false);
-        return;
+        return Promise.resolve(mockVendorStatementResponse as StatementResponse);
       }
-      setIsLoading(true);
-      setErrorMsg(null);
-      try {
-        const params = buildParams(applied.from, applied.to, applied.status);
-        const path =
-          tab === 'vendor'
-            ? `/v1/vendors/${CURRENT_VENDOR_ID}/statement?${params}`
-            : `/v1/vendors/${CURRENT_VENDOR_ID}/customers/${selectedCustomerId}/statement?${params}`;
-        const res = await api.get<VendorStatementResponse | CustomerStatementResponse>(path);
-        if (!isMounted.current || !res) return;
-
-        setOpeningBalance(res.opening_balance_kobo);
-        setTransactions(res.transactions.map(mapTransaction));
-        if (tab === 'vendor') {
-          setVendorName((res as VendorStatementResponse).vendor.name);
-        } else {
-          setSelectedCustomerName((res as CustomerStatementResponse).customer.name);
-        }
-      } catch (err: unknown) {
-        if (isMounted.current) {
-          log.error({ err, tab }, 'Failed to fetch statement');
-          setErrorMsg(
-            err instanceof Error
-              ? err.message
-              : 'An error occurred while loading the statement. Please try again.',
-          );
-        }
-      } finally {
-        if (isMounted.current) {
-          setIsLoading(false);
-        }
-      }
-    })();
-    return () => {
-      isMounted.current = false;
-    };
-  }, [tab, applied, selectedCustomerId]);
+      const params = buildParams(applied.from, applied.to, applied.status);
+      const path =
+        tab === 'vendor'
+          ? `/v1/vendors/${getVendorId()}/statement?${params}`
+          : `/v1/vendors/${getVendorId()}/customers/${selectedCustomerId}/statement?${params}`;
+      return api.get<StatementResponse>(path);
+    },
+    mock: tab === 'vendor' ? mockVendorStatementResponse : mockCustomerStatementResponse,
+    deps: [tab, applied.from, applied.to, applied.status, selectedCustomerId],
+  });
 
   useEffect(() => {
-    if (tab !== 'customer' || customers.length > 0) return;
-    const isMounted = { current: true };
-    void (async () => {
-      try {
-        const res = await api.get<{ rows: CustomerOption[] }>(
-          `/v1/vendors/${CURRENT_VENDOR_ID}/customers`,
-        );
-        if (isMounted.current && res) {
-          setCustomers(res.rows);
-        }
-      } catch (err: unknown) {
-        log.error({ err }, 'Failed to fetch customer list');
-      }
-    })();
-    return () => {
-      isMounted.current = false;
-    };
-  }, [tab, customers.length]);
+    const data = statementHook.data;
+    if (!data) return;
+    setOpeningBalance(data.opening_balance_kobo);
+    setTransactions(data.transactions.map(mapTransaction));
+    if ('vendor' in data) {
+      setVendorName(data.vendor.name);
+    } else {
+      setSelectedCustomerName(data.customer.name);
+    }
+  }, [statementHook.data]);
 
+  const isLoading = statementHook.isLoading;
   const netChange = transactions.reduce((sum, tx) => sum + tx.amount_kobo, 0);
   const closingBalance = openingBalance + netChange;
 
   const printHeaderName = tab === 'vendor' ? vendorName : selectedCustomerName;
+  const breadcrumbs =
+    tab === 'vendor'
+      ? [{ label: 'Statements' }]
+      : selectedCustomerId
+        ? [
+            { label: 'Statements', href: '/statements' },
+            { label: 'Customers', href: '/vendor/customers' },
+            { label: selectedCustomerName || 'Customer' },
+          ]
+        : [
+            { label: 'Statements', href: '/statements' },
+            { label: 'Customers' },
+          ];
 
   return (
-    <Layout variant="vendor">
+    <Layout variant="vendor" breadcrumbs={breadcrumbs}>
       <style jsx global>{`
         @media print {
           aside,
@@ -339,17 +330,6 @@ export default function StatementsPage() {
                 className="h-14 animate-pulse rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900"
               />
             ))}
-          </div>
-        ) : errorMsg ? (
-          <div className="mx-auto max-w-xl space-y-3 rounded-2xl border border-red-500/25 bg-red-500/10 p-6 text-center">
-            <p className="text-sm font-semibold text-red-500">{errorMsg}</p>
-            <button
-              type="button"
-              onClick={applyFilters}
-              className="rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-2 text-xs font-bold text-white transition-all hover:bg-zinc-750"
-            >
-              Retry Connection
-            </button>
           </div>
         ) : (
           <>

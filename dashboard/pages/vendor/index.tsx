@@ -4,8 +4,9 @@ import Layout from '../../components/layout';
 import StatCard from '../../components/StatCard';
 import { api } from '../../lib/api';
 import { createLogger } from '../../lib/logger';
+import { getVendorId } from '../../lib/auth';
 import { formatKoboToNaira, formatReconciliationRate } from '../../lib/format';
-import { CURRENT_VENDOR_ID } from '../../lib/session';
+import { useMockFallback, mockVendorStatement } from '../../lib/mockData';
 
 const log = createLogger('vendor-dashboard-page');
 
@@ -43,12 +44,45 @@ const CheckIcon = () => (
   </svg>
 );
 
+const WalletIcon = () => (
+  <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3M3.75 5.25h16.5A1.5 1.5 0 0121.75 6.75v10.5a1.5 1.5 0 01-1.5 1.5H3.75a1.5 1.5 0 01-1.5-1.5V6.75a1.5 1.5 0 011.5-1.5z"
+    />
+  </svg>
+);
+
+const ChartIcon = () => (
+  <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"
+    />
+  </svg>
+);
+
+const AlertIcon = () => (
+  <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+    />
+  </svg>
+);
+
 export default function VendorDashboard() {
   const router = useRouter();
-  const [statement, setStatement] = useState<VendorStatement | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+
+  const { data: statement, isLoading } = useMockFallback<VendorStatement>({
+    fetcher: () => api.get<VendorStatement>(`/v1/vendors/${getVendorId()}/statement`),
+    mock: mockVendorStatement as VendorStatement,
+    isEmpty: (res) => res.recent_customers.length === 0,
+  });
 
   const handleCopyVa = async (vaNumber: string) => {
     try {
@@ -71,40 +105,8 @@ export default function VendorDashboard() {
     }
   };
 
-  useEffect(() => {
-    const isMounted = { current: true };
-    void (async () => {
-      setIsLoading(true);
-      setErrorMsg(null);
-      try {
-        const res = await api.get<VendorStatement>(
-          `/v1/vendors/${CURRENT_VENDOR_ID}/statement`,
-        );
-        if (isMounted.current && res) {
-          setStatement(res);
-        }
-      } catch (err: unknown) {
-        if (isMounted.current) {
-          log.error({ err }, 'Failed to fetch vendor statement');
-          setErrorMsg(
-            err instanceof Error
-              ? err.message
-              : 'An error occurred while loading your dashboard. Please try again.',
-          );
-        }
-      } finally {
-        if (isMounted.current) {
-          setIsLoading(false);
-        }
-      }
-    })();
-    return () => {
-      isMounted.current = false;
-    };
-  }, []);
-
   return (
-    <Layout variant="vendor">
+    <Layout variant="vendor" breadcrumbs={[{ label: 'Vendor Dashboard' }]}>
       <div className="space-y-6">
         <div className="flex flex-col gap-1">
           <h2 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">
@@ -126,17 +128,6 @@ export default function VendorDashboard() {
               ))}
             </div>
             <div className="h-48 animate-pulse rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900" />
-          </div>
-        ) : errorMsg ? (
-          <div className="mx-auto max-w-xl space-y-3 rounded-2xl border border-red-500/25 bg-red-500/10 p-6 text-center">
-            <p className="text-sm font-semibold text-red-500">{errorMsg}</p>
-            <button
-              type="button"
-              onClick={() => router.reload()}
-              className="rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-2 text-xs font-bold text-white transition-all hover:bg-zinc-750"
-            >
-              Retry Connection
-            </button>
           </div>
         ) : statement ? (
           <>
@@ -165,16 +156,24 @@ export default function VendorDashboard() {
                 label="Collected This Month"
                 value={formatKoboToNaira(statement.total_collected_kobo)}
                 subtext="Total inflow for the current month"
+                trend="This month"
+                icon={<WalletIcon />}
               />
               <StatCard
                 label="Reconciliation Rate"
                 value={formatReconciliationRate(statement.reconciliation_rate)}
                 subtext="Payments matched to invoices"
+                trend="This month"
+                icon={<ChartIcon />}
+                tone={statement.reconciliation_rate >= 90 ? 'success' : 'warning'}
               />
               <StatCard
                 label="Outstanding Balance"
                 value={formatKoboToNaira(statement.outstanding_balance_kobo)}
                 subtext="Unreconciled amounts"
+                trend="Requires action"
+                icon={<AlertIcon />}
+                tone={statement.outstanding_balance_kobo > 0 ? 'warning' : 'success'}
               />
             </div>
 
@@ -193,9 +192,25 @@ export default function VendorDashboard() {
               </div>
 
               {statement.recent_customers.length === 0 ? (
-                <p className="mt-4 text-sm text-zinc-500 dark:text-zinc-400">
-                  No customers yet.
-                </p>
+                <div className="mt-6 flex flex-col items-center gap-3 text-center">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-zinc-100 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-600">
+                    <svg className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.109A2.25 2.25 0 0112.75 21.5h-1.5a2.25 2.25 0 01-2.25-2.263V19.13m-2.625.372a9.337 9.337 0 01-4.121-.952 4.125 4.125 0 007.533-2.493M3.75 19.128v-.003c0-1.113.285-2.16.786-3.07M4.5 19.128v.109A2.25 2.25 0 006.75 21.5h1.5a2.25 2.25 0 002.25-2.263V19.13"
+                      />
+                    </svg>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-zinc-900 dark:text-white">
+                      No customers yet
+                    </h4>
+                    <p className="mt-1 max-w-sm text-xs text-zinc-500 dark:text-zinc-400">
+                      Customers will appear here once payments start flowing into your virtual account.
+                    </p>
+                  </div>
+                </div>
               ) : (
                 <ul className="mt-4 divide-y divide-zinc-200/60 dark:divide-zinc-800/60">
                   {statement.recent_customers.map((customer) => (

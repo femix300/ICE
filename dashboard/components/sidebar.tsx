@@ -80,9 +80,9 @@ export default function Sidebar({ variant, isOpen = false, onClose }: SidebarPro
   const currentPath = router.pathname;
 
   const ownerLinks: NavItem[] = [
-    { name: 'Dashboard', path: '/', icon: <HomeIcon /> },
+    { name: 'Dashboard', path: '/owner', icon: <HomeIcon /> },
     { name: 'All Vendors', path: '/vendors', icon: <UsersIcon /> },
-    { name: 'Summary', path: '/summary', icon: <ChartSquareIcon /> },
+    { name: 'Webhook Log', path: '/webhooks', icon: <RefreshCwIcon /> },
     { name: 'Misdirected Payments', path: '/misdirected', icon: <AlertCircleIcon /> },
   ];
 
@@ -96,7 +96,7 @@ export default function Sidebar({ variant, isOpen = false, onClose }: SidebarPro
   const links = variant === 'owner' ? ownerLinks : vendorLinks;
 
   const checkIsActive = (path: string) => {
-    if (path === '/' || path === '/vendor') {
+    if (path === '/' || path === '/owner' || path === '/vendor') {
       return currentPath === path;
     }
     return currentPath.startsWith(path);

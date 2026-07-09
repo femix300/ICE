@@ -8,3 +8,4 @@ handoffs/
 .envelopedashboard/.next
 dashboard/out
 dashboard/build
+.envelope

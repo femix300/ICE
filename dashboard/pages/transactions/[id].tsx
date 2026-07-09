@@ -7,58 +7,56 @@ import TransactionDetail, {
 } from '../../components/TransactionDetail';
 import { api } from '../../lib/api';
 import { createLogger } from '../../lib/logger';
+import {
+  useMockFallback,
+  mockTransactionDetail,
+  mockReconciliationDetail,
+} from '../../lib/mockData';
 
 const log = createLogger('transaction-detail-page');
 
 export default function TransactionDetailPage() {
   const router = useRouter();
   const { id } = router.query;
-  const [transaction, setTransaction] = useState<TransactionDetailData | null>(null);
   const [reconciliation, setReconciliation] = useState<ReconciliationDetail | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const transactionId = typeof id === 'string' ? id : '';
+  const isReady = router.isReady && Boolean(transactionId);
+
+  const { data: transaction, isLoading } = useMockFallback<TransactionDetailData>({
+    fetcher: () => api.get<TransactionDetailData>(`/v1/transactions/${transactionId}`),
+    mock: mockTransactionDetail(transactionId),
+    deps: [isReady, transactionId],
+  });
 
   useEffect(() => {
-    if (!router.isReady || !id || typeof id !== 'string') {
+    if (!transaction?.invoice_id) {
+      setReconciliation(null);
       return;
     }
-
-    const fetchData = async () => {
-      setIsLoading(true);
-      setErrorMsg(null);
+    let active = true;
+    void (async () => {
       try {
-        const tx = await api.get<TransactionDetailData>(`/v1/transactions/${id}`);
-        setTransaction(tx);
-
-        if (tx.invoice_id) {
-          try {
-            const recon = await api.get<ReconciliationDetail>(
-              `/v1/invoices/${tx.invoice_id}/reconciliation`,
-            );
-            setReconciliation(recon);
-          } catch (reconErr: unknown) {
-            log.error(
-              { err: reconErr, invoiceId: tx.invoice_id },
-              'Failed to fetch reconciliation',
-            );
-            setReconciliation(null);
-          }
-        }
-      } catch (err: unknown) {
-        log.error({ err, transactionId: id }, 'Failed to fetch transaction detail');
-        const message = err instanceof Error ? err.message : 'An unexpected error occurred while loading transaction details.';
-        setErrorMsg(message);
-      } finally {
-        setIsLoading(false);
+        const recon = await api.get<ReconciliationDetail>(
+          `/v1/invoices/${transaction.invoice_id}/reconciliation`,
+        );
+        if (active) setReconciliation(recon);
+      } catch (reconErr: unknown) {
+        log.error(
+          { err: reconErr, invoiceId: transaction.invoice_id },
+          'Failed to fetch reconciliation; using demo data',
+        );
+        if (active) setReconciliation(mockReconciliationDetail);
       }
+    })();
+    return () => {
+      active = false;
     };
+  }, [transaction]);
 
-    fetchData();
-  }, [router.isReady, id]);
-
-  if (isLoading) {
+  if (!isReady || isLoading) {
     return (
-      <Layout variant="owner">
+      <Layout variant="owner" breadcrumbs={[{ label: 'Transactions', href: '/transactions' }]}>
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <div className="space-y-2">
@@ -84,9 +82,9 @@ export default function TransactionDetailPage() {
     );
   }
 
-  if (errorMsg || !transaction) {
+  if (!transaction) {
     return (
-      <Layout variant="owner">
+      <Layout variant="owner" breadcrumbs={[{ label: 'Transactions', href: '/transactions' }]}>
         <div className="flex flex-col items-center justify-center py-12 space-y-4">
           <div className="w-12 h-12 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-500">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
@@ -98,7 +96,7 @@ export default function TransactionDetailPage() {
               Unable to Load Transaction
             </h3>
             <p className="text-sm text-zinc-500 dark:text-zinc-400 max-w-md">
-              {errorMsg ?? 'Transaction not found or has been removed.'}
+              Transaction not found or has been removed.
             </p>
           </div>
           <button
@@ -114,7 +112,13 @@ export default function TransactionDetailPage() {
   }
 
   return (
-    <Layout variant="owner">
+    <Layout
+      variant="owner"
+      breadcrumbs={[
+        { label: 'Transactions', href: '/transactions' },
+        { label: transaction.transaction_id },
+      ]}
+    >
       <TransactionDetail transaction={transaction} reconciliation={reconciliation} />
     </Layout>
   );
