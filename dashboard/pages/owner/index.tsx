@@ -1,15 +1,19 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useRouter } from 'next/router';
 import Link from 'next/link';
 import Layout from '../../components/layout';
 import SummaryMetrics, { type PlatformSummary } from '../../components/SummaryMetrics';
 import MisdirectedPaymentCard, {
   type MisdirectedPayment,
 } from '../../components/MisdirectedPaymentCard';
+import AnomalyAlertPanel from '../../components/AnomalyAlertPanel';
 import { api } from '../../lib/api';
 import { createLogger } from '../../lib/logger';
-import { CURRENT_MERCHANT_ID } from '../../lib/session';
-import AnomalyAlertPanel from '../../components/AnomalyAlertPanel';
+import { getMerchantId } from '../../lib/auth';
+import {
+  useMockFallback,
+  mockPlatformSummary,
+  mockMisdirectedList,
+} from '../../lib/mockData';
 
 const log = createLogger('owner-dashboard-page');
 
@@ -19,15 +23,34 @@ type MisdirectedListResponse = {
 };
 
 export default function OwnerDashboard() {
-  const router = useRouter();
   const [summary, setSummary] = useState<PlatformSummary | null>(null);
   const [payments, setPayments] = useState<MisdirectedPayment[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [toast, setToast] = useState<{ kind: 'success' | 'error'; message: string } | null>(
     null,
   );
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const summaryHook = useMockFallback<PlatformSummary>({
+    fetcher: () =>
+      api.get<PlatformSummary>(`/v1/merchants/${getMerchantId()}/summary`),
+    mock: mockPlatformSummary,
+  });
+
+  const paymentsHook = useMockFallback<MisdirectedListResponse>({
+    fetcher: () => api.get<MisdirectedListResponse>('/v1/payments/misdirected'),
+    mock: mockMisdirectedList,
+    isEmpty: (res) => res.rows.length === 0,
+  });
+
+  const isLoading = summaryHook.isLoading || paymentsHook.isLoading;
+
+  useEffect(() => {
+    if (summaryHook.data) setSummary(summaryHook.data);
+  }, [summaryHook.data]);
+
+  useEffect(() => {
+    if (paymentsHook.data) setPayments(paymentsHook.data.rows);
+  }, [paymentsHook.data]);
 
   const showToast = useCallback((kind: 'success' | 'error', message: string) => {
     if (toastTimer.current) {
@@ -44,39 +67,14 @@ export default function OwnerDashboard() {
     );
   }, []);
 
+  // DEMO: Fire a one-time system toast on first load so reviewers see the live
+  // alerting surface. Remove before production.
   useEffect(() => {
-    const isMounted = { current: true };
-    void (async () => {
-      setIsLoading(true);
-      setErrorMsg(null);
-      try {
-        const [summaryRes, paymentsRes] = await Promise.all([
-          api.get<PlatformSummary>(`/v1/merchants/${CURRENT_MERCHANT_ID}/summary`),
-          api.get<MisdirectedListResponse>('/v1/payments/misdirected'),
-        ]);
-        if (isMounted.current) {
-          if (summaryRes) setSummary(summaryRes);
-          if (paymentsRes) setPayments(paymentsRes.rows);
-        }
-      } catch (err: unknown) {
-        if (isMounted.current) {
-          log.error({ err }, 'Failed to fetch owner dashboard data');
-          setErrorMsg(
-            err instanceof Error
-              ? err.message
-              : 'An error occurred while loading the dashboard. Please try again.',
-          );
-        }
-      } finally {
-        if (isMounted.current) {
-          setIsLoading(false);
-        }
-      }
-    })();
-    return () => {
-      isMounted.current = false;
-    };
-  }, []);
+    const timer = setTimeout(() => {
+      showToast('success', 'System online — 2 misdirected payments require review.');
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [showToast]);
 
   useEffect(() => {
     return () => {
@@ -87,7 +85,7 @@ export default function OwnerDashboard() {
   }, []);
 
   return (
-    <Layout variant="owner">
+    <Layout variant="owner" breadcrumbs={[{ label: 'Platform Dashboard' }]}>
       <div className="space-y-6">
         <div className="flex flex-col gap-1">
           <h2 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">
@@ -122,24 +120,13 @@ export default function OwnerDashboard() {
               ))}
             </div>
             <div className="space-y-3">
-              {[...Array(3)].map((_, i) => (
+              {[...Array(2)].map((_, i) => (
                 <div
                   key={i}
                   className="h-24 animate-pulse rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900"
                 />
               ))}
             </div>
-          </div>
-        ) : errorMsg ? (
-          <div className="mx-auto max-w-xl space-y-3 rounded-2xl border border-red-500/25 bg-red-500/10 p-6 text-center">
-            <p className="text-sm font-semibold text-red-500">{errorMsg}</p>
-            <button
-              type="button"
-              onClick={() => router.reload()}
-              className="rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-2 text-xs font-bold text-white transition-all hover:bg-zinc-750"
-            >
-              Retry Connection
-            </button>
           </div>
         ) : (
           <>

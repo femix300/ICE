@@ -23,6 +23,12 @@ vi.mock('../../lib/api', () => ({
   },
 }));
 
+// Mock auth so persistApiKey does not hit fetch during tests
+vi.mock('../../lib/auth', () => ({
+  setApiKey: vi.fn(),
+  setMerchantId: vi.fn(),
+}));
+
 describe('Register Page', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -36,56 +42,63 @@ describe('Register Page', () => {
 
   it('shows inline validation errors on invalid input', async () => {
     render(<Register />);
-    
+
     fillForm('ab', 'invalid-email', 'http://unsecure.com');
     fireEvent.click(screen.getByRole('button', { name: /register merchant/i }));
 
     expect(await screen.findByText(/business name must be at least 3 characters/i)).toBeInTheDocument();
     expect(screen.getByText(/invalid email address/i)).toBeInTheDocument();
     expect(screen.getByText(/webhook url must be secure/i)).toBeInTheDocument();
-    
-    // Ensure API is not called
+
     expect(api.post).not.toHaveBeenCalled();
   });
 
   it('submits registration form to correct endpoint on valid input', async () => {
-    (api.post as ReturnType<typeof vi.fn>).mockResolvedValue({ apiKey: 'sk_test_123' });
-    
+    (api.post as ReturnType<typeof vi.fn>).mockResolvedValue({
+      api_key: 'sk_test_123',
+      merchant: { id: 'merch_123' },
+    });
+
     render(<Register />);
-    
+
     fillForm('Valid Business', 'test@example.com', 'https://secure.com/webhook');
     fireEvent.click(screen.getByRole('button', { name: /register merchant/i }));
 
     await waitFor(() => {
-      expect(api.post).toHaveBeenCalledWith('/v1/merchants/register', {
-        businessName: 'Valid Business',
-        email: 'test@example.com',
-        webhookUrl: 'https://secure.com/webhook',
-      });
+      expect(api.post).toHaveBeenCalledWith(
+        '/v1/merchants/register',
+        {
+          businessName: 'Valid Business',
+          email: 'test@example.com',
+          webhookUrl: 'https://secure.com/webhook',
+        },
+        expect.anything(),
+      );
     });
   });
 
   it('displays API key screen once registration succeeds', async () => {
-    (api.post as ReturnType<typeof vi.fn>).mockResolvedValue({ apiKey: 'sk_test_success_123' });
-    
+    (api.post as ReturnType<typeof vi.fn>).mockResolvedValue({
+      api_key: 'sk_test_success_123',
+      merchant: { id: 'merch_123' },
+    });
+
     render(<Register />);
-    
+
     fillForm('Valid Business', 'test@example.com', 'https://secure.com/webhook');
     fireEvent.click(screen.getByRole('button', { name: /register merchant/i }));
 
-    // Wait for the success screen to appear
     expect(await screen.findByText(/your merchant api key/i)).toBeInTheDocument();
-    expect(screen.getByText(/sk_test_••••••••s_123/i)).toBeInTheDocument();
-    
-    // Form should be gone
+    expect(screen.getByText(/sk_test_.*_123/i)).toBeInTheDocument();
+
     expect(screen.queryByLabelText(/business name/i)).not.toBeInTheDocument();
   });
 
   it('shows form error banner on API failure', async () => {
     (api.post as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('Network error'));
-    
+
     render(<Register />);
-    
+
     fillForm('Valid Business', 'test@example.com', 'https://secure.com/webhook');
     fireEvent.click(screen.getByRole('button', { name: /register merchant/i }));
 

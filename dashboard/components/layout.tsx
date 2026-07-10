@@ -1,12 +1,19 @@
 import React, { useState } from 'react';
+import Link from 'next/link';
 import Sidebar from './sidebar';
+
+interface BreadcrumbItem {
+  label: string;
+  href?: string;
+}
 
 interface LayoutProps {
   variant: 'owner' | 'vendor';
   children: React.ReactNode;
+  breadcrumbs?: BreadcrumbItem[];
 }
 
-export default function Layout({ variant, children }: LayoutProps) {
+export default function Layout({ variant, children, breadcrumbs }: LayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   return (
@@ -38,15 +45,44 @@ export default function Layout({ variant, children }: LayoutProps) {
             </button>
 
             {/* Title / Breadcrumb */}
-            <div className="flex items-center gap-2">
+            <nav className="flex items-center gap-1.5 text-sm" aria-label="Breadcrumb">
               <span className="text-xs font-semibold px-2 py-0.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 rounded">
                 ICE
               </span>
               <span className="text-zinc-300 dark:text-zinc-700">/</span>
-              <h1 className="text-sm font-semibold tracking-tight text-zinc-700 dark:text-zinc-200">
-                {variant === 'owner' ? 'Platform Management' : 'Vendor Terminal'}
-              </h1>
-            </div>
+              {breadcrumbs?.length ? (
+                breadcrumbs.map((crumb, index) => {
+                  const isLast = index === breadcrumbs.length - 1;
+                  return (
+                    <span key={`${crumb.label}-${index}`} className="flex items-center gap-1.5">
+                      {crumb.href && !isLast ? (
+                        <Link
+                          href={crumb.href}
+                          className="font-medium text-zinc-500 transition-colors hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
+                        >
+                          {crumb.label}
+                        </Link>
+                      ) : (
+                        <span
+                          className={`font-semibold tracking-tight ${
+                            isLast
+                              ? 'text-zinc-900 dark:text-white'
+                              : 'text-zinc-700 dark:text-zinc-200'
+                          }`}
+                        >
+                          {crumb.label}
+                        </span>
+                      )}
+                      {!isLast && <span className="text-zinc-300 dark:text-zinc-700">/</span>}
+                    </span>
+                  );
+                })
+              ) : (
+                <h1 className="text-sm font-semibold tracking-tight text-zinc-700 dark:text-zinc-200">
+                  {variant === 'owner' ? 'Platform Management' : 'Vendor Terminal'}
+                </h1>
+              )}
+            </nav>
           </div>
 
           {/* Right: Actions / User Profile Avatar */}

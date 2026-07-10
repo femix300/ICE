@@ -5,6 +5,10 @@ import Layout from '../components/layout';
 import ApiKeyDisplay from '../components/api-key-display';
 import { api } from '../lib/api';
 import { AppError } from '../lib/errors';
+import {
+  setApiKey as persistApiKey,
+  setMerchantId,
+} from '../lib/auth';
 
 // Validation Schema with Zod
 const registerSchema = z.object({
@@ -23,6 +27,14 @@ const registerSchema = z.object({
 });
 
 type RegisterFormValues = z.infer<typeof registerSchema>;
+
+const registerResponseSchema = z.union([
+  z.object({ api_key: z.string(), merchant: z.object({ id: z.string() }).passthrough() }),
+  z.object({ apiKey: z.string(), merchant: z.object({ id: z.string() }).passthrough() }),
+  z.string(),
+]);
+
+type RegisterResponse = z.infer<typeof registerResponseSchema>;
 
 export default function Register() {
   const router = useRouter();
@@ -79,16 +91,26 @@ export default function Register() {
     setFormError(null);
 
     try {
-      // Calls typed API client post function from lib/api.ts
-      const response = await api.post<{ apiKey: string } | string>(
+      const response = await api.post<RegisterResponse>(
         '/v1/merchants/register',
         values,
-        { schema: z.union([z.object({ apiKey: z.string() }), z.string()]) }
+        { schema: registerResponseSchema },
       );
-      const generatedKey = typeof response === 'string' ? response : response?.apiKey;
+      const generatedKey =
+        typeof response === 'string'
+          ? response
+          : 'api_key' in response
+            ? response.api_key
+            : response.apiKey;
+      const merchantId =
+        typeof response === 'string' ? undefined : response.merchant.id;
 
       if (generatedKey) {
-        setApiKey(generatedKey);
+        persistApiKey(generatedKey);
+        setApiKey(generatedKey); // <-- Fix: Update local state to render the success screen
+        if (merchantId) {
+          setMerchantId(merchantId);
+        }
       } else {
         throw new AppError('REGISTRATION_FAILED', 'API key was not returned by the server');
       }

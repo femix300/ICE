@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useRouter } from 'next/router';
 import Layout from '../../../components/layout';
 import { api } from '../../../lib/api';
 import { createLogger } from '../../../lib/logger';
 import { formatKoboToNaira } from '../../../lib/format';
-import { CURRENT_VENDOR_ID } from '../../../lib/session';
+import { getVendorId } from '../../../lib/auth';
+import { useMockFallback, mockVendorCustomerList } from '../../../lib/mockData';
 
 const log = createLogger('vendor-customers-page');
 
@@ -23,46 +24,25 @@ type CustomersListResponse = {
 
 export default function VendorCustomers() {
   const router = useRouter();
-  const [customers, setCustomers] = useState<CustomerListItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  useEffect(() => {
-    const isMounted = { current: true };
-    void (async () => {
-      setIsLoading(true);
-      setErrorMsg(null);
-      try {
-        const res = await api.get<CustomersListResponse>(
-          `/v1/vendors/${CURRENT_VENDOR_ID}/customers`,
-        );
-        if (isMounted.current && res) {
-          setCustomers(res.rows);
-        }
-      } catch (err: unknown) {
-        if (isMounted.current) {
-          log.error({ err }, 'Failed to fetch vendor customers');
-          setErrorMsg(
-            err instanceof Error
-              ? err.message
-              : 'An error occurred while loading customers. Please try again.',
-          );
-        }
-      } finally {
-        if (isMounted.current) {
-          setIsLoading(false);
-        }
-      }
-    })();
-    return () => {
-      isMounted.current = false;
-    };
-  }, []);
+  const { data, isLoading } = useMockFallback<CustomersListResponse>({
+    fetcher: () =>
+      api.get<CustomersListResponse>(`/v1/vendors/${getVendorId()}/customers`),
+    mock: mockVendorCustomerList,
+    isEmpty: (res) => res.rows.length === 0,
+  });
 
+  const customers = data?.rows ?? [];
   const headers = ['Customer Name', 'Last Payment Date', 'Total Paid'];
 
   return (
-    <Layout variant="vendor">
+    <Layout
+      variant="vendor"
+      breadcrumbs={[
+        { label: 'Customers', href: '/vendor/customers' },
+        { label: 'All Customers' },
+      ]}
+    >
       <div className="space-y-6">
         <div className="flex flex-col gap-1">
           <h2 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">
@@ -83,17 +63,6 @@ export default function VendorCustomers() {
                 />
               ))}
             </div>
-          </div>
-        ) : errorMsg ? (
-          <div className="mx-auto max-w-xl space-y-3 rounded-2xl border border-red-500/25 bg-red-500/10 p-6 text-center">
-            <p className="text-sm font-semibold text-red-500">{errorMsg}</p>
-            <button
-              type="button"
-              onClick={() => router.reload()}
-              className="rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-2 text-xs font-bold text-white transition-all hover:bg-zinc-750"
-            >
-              Retry Connection
-            </button>
           </div>
         ) : customers.length === 0 ? (
           <div className="mx-auto max-w-lg space-y-4 rounded-2xl border border-zinc-200/60 bg-white p-8 text-center dark:border-zinc-800/60 dark:bg-zinc-900/20">

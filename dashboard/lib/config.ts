@@ -2,7 +2,11 @@ import { z } from 'zod';
 import { AppError } from './errors';
 
 const envSchema = z.object({
-  NEXT_PUBLIC_API_URL: z.string().url().default('http://localhost:3000'),
+  // Base URL the browser uses to reach the ICE backend. Defaults to the
+  // same-origin /api proxy (see next.config.ts rewrites). To bypass the proxy
+  // and call the backend directly, set this to its absolute URL (CORS must then
+  // allow the dashboard origin).
+  NEXT_PUBLIC_API_URL: z.string().min(1).default('/api'),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
 });
 

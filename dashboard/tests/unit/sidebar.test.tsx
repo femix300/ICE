@@ -27,7 +27,7 @@ describe('Sidebar Component', () => {
     // getAllByText because sidebar renders in both desktop and mobile containers
     expect(screen.getAllByText('Dashboard').length).toBeGreaterThan(0);
     expect(screen.getAllByText('All Vendors').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Summary').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Webhook Log').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Misdirected Payments').length).toBeGreaterThan(0);
   });
 

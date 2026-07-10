@@ -5,6 +5,7 @@ dist
 coverage
 .DS_Store
 handoffs/
-.envelopedashboard/.next
+.envelope
+dashboard/.next
 dashboard/out
 dashboard/build

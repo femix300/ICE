@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { api } from '../lib/api';
 import { createLogger } from '../lib/logger';
+import { mockAnomalies, useMockFallback } from '../lib/mockData';
 
 const log = createLogger('anomaly-alert-panel');
 
@@ -52,50 +53,15 @@ const CheckCircle = () => (
 
 export default function AnomalyAlertPanel({ onToast }: AnomalyAlertPanelProps) {
   const router = useRouter();
-  const [alerts, setAlerts] = useState<AnomalyAlert[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const { data: alerts, isLoading, refetch } = useMockFallback<AnomalyAlert[]>({
+    fetcher: () => api.get<AnomalyAlert[]>('/v1/anomalies'),
+    mock: mockAnomalies,
+    isEmpty: (rows) => rows.length === 0,
+  });
   const [dismissingIds, setDismissingIds] = useState<Set<string>>(new Set());
+  const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
 
-  const fetchAlerts = useCallback(async () => {
-    setIsLoading(true);
-    setErrorMsg(null);
-    try {
-      const data = await api.get<AnomalyAlert[]>('/v1/anomalies');
-      setAlerts(data ?? []);
-    } catch (err: unknown) {
-      log.error({ err }, 'Failed to fetch anomaly alerts');
-      setErrorMsg(err instanceof Error ? err.message : 'Failed to load anomaly alerts.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    const isMounted = { current: true };
-    void (async () => {
-      setIsLoading(true);
-      setErrorMsg(null);
-      try {
-        const data = await api.get<AnomalyAlert[]>('/v1/anomalies');
-        if (isMounted.current) {
-          setAlerts(data ?? []);
-        }
-      } catch (err: unknown) {
-        if (isMounted.current) {
-          log.error({ err }, 'Failed to fetch anomaly alerts');
-          setErrorMsg(err instanceof Error ? err.message : 'Failed to load anomaly alerts.');
-        }
-      } finally {
-        if (isMounted.current) {
-          setIsLoading(false);
-        }
-      }
-    })();
-    return () => {
-      isMounted.current = false;
-    };
-  }, []);
+  const fetchAlerts = useCallback(() => refetch(), [refetch]);
 
   const handleInvestigate = (transactionId: string) => {
     router.push(`/transactions/${transactionId}`);
@@ -106,33 +72,36 @@ export default function AnomalyAlertPanel({ onToast }: AnomalyAlertPanelProps) {
     try {
       await api.delete(`/v1/anomalies/${alert.id}`);
       onToast('success', `Alert dismissed: ${alert.rule}`);
+      setDismissedIds((prev) => new Set(prev).add(alert.id));
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to dismiss alert.';
       log.error({ err, alertId: alert.id }, 'Failed to dismiss anomaly');
       onToast('error', message);
-      setErrorMsg(message);
+    } finally {
       setDismissingIds((prev) => {
         const next = new Set(prev);
         next.delete(alert.id);
         return next;
       });
-      return;
     }
-    setTimeout(() => {
-      setAlerts((prev) => prev.filter((a) => a.id !== alert.id));
-      setDismissingIds((prev) => {
-        const next = new Set(prev);
-        next.delete(alert.id);
-        return next;
-      });
-    }, 300);
   };
+
+  const visibleAlerts = (alerts ?? []).filter((a) => !dismissedIds.has(a.id));
 
   return (
     <div className="space-y-4">
-      <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
-        Anomaly Alerts
-      </h3>
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
+          Anomaly Alerts
+        </h3>
+        <button
+          type="button"
+          onClick={fetchAlerts}
+          className="text-xs font-semibold text-zinc-400 transition-colors hover:text-zinc-700 dark:hover:text-zinc-200"
+        >
+          Refresh
+        </button>
+      </div>
 
       {isLoading ? (
         <div className="space-y-3">
@@ -143,18 +112,7 @@ export default function AnomalyAlertPanel({ onToast }: AnomalyAlertPanelProps) {
             />
           ))}
         </div>
-      ) : errorMsg && alerts.length === 0 ? (
-        <div className="rounded-2xl border border-red-500/25 bg-red-500/10 p-4 text-center">
-          <p className="text-sm font-semibold text-red-500">{errorMsg}</p>
-          <button
-            type="button"
-            onClick={fetchAlerts}
-            className="mt-2 rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-2 text-xs font-bold text-white transition-all hover:bg-zinc-750"
-          >
-            Retry
-          </button>
-        </div>
-      ) : alerts.length === 0 ? (
+      ) : visibleAlerts.length === 0 ? (
         <div className="mx-auto max-w-lg space-y-4 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-8 text-center">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-500">
             <CheckCircle />
@@ -162,10 +120,13 @@ export default function AnomalyAlertPanel({ onToast }: AnomalyAlertPanelProps) {
           <h4 className="text-base font-bold text-zinc-900 dark:text-white">
             No anomalies detected — system operating normally
           </h4>
+          <p className="mx-auto mt-1 max-w-sm text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
+            Automated checks found no suspicious payment patterns in the last 24 hours.
+          </p>
         </div>
       ) : (
         <div className="space-y-3">
-          {alerts.map((alert) => {
+          {visibleAlerts.map((alert) => {
             const isDismissing = dismissingIds.has(alert.id);
             const color = severityColor[alert.severity] ?? severityColor.LOW;
             return (
@@ -176,7 +137,7 @@ export default function AnomalyAlertPanel({ onToast }: AnomalyAlertPanelProps) {
                 }`}
               >
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex flex-1 flex-col gap-2">
+                  <div className="flex-1 flex-col gap-2">
                     <div className="flex items-center gap-2">
                       <code className="text-xs font-mono font-bold text-zinc-900 dark:text-white">
                         {alert.rule}

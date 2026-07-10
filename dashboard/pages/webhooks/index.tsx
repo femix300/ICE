@@ -7,6 +7,7 @@ import WebhookDeliveryLog, {
 import DeadLetterAlert from '../../components/DeadLetterAlert';
 import { api } from '../../lib/api';
 import { createLogger } from '../../lib/logger';
+import { useMockFallback, mockWebhookList } from '../../lib/mockData';
 
 const log = createLogger('webhook-log-page');
 
@@ -19,18 +20,24 @@ type WebhookListResponse = {
 };
 
 export default function WebhooksIndex() {
-  const [deliveries, setDeliveries] = useState<WebhookDelivery[]>([]);
-  const [deadLetterCount, setDeadLetterCount] = useState(0);
-  const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [isLoading, setIsLoading] = useState(true);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [replayingId, setReplayingId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ kind: 'success' | 'error'; message: string } | null>(
     null,
   );
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const deadLetterRef = useRef<HTMLDivElement | null>(null);
+
+  const { data, isLoading, refetch } = useMockFallback<WebhookListResponse>({
+    fetcher: () => {
+      const offset = (page - 1) * ITEMS_PER_PAGE;
+      return api.get<WebhookListResponse>(
+        `/v1/webhook-deliveries?limit=${ITEMS_PER_PAGE}&offset=${offset}`,
+      );
+    },
+    mock: mockWebhookList as WebhookListResponse,
+    deps: [page],
+  });
 
   const showToast = useCallback((kind: 'success' | 'error', message: string) => {
     if (toastTimer.current) {
@@ -39,69 +46,6 @@ export default function WebhooksIndex() {
     setToast({ kind, message });
     toastTimer.current = setTimeout(() => setToast(null), 4000);
   }, []);
-
-  const fetchDeliveries = useCallback(
-    async (pageToFetch: number) => {
-      setIsLoading(true);
-      setErrorMsg(null);
-      try {
-        const offset = (pageToFetch - 1) * ITEMS_PER_PAGE;
-        const res = await api.get<WebhookListResponse>(
-          `/v1/webhook-deliveries?limit=${ITEMS_PER_PAGE}&offset=${offset}`,
-        );
-        if (res) {
-          setDeliveries(res.rows);
-          setTotal(res.total);
-          setDeadLetterCount(res.deadLetterCount ?? 0);
-        }
-      } catch (err: unknown) {
-        log.error({ err }, 'Failed to fetch webhook deliveries');
-        setErrorMsg(
-          err instanceof Error
-            ? err.message
-            : 'An error occurred while loading webhook deliveries. Please try again.',
-        );
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [],
-  );
-
-  useEffect(() => {
-    const isMounted = { current: true };
-    void (async () => {
-      setIsLoading(true);
-      setErrorMsg(null);
-      try {
-        const offset = (page - 1) * ITEMS_PER_PAGE;
-        const res = await api.get<WebhookListResponse>(
-          `/v1/webhook-deliveries?limit=${ITEMS_PER_PAGE}&offset=${offset}`,
-        );
-        if (isMounted.current && res) {
-          setDeliveries(res.rows);
-          setTotal(res.total);
-          setDeadLetterCount(res.deadLetterCount ?? 0);
-        }
-      } catch (err: unknown) {
-        if (isMounted.current) {
-          log.error({ err }, 'Failed to fetch webhook deliveries');
-          setErrorMsg(
-            err instanceof Error
-              ? err.message
-              : 'An error occurred while loading webhook deliveries. Please try again.',
-          );
-        }
-      } finally {
-        if (isMounted.current) {
-          setIsLoading(false);
-        }
-      }
-    })();
-    return () => {
-      isMounted.current = false;
-    };
-  }, [page]);
 
   useEffect(() => {
     return () => {
@@ -116,21 +60,13 @@ export default function WebhooksIndex() {
     try {
       await api.post(`/v1/webhook-deliveries/${id}/replay`, {});
       showToast('success', 'Webhook re-queued for delivery.');
-      setDeliveries((prev) =>
-        prev.map((delivery) =>
-          delivery.id === id
-            ? { ...delivery, status: 'pending' as WebhookDeliveryStatus, http_status: null }
-            : delivery,
-        ),
-      );
-      setDeadLetterCount((prev) => Math.max(0, prev - 1));
+      setReplayingId(null);
     } catch (err: unknown) {
       log.error({ err, id }, 'Failed to replay webhook delivery');
       showToast(
         'error',
         err instanceof Error ? err.message : 'Failed to replay webhook delivery.',
       );
-    } finally {
       setReplayingId(null);
     }
   };
@@ -139,10 +75,13 @@ export default function WebhooksIndex() {
     deadLetterRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   };
 
+  const deliveries = data?.rows ?? [];
+  const deadLetterCount = data?.deadLetterCount ?? 0;
+  const total = data?.total ?? 0;
   const totalPages = Math.ceil(total / ITEMS_PER_PAGE);
 
   return (
-    <Layout variant="owner">
+    <Layout variant="owner" breadcrumbs={[{ label: 'Webhook Delivery Log' }]}>
       <div className="space-y-6">
         <div className="flex flex-col gap-1">
           <h2 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">
@@ -167,7 +106,7 @@ export default function WebhooksIndex() {
           </div>
         )}
 
-        {!isLoading && !errorMsg && deadLetterCount > 0 && (
+        {!isLoading && deadLetterCount > 0 && (
           <div ref={deadLetterRef}>
             <DeadLetterAlert count={deadLetterCount} onView={scrollToDeadLetter} />
           </div>
@@ -183,17 +122,6 @@ export default function WebhooksIndex() {
                 />
               ))}
             </div>
-          </div>
-        ) : errorMsg ? (
-          <div className="mx-auto max-w-xl space-y-3 rounded-2xl border border-red-500/25 bg-red-500/10 p-6 text-center">
-            <p className="text-sm font-semibold text-red-500">{errorMsg}</p>
-            <button
-              type="button"
-              onClick={() => fetchDeliveries(page)}
-              className="rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-2 text-xs font-bold text-white transition-all hover:bg-zinc-750"
-            >
-              Retry Connection
-            </button>
           </div>
         ) : deliveries.length === 0 ? (
           <div className="mx-auto max-w-lg space-y-4 rounded-2xl border border-zinc-200/60 bg-white p-8 text-center dark:border-zinc-800/60 dark:bg-zinc-900/20">

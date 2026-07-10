@@ -4,6 +4,7 @@ import Layout from '../../components/layout';
 import VendorCard, { Vendor } from '../../components/vendor-card';
 import { api } from '../../lib/api';
 import { createLogger } from '../../lib/logger';
+import { setApiKey as persistApiKey, setVendorId } from '../../lib/auth';
 
 const log = createLogger('vendors-list-page');
 const ITEMS_PER_PAGE = 6;
@@ -80,9 +81,16 @@ export default function VendorsIndex() {
 
   const handleGenerateKey = async (id: string) => {
     try {
-      const res = await api.post<{ apiKey: string }>(`/v1/vendors/${id}/api-keys`, {});
-      if (res?.apiKey) {
-        setGeneratedKey(res.apiKey);
+      // The backend returns snake_case (api_key), so accept both shapes.
+      const res = await api.post<{ api_key?: string; apiKey?: string }>(
+        `/v1/vendors/${id}/api-keys`,
+        {},
+      );
+      const rawKey = res?.api_key ?? res?.apiKey;
+      if (rawKey) {
+        persistApiKey(rawKey);
+        setVendorId(id);
+        setGeneratedKey(rawKey);
       }
     } catch (err: unknown) {
       log.error({ err, id }, 'Failed to generate API key');
