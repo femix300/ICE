@@ -28,6 +28,14 @@ const registerSchema = z.object({
 
 type RegisterFormValues = z.infer<typeof registerSchema>;
 
+const registerResponseSchema = z.union([
+  z.object({ api_key: z.string(), merchant: z.object({ id: z.string() }).passthrough() }),
+  z.object({ apiKey: z.string(), merchant: z.object({ id: z.string() }).passthrough() }),
+  z.string(),
+]);
+
+type RegisterResponse = z.infer<typeof registerResponseSchema>;
+
 export default function Register() {
   const router = useRouter();
 
@@ -83,27 +91,19 @@ export default function Register() {
     setFormError(null);
 
     try {
-      // Calls typed API client post function from lib/api.ts. The backend
-      // returns snake_case (api_key, merchant.id), so accept both shapes.
-      const response = await api.post<unknown>(
+      const response = await api.post<RegisterResponse>(
         '/v1/merchants/register',
         values,
-        {
-          schema: z.union([
-            z.object({ api_key: z.string(), merchant: z.object({ id: z.string() }).passthrough() }),
-            z.object({ apiKey: z.string(), merchant: z.object({ id: z.string() }).passthrough() }),
-            z.string(),
-          ]),
-        },
+        { schema: registerResponseSchema },
       );
-      const raw = response as {
-        api_key?: string;
-        apiKey?: string;
-        merchant?: { id?: string };
-      } | string;
       const generatedKey =
-        typeof raw === 'string' ? raw : raw?.api_key ?? raw?.apiKey;
-      const merchantId = typeof raw === 'string' ? undefined : raw?.merchant?.id;
+        typeof response === 'string'
+          ? response
+          : 'api_key' in response
+            ? response.api_key
+            : response.apiKey;
+      const merchantId =
+        typeof response === 'string' ? undefined : response.merchant.id;
 
       if (generatedKey) {
         persistApiKey(generatedKey);

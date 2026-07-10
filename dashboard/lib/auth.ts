@@ -1,12 +1,15 @@
 import { CURRENT_MERCHANT_ID, CURRENT_VENDOR_ID } from './session';
 import { createLogger } from './logger';
+import { config } from './config';
 
 const log = createLogger('auth-store');
+
+const secureFlag = config.NODE_ENV === 'production' ? '; Secure' : '';
 
 function getCookie(name: string): string | null {
   if (typeof document === 'undefined') return null;
   const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
-  return match ? decodeURIComponent(match[2]) : null;
+  return match && match[2] ? decodeURIComponent(match[2]) : null;
 }
 
 export function setApiKey(key: string): void {
@@ -42,7 +45,7 @@ export function getMerchantId(): string {
 
 export function setMerchantId(id: string): void {
   try {
-    document.cookie = `ice_merchant_id=${encodeURIComponent(id)}; Path=/; SameSite=Lax; Max-Age=86400`;
+    document.cookie = `ice_merchant_id=${encodeURIComponent(id)}; Path=/; SameSite=Lax; Max-Age=86400${secureFlag}`;
   } catch (err) {
     log.error({ err }, 'Failed to write merchant id cookie');
   }
@@ -59,7 +62,7 @@ export function getVendorId(): string {
 
 export function setVendorId(id: string): void {
   try {
-    document.cookie = `ice_vendor_id=${encodeURIComponent(id)}; Path=/; SameSite=Lax; Max-Age=86400`;
+    document.cookie = `ice_vendor_id=${encodeURIComponent(id)}; Path=/; SameSite=Lax; Max-Age=86400${secureFlag}`;
   } catch (err) {
     log.error({ err }, 'Failed to write vendor id cookie');
   }

@@ -177,8 +177,9 @@ export const mockCustomers: { rows: { id: string; name: string }[] } = {
   rows: mockVendorStatement.recent_customers.map((c) => ({ id: c.id, name: c.name })),
 };
 
-export const mockVendorCustomerList: { rows: MockCustomerSummary[] } = {
+export const mockVendorCustomerList: { rows: MockCustomerSummary[]; total: number } = {
   rows: mockVendorStatement.recent_customers,
+  total: mockVendorStatement.recent_customers.length,
 };
 
 /* ------------------------------------------------------------------ */
@@ -191,7 +192,7 @@ export type MockRawTransaction = {
   amount_kobo: number;
   status: string;
   description?: string;
-  invoice_id?: string | null;
+  invoice_id: string | null;
 };
 
 export type MockVendorStatementResponse = {
@@ -203,6 +204,7 @@ export type MockVendorStatementResponse = {
 export type MockCustomerStatementResponse = {
   customer: { id: string; name: string; email: string };
   opening_balance_kobo: number;
+  running_balance_kobo: number;
   transactions: MockRawTransaction[];
 };
 
@@ -302,6 +304,7 @@ export const mockCustomerStatementResponse: MockCustomerStatementResponse = {
     email: 'adaeze.okafor@gmail.com',
   },
   opening_balance_kobo: 12_500_00,
+  running_balance_kobo: 57_500_00,
   transactions: [
     {
       id: 'txn_c01',
@@ -449,7 +452,7 @@ export const mockTransactionList: MockTransactionListItem[] = Array.from(
     sender_name: NIGERIAN_NAMES[i] ?? NIGERIAN_NAMES[0] ?? 'Unknown',
     sender_account: `0${100000000 + i * 137}${i}`,
     sender_bank_code: String(11 + i),
-    sender_bank_name: BANKS[i % BANKS.length] ?? { code: '000', name: 'Unknown Bank' },
+    sender_bank_name: BANKS[i % BANKS.length] ?? 'Unknown Bank',
     created_at: daysAgo(i % 7, 9 + (i % 8), i * 7),
     status: TRANSACTION_STATUSES[i] ?? 'MATCHED',
     invoice_id:
