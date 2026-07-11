@@ -221,7 +221,7 @@ paths:
     post:
       summary: Receive Nomba Webhooks
       parameters:
-        - name: x-nomba-signature
+        - name: nomba-signature
           in: header
           required: true
           schema:
