@@ -499,6 +499,9 @@ paths:
     post:
       tags: [Invoices]
       summary: Create an invoice
+      description: Requires a vendor-tier API key.
+      security:
+        - ApiKeyAuth: []
       requestBody:
         required: true
         content:
@@ -512,6 +515,9 @@ paths:
     get:
       tags: [Invoices]
       summary: Get an invoice
+      description: Requires a vendor-tier API key.
+      security:
+        - ApiKeyAuth: []
       parameters:
         - name: id
           in: path
@@ -526,6 +532,9 @@ paths:
     get:
       tags: [Invoices]
       summary: List invoices by vendor
+      description: Requires a vendor-tier API key.
+      security:
+        - ApiKeyAuth: []
       parameters:
         - name: vendorId
           in: path
@@ -540,6 +549,9 @@ paths:
     patch:
       tags: [Invoices]
       summary: Issue a draft invoice
+      description: Requires a vendor-tier API key.
+      security:
+        - ApiKeyAuth: []
       parameters:
         - name: id
           in: path
@@ -554,6 +566,9 @@ paths:
     post:
       tags: [Invoices]
       summary: Manually mark an invoice as paid
+      description: Requires a master-tier (merchant) API key - platform-owner-only, audit-logged.
+      security:
+        - ApiKeyAuth: []
       parameters:
         - name: id
           in: path
@@ -568,6 +583,9 @@ paths:
     get:
       tags: [Invoices]
       summary: Get reconciliation status for a single invoice
+      description: Requires a vendor-tier API key.
+      security:
+        - ApiKeyAuth: []
       parameters:
         - name: id
           in: path
