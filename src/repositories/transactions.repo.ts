@@ -18,11 +18,11 @@ export type TransactionRow = {
   created_at: Date;
 };
 
-// TEMP: field names/paths below beyond transactionId are unconfirmed for real
-// Nomba payloads (only the signature-relevant fields are documented). These
-// pull from the transaction/merchant sub-objects with sensible fallbacks so
-// we don't crash on a real webhook, but every value should be checked against
-// the raw payload log once a real webhook lands, and this tightened up after.
+// Field paths confirmed against docs/openapi.yaml NombaWebhookPayload schema
+// (verified this session against Nomba's real webhook shape). va_number maps
+// to aliasAccountNumber - the VA the payment landed in - not accountNumber or
+// walletId, which don't exist / aren't the receiving account. Sender details
+// live under data.customer, not data.transaction.
 function extractField(source: unknown, path: string[]): string | undefined {
   let cur: unknown = source;
   for (const key of path) {
@@ -34,7 +34,7 @@ function extractField(source: unknown, path: string[]): string | undefined {
 
 function extractAmount(payload: NombaWebhookPayload): number {
   const t = (payload as { data?: { transaction?: Record<string, unknown> } }).data?.transaction;
-  const raw = t?.amount ?? t?.amountInNaira ?? t?.value;
+  const raw = t?.transactionAmount;
   const num = typeof raw === 'number' ? raw : typeof raw === 'string' ? Number(raw) : NaN;
   if (Number.isNaN(num)) {
     log.warn({ payload }, 'could not extract numeric amount from webhook payload');
@@ -58,14 +58,12 @@ export function createTransactionsRepo(db: Pool) {
 
       const transactionId = payload.data.transaction.transactionId;
       const accountNumber =
-        extractField(payload, ['data', 'transaction', 'accountNumber']) ??
-        extractField(payload, ['data', 'merchant', 'walletId']) ??
-        '';
-      const senderName = extractField(payload, ['data', 'transaction', 'senderName']) ?? '';
+        extractField(payload, ['data', 'transaction', 'aliasAccountNumber']) ?? '';
+      const senderName = extractField(payload, ['data', 'customer', 'senderName']) ?? '';
       const senderAccountNumber =
-        extractField(payload, ['data', 'transaction', 'senderAccountNumber']) ?? '';
+        extractField(payload, ['data', 'customer', 'accountNumber']) ?? '';
       const senderBankCode =
-        extractField(payload, ['data', 'transaction', 'senderBankCode']) ?? '';
+        extractField(payload, ['data', 'customer', 'bankCode']) ?? '';
 
       if (!accountNumber || !senderName || !senderAccountNumber || !senderBankCode) {
         log.warn(
