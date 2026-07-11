@@ -68,36 +68,90 @@ components:
           example: 50000
     NombaWebhookPayload:
       type: object
+      description: >
+        Real Nomba webhook payload shape (event_type/requestId/data.merchant/data.transaction),
+        confirmed against Nomba's Webhooks Introduction docs and this project's HMAC-SHA256
+        signature verification implementation. The signed string is built as
+        event_type:requestId:merchant.userId:merchant.walletId:transaction.transactionId:
+        transaction.type:transaction.time:transaction.responseCode:nomba-timestamp, then
+        base64-encoded. Only fields required for signature verification and reconciliation
+        are marked required; Nomba may send additional fields not listed here.
       required:
-        - event
+        - event_type
+        - requestId
         - data
       properties:
-        event:
+        event_type:
           type: string
           enum: [payment_success, payment_failed, payment_reversal]
+        requestId:
+          type: string
+          format: uuid
         data:
           type: object
+          required:
+            - merchant
+            - transaction
           properties:
-            transactionId:
-              type: string
-            amount:
-              type: number
-            accountNumber:
-              type: string
-            senderName:
-              type: string
-            senderAccountNumber:
-              type: string
-            senderBankCode:
-              type: string
-            status:
-              type: string
-            currency:
-              type: string
-            timeCreated:
-              type: string
-            paymentReference:
-              type: string
+            merchant:
+              type: object
+              required:
+                - userId
+                - walletId
+              properties:
+                userId:
+                  type: string
+                walletId:
+                  type: string
+                walletBalance:
+                  type: number
+            terminal:
+              type: object
+              properties:
+                terminalId:
+                  type: string
+                terminalLabel:
+                  type: string
+            transaction:
+              type: object
+              required:
+                - transactionId
+                - type
+                - time
+              properties:
+                transactionId:
+                  type: string
+                type:
+                  type: string
+                  example: vact_transfer
+                time:
+                  type: string
+                  format: date-time
+                responseCode:
+                  type: string
+                transactionAmount:
+                  type: number
+                fee:
+                  type: number
+                aliasAccountNumber:
+                  type: string
+                aliasAccountName:
+                  type: string
+                aliasAccountType:
+                  type: string
+                sessionId:
+                  type: string
+            customer:
+              type: object
+              properties:
+                senderName:
+                  type: string
+                accountNumber:
+                  type: string
+                bankName:
+                  type: string
+                bankCode:
+                  type: string
 
     CreateCustomerInput:
       type: object
@@ -224,8 +278,16 @@ paths:
         - name: nomba-signature
           in: header
           required: true
+          description: Base64-encoded HMAC-SHA256 signature of the signed string described in NombaWebhookPayload.
           schema:
             type: string
+        - name: nomba-timestamp
+          in: header
+          required: true
+          description: RFC-3339 UTC timestamp; must match the timestamp used when computing nomba-signature.
+          schema:
+            type: string
+            format: date-time
       requestBody:
         required: true
         content:
