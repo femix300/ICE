@@ -362,23 +362,54 @@ Day 6-7 (Polish):
 
 ## 5. Nomba Developer Cheat Sheet (Certification Golden Rules)
 
-To ensure our integration meets the standard required by the hackathon judges (matching the Nomba Certification), strictly follow these rules:
+To ensure our integration meets the standard required by the hackathon judges (matching the Nomba Certification), strictly follow these rules. Verified against developer.nomba.com, July 2026.
 
 ### Core Environment
-- **Sandbox Base URL:** `https://sandbox.nomba.com/v1` (Use this for all hackathon work)
-- **Production Base URL:** `https://api.nomba.com/v1` (Do not use until post-hackathon KYC)
-- **Secrets Management:** `clientSecret` and webhook secrets must **never** be committed to source code. Always load from environment variables (e.g., `process.env.NOMBA_CLIENT_SECRET`).
+- **Sandbox Base URL:** `https://sandbox.nomba.com` (checkout endpoints live under `/sandbox/checkout/`, not `/v1/checkout/` — this is the key sandbox/production path difference)
+- **Production Base URL:** `https://api.nomba.com` (Do not use until post-hackathon KYC)
+- **Secrets Management:** `clientSecret` and webhook secrets must **never** be committed to source code. Always load from environment variables via `config.ts` (e.g., `NOMBA_CLIENT_SECRET`).
+- Sandbox and production credentials are generated together in the dashboard under API Keys — sandbox `clientId`/`clientSecret`/`accountId` only work against the sandbox base URL. Mixing them causes auth errors.
 
-### Test Instruments
-- **Test Card (Success):** `5060 6666 6666 6666 666` (Any future expiry, any CVV)
-- **Test Card (Insufficient Funds):** `5060 6666 6666 6666 674`
-- **Test Bank (Virtual Account Inbound):** Wema Bank, account `0000000000` (Use this to simulate inbound transfers to Virtual Accounts for webhook testing)
+### Test Card Numbers (Checkout flow)
+Card expiry, CVV, and PIN are **not validated** in sandbox — any values are accepted. Only the card number determines the outcome:
 
-### The 4 Golden Rules
-1. **Always use Kobo:** All monetary amounts MUST be sent and stored in Kobo (e.g., ₦1,500 = `150000`). Never use floats or decimals.
-2. **The 55-Minute Token Cache:** Do **not** request a new token per API call. Server-to-server OAuth `client_credentials` tokens last 60 minutes. Cache them in memory/Redis and refresh automatically [...]
-3. **Webhook Verification & Idempotency:** Webhook signatures MUST be verified using HMAC-SHA256 (`nomba-signature` header). Furthermore, Nomba may send the same event twice; you must use `event.reque[...]
-4. **Always Lookup Before Transfers:** Never blindly hit `/transfers/bank`. You MUST call `/transfers/bank/lookup` to verify the recipient `accountName` first to prevent irreversible loss.
+| Card Number | Network | Outcome |
+|---|---|---|
+| `5434621074252808` | Mastercard | OTP required — proceed to OTP step |
+| `4000000000002503` | Visa | 3DS authentication required |
+| `5484497218317651` | Mastercard | Declined ("do not honor") |
+
+**OTP test values** (after submitting the OTP-required card):
+
+| OTP | Outcome |
+|---|---|
+| `9999` | Approved |
+| `1234` | Timeout |
+| `5464` | Invalid OTP |
+
+**Card PIN (if prompted):** `1234`
+
+### Virtual Accounts (DVA) — Sandbox Limits
+- Each user/business can create a **maximum of 2 virtual accounts** in sandbox.
+- Each sandbox virtual account can receive transfers of **up to ₦150 only**.
+- Transfers can be simulated from any Nigerian bank into the sandbox virtual account number returned by `POST /v1/accounts/virtual` — there is no fixed dummy test account (e.g. no "Wema Bank / 0000000000"). Create a real sandbox VA via the API, then transfer into the returned `bankAccountNumber` (issued on `Amucha MFB` or `Nombank MFB`, not Wema Bank) to trigger the inbound webhook.
+- Virtual account **expiration is not supported in sandbox** — `expiryDate` has no effect there.
+
+### The Golden Rules
+1. **Always use Kobo:** All monetary amounts MUST be sent and stored in Kobo (e.g., ₦1,500 = `150000`). Never use floats or decimals for stored amounts.
+2. **The 55-Minute Token Cache:** Do **not** request a new token per API call. Sandbox tokens are short-lived — cache in memory/Redis and refresh on `401`, rather than assuming a fixed TTL. Re-issue via `POST /v1/auth/token/issue`.
+3. **Webhook Verification & Idempotency:** Nomba signs webhooks with headers `nomba-signature`, `nomba-sig-value`, `nomba-signature-algorithm` (`HmacSHA256`), and `nomba-timestamp`. Verify the HMAC-SHA256 signature before trusting any payload. Nomba may send the same event twice — dedupe on `transaction.transactionId` / `event.requestId`, never assume single delivery.
+4. **Never Set `expectedAmount` Unless You Want Hard Rejection:** Setting `expectedAmount` on a virtual account makes Nomba (or the sender's bank) reject or auto-reverse any transfer that doesn't match it exactly. This is why ICE deliberately omits `expectedAmount` and reconciles amounts in-house — see ICE_PRD.md §6.1. Do not "fix" this by adding `expectedAmount` back without team discussion; it defeats the reconciliation engine's purpose.
+5. **Always Lookup Before Transfers:** Never blindly hit `/transfers/bank`. You MUST call `/transfers/bank/lookup` to verify the recipient `accountName` first to prevent irreversible loss.
+
+### Simulating Error States (Sandbox)
+| What to test | How to trigger |
+|---|---|
+| Order not found | `orderReference: "1234567890"` — returns `404` on all endpoints |
+| Card declined | Card `5484497218317651` |
+| OTP timeout | Submit OTP `1234` |
+| Invalid OTP | Submit OTP `5464` |
+| Failed refund | `transactionId: WEB-ONLINE_C-97922-db88d4c3-a0af-4887-a089-b5d2e51b8f19` (always `400`) |
 
 ---
 
