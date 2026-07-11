@@ -213,10 +213,15 @@ components:
 
 paths:
   /healthz:
+    servers:
+      - url: https://ice-nomba-hackathon.onrender.com
+        description: Production (Render) - root, outside the /v1 router
+      - url: http://localhost:3000
+        description: Local Development Server - root, outside the /v1 router
     get:
       tags: [Health]
       summary: Liveness check
-      description: Basic liveness check for the deployed service. No auth required. Useful as a first sanity check before running anything else against the API.
+      description: Basic liveness check for the deployed service. No auth required. Mounted at the app root, outside the /v1 router - not under the /v1 prefix like every other path in this spec.
       security: []
       responses:
         '200':
