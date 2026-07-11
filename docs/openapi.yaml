@@ -4,6 +4,8 @@ info:
   version: 1.0.0
   description: OpenAPI Specification for merged ICE endpoints (Merchants, Vendors, Invoices, Webhooks)
 servers:
+  - url: https://ice-nomba-hackathon.onrender.com/v1
+    description: Production (Render)
   - url: http://localhost:3000/v1
     description: Local Development Server
 components:
