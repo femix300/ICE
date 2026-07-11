@@ -8,6 +8,25 @@ servers:
     description: Production (Render)
   - url: http://localhost:3000/v1
     description: Local Development Server
+tags:
+  - name: Health
+    description: Basic liveness check for the deployed service. No auth required.
+  - name: Merchants
+    description: Top-level platform owner account. The master key is required for anything merchant-scoped.
+  - name: Vendors
+    description: Sub-accounts under a merchant, each with their own Nomba Dedicated Virtual Account (DVA).
+  - name: Customers
+    description: End customers of a vendor, optionally provisioned with their own DVA. Nested under /vendors/{id}/customers.
+  - name: Invoices
+    description: Core billing objects, created in draft, issued to generate a payment reference, then reconciled against inbound Nomba webhooks or manually overridden.
+  - name: Misdirected Payments
+    description: Payments that arrive via webhook but can't be matched to any invoice or customer DVA.
+  - name: Webhook Deliveries
+    description: Outbound webhooks ICE sends to a merchant's own webhookUrl.
+  - name: Statements & Reporting
+    description: Read-only rollups for vendors, customers, and the platform owner.
+  - name: Webhooks (Nomba Inbound)
+    description: Simulates Nomba sending ICE a webhook (payment_success events, DVA inbound transfers).
 components:
   securitySchemes:
     ApiKeyAuth:
@@ -50,6 +69,21 @@ components:
         name:
           type: string
           example: "Acme Vendor"
+    UpdateVendorAccountInput:
+      type: object
+      description: >
+        Both fields optional individually. Requires master_api_key even though
+        this is a vendor-scoped resource — the controller checks
+        req.principal.tier !== 'merchant' and 403s vendor keys here.
+      properties:
+        name:
+          type: string
+          example: "Adunola Fabrics Ltd"
+        callbackUrl:
+          type: string
+          format: uri
+          example: "https://example.com/callbacks/adunola"
+          description: Must start with https://
     CreateInvoiceInput:
       type: object
       required:
@@ -152,7 +186,6 @@ components:
                   type: string
                 bankCode:
                   type: string
-
     CreateCustomerInput:
       type: object
       required:
@@ -179,8 +212,19 @@ components:
           format: uuid
 
 paths:
+  /healthz:
+    get:
+      tags: [Health]
+      summary: Liveness check
+      description: Basic liveness check for the deployed service. No auth required. Useful as a first sanity check before running anything else against the API.
+      security: []
+      responses:
+        '200':
+          description: Service is up
+
   /merchants/register:
     post:
+      tags: [Merchants]
       summary: Register a new platform merchant
       requestBody:
         required: true
@@ -193,6 +237,7 @@ paths:
           description: Merchant created successfully
   /merchants/{id}:
     get:
+      tags: [Merchants]
       summary: Get merchant profile
       security:
         - ApiKeyAuth: []
@@ -208,6 +253,7 @@ paths:
           description: Merchant details
   /merchants/{id}/webhook-url:
     put:
+      tags: [Merchants]
       summary: Update webhook URL
       security:
         - ApiKeyAuth: []
@@ -229,6 +275,7 @@ paths:
           description: Webhook URL updated
   /merchants/{id}/api-keys/rotate:
     post:
+      tags: [Merchants]
       summary: Rotate API keys
       security:
         - ApiKeyAuth: []
@@ -242,9 +289,29 @@ paths:
       responses:
         '200':
           description: New API key returned
+  /merchants/{id}/webhook-deliveries:
+    get:
+      tags: [Merchants]
+      summary: List outbound webhook deliveries for a merchant
+      description: Outbound webhooks ICE sends to a merchant's own webhookUrl (e.g. for payment.overpayment.refunded events).
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: List of webhook delivery records
+
   /vendors:
     post:
+      tags: [Vendors]
       summary: Create a new vendor (with Nomba DVA provisioning)
+      description: Provisions a Nomba DVA server-side. Requires master_api_key - vendor keys get a 403 here.
       security:
         - ApiKeyAuth: []
       requestBody:
@@ -256,8 +323,37 @@ paths:
       responses:
         '201':
           description: Vendor created with VA
+    get:
+      tags: [Vendors]
+      summary: List vendors for a merchant
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 1
+        - name: pageSize
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 20
+        - name: status
+          in: query
+          required: false
+          description: "One of: pending, active, suspended"
+          schema:
+            type: string
+            enum: [pending, active, suspended]
+      responses:
+        '200':
+          description: Paginated list of vendors
   /vendors/{id}:
     get:
+      tags: [Vendors]
       summary: Get vendor profile
       security:
         - ApiKeyAuth: []
@@ -271,112 +367,65 @@ paths:
       responses:
         '200':
           description: Vendor details
-  /webhooks/nomba:
+  /vendors/{id}/api-keys:
     post:
-      summary: Receive Nomba Webhooks
+      tags: [Vendors]
+      summary: Generate a scoped vendor API key
+      description: Requires master_api_key (only merchants can generate vendor keys). Returns the scoped vendor key once.
+      security:
+        - ApiKeyAuth: []
       parameters:
-        - name: nomba-signature
-          in: header
+        - name: id
+          in: path
           required: true
-          description: Base64-encoded HMAC-SHA256 signature of the signed string described in NombaWebhookPayload.
           schema:
             type: string
-        - name: nomba-timestamp
-          in: header
+            format: uuid
+      responses:
+        '200':
+          description: New vendor API key returned (shown once)
+  /vendors/{id}/account/suspend:
+    post:
+      tags: [Vendors]
+      summary: Suspend a vendor account
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
           required: true
-          description: RFC-3339 UTC timestamp; must match the timestamp used when computing nomba-signature.
           schema:
             type: string
-            format: date-time
+            format: uuid
+      responses:
+        '200':
+          description: Vendor account suspended
+  /vendors/{id}/account:
+    put:
+      tags: [Vendors]
+      summary: Update a vendor account
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/NombaWebhookPayload'
+              $ref: '#/components/schemas/UpdateVendorAccountInput'
       responses:
         '200':
-          description: Webhook acknowledged
-  /invoices:
-    post:
-      summary: Create an invoice
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/CreateInvoiceInput'
-      responses:
-        '201':
-          description: Invoice created
-  /invoices/{id}:
-    get:
-      summary: Get an invoice
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '200':
-          description: Invoice details
-  /invoices/vendor/{vendorId}:
-    get:
-      summary: List invoices by vendor
-      parameters:
-        - name: vendorId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '200':
-          description: List of invoices
-  /invoices/{id}/issue:
-    patch:
-      summary: Issue a draft invoice
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '200':
-          description: Invoice issued
-  /invoices/{id}/mark-paid:
-    post:
-      summary: Manually mark an invoice as paid
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '200':
-          description: Invoice marked paid
-  /invoices/{id}/reconciliation:
-    get:
-      summary: Get reconciliation logs for an invoice
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '200':
-          description: Reconciliation logs
+          description: Vendor account updated
 
   /vendors/{id}/customers:
     post:
+      tags: [Customers]
       summary: Create a customer under a vendor
       security:
         - ApiKeyAuth: []
@@ -398,6 +447,7 @@ paths:
           description: Customer created
   /vendors/{id}/customers/{cid}:
     get:
+      tags: [Customers]
       summary: Get a customer by ID
       security:
         - ApiKeyAuth: []
@@ -419,6 +469,7 @@ paths:
           description: Customer details
   /vendors/{id}/customers/{cid}/account:
     post:
+      tags: [Customers]
       summary: Provision a dedicated virtual account (DVA) for a customer
       security:
         - ApiKeyAuth: []
@@ -438,8 +489,117 @@ paths:
       responses:
         '200':
           description: Customer with provisioned virtual account
+
+  /invoices:
+    post:
+      tags: [Invoices]
+      summary: Create an invoice
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateInvoiceInput'
+      responses:
+        '201':
+          description: Invoice created
+  /invoices/{id}:
+    get:
+      tags: [Invoices]
+      summary: Get an invoice
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Invoice details
+  /invoices/vendor/{vendorId}:
+    get:
+      tags: [Invoices]
+      summary: List invoices by vendor
+      parameters:
+        - name: vendorId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: List of invoices
+  /invoices/{id}/issue:
+    patch:
+      tags: [Invoices]
+      summary: Issue a draft invoice
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Invoice issued
+  /invoices/{id}/mark-paid:
+    post:
+      tags: [Invoices]
+      summary: Manually mark an invoice as paid
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Invoice marked paid
+  /invoices/{id}/reconciliation:
+    get:
+      tags: [Invoices]
+      summary: Get reconciliation status for a single invoice
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Reconciliation status for this invoice
+  /invoices/reconciliation/logs:
+    get:
+      tags: [Invoices]
+      summary: Get reconciliation logs across all invoices (master key only)
+      description: Distinct from GET /invoices/{id}/reconciliation - this is the platform-wide log, not a single invoice's status.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Paginated reconciliation log entries
+
   /payments/misdirected:
     get:
+      tags: [Misdirected Payments]
       summary: List misdirected payments (merchant tier only)
       security:
         - ApiKeyAuth: []
@@ -462,6 +622,7 @@ paths:
           description: Paginated list of misdirected payments
   /payments/{id}/match:
     post:
+      tags: [Misdirected Payments]
       summary: Match a misdirected payment to an invoice
       security:
         - ApiKeyAuth: []
@@ -482,6 +643,7 @@ paths:
           description: Payment matched to invoice
   /payments/{id}/refund:
     post:
+      tags: [Misdirected Payments]
       summary: Refund a misdirected payment
       security:
         - ApiKeyAuth: []
@@ -494,8 +656,43 @@ paths:
       responses:
         '200':
           description: Payment refunded
+
+  /webhook-deliveries/{id}/replay:
+    post:
+      tags: [Webhook Deliveries]
+      summary: Manually replay a webhook delivery
+      description: >-
+        NOTE: current implementation reads `id` from the JSON request body,
+        not the URL path parameter, despite the route pattern. Send the
+        delivery ID in the body as shown below.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - id
+              properties:
+                id:
+                  type: string
+      responses:
+        '200':
+          description: Replay initiated
+        '404':
+          description: Webhook delivery record not found
+
   /vendors/{id}/statement:
     get:
+      tags: [Statements & Reporting]
       summary: Get a vendor's statement
       security:
         - ApiKeyAuth: []
@@ -533,6 +730,7 @@ paths:
           description: Vendor statement
   /vendors/{id}/customers/{cid}/statement:
     get:
+      tags: [Statements & Reporting]
       summary: Get a customer's statement under a vendor
       security:
         - ApiKeyAuth: []
@@ -576,6 +774,7 @@ paths:
           description: Customer statement
   /vendors/{id}/transactions:
     get:
+      tags: [Statements & Reporting]
       summary: List transactions for a vendor
       security:
         - ApiKeyAuth: []
@@ -601,6 +800,7 @@ paths:
           description: List of transactions
   /merchants/{id}/summary:
     get:
+      tags: [Statements & Reporting]
       summary: Get platform summary for a merchant (master key only)
       security:
         - ApiKeyAuth: []
@@ -616,6 +816,7 @@ paths:
           description: Platform summary
   /transactions/{id}:
     get:
+      tags: [Statements & Reporting]
       summary: Get a transaction by ID
       security:
         - ApiKeyAuth: []
@@ -630,34 +831,31 @@ paths:
           description: Transaction details
         '404':
           description: Transaction not found
-  /webhook-deliveries/{id}/replay:
+
+  /webhooks/nomba:
     post:
-      summary: Manually replay a webhook delivery
-      description: >-
-        NOTE: current implementation reads `id` from the JSON request body,
-        not the URL path parameter, despite the route pattern. Send the
-        delivery ID in the body as shown below.
-      security:
-        - ApiKeyAuth: []
+      tags: [Webhooks (Nomba Inbound)]
+      summary: Receive Nomba Webhooks
       parameters:
-        - name: id
-          in: path
+        - name: nomba-signature
+          in: header
           required: true
+          description: Base64-encoded HMAC-SHA256 signature of the signed string described in NombaWebhookPayload.
           schema:
             type: string
+        - name: nomba-timestamp
+          in: header
+          required: true
+          description: RFC-3339 UTC timestamp; must match the timestamp used when computing nomba-signature.
+          schema:
+            type: string
+            format: date-time
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              required:
-                - id
-              properties:
-                id:
-                  type: string
+              $ref: '#/components/schemas/NombaWebhookPayload'
       responses:
         '200':
-          description: Replay initiated
-        '404':
-          description: Webhook delivery record not found
+          description: Webhook acknowledged
