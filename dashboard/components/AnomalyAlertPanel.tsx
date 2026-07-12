@@ -1,9 +1,10 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { api } from '../lib/api';
 import { createLogger } from '../lib/logger';
-import { mockAnomalies, useMockFallback } from '../lib/mockData';
+import { z } from 'zod';
+import { AnomalyAlertSchema } from '../lib/types';
 
 const log = createLogger('anomaly-alert-panel');
 
@@ -53,15 +54,33 @@ const CheckCircle = () => (
 
 export default function AnomalyAlertPanel({ onToast }: AnomalyAlertPanelProps) {
   const router = useRouter();
-  const { data: alerts, isLoading, refetch } = useMockFallback<AnomalyAlert[]>({
-    fetcher: () => api.get<AnomalyAlert[]>('/v1/anomalies'),
-    mock: mockAnomalies,
-    isEmpty: (rows) => rows.length === 0,
-  });
+  const [alerts, setAlerts] = useState<AnomalyAlert[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [dismissingIds, setDismissingIds] = useState<Set<string>>(new Set());
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
 
-  const fetchAlerts = useCallback(() => refetch(), [refetch]);
+  const fetchAlerts = useCallback(async () => {
+    setIsLoading(true);
+    setLoadError(null);
+    try {
+      const data = await api.get<AnomalyAlert[]>('/v1/anomalies', {
+        schema: z.array(AnomalyAlertSchema),
+      });
+      setAlerts(data);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to load anomalies.';
+      log.error({ err }, 'Failed to fetch anomalies');
+      setLoadError(message);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void fetchAlerts();
+  }, [fetchAlerts]);
 
   const handleInvestigate = (transactionId: string) => {
     router.push(`/transactions/${transactionId}`);
@@ -73,6 +92,7 @@ export default function AnomalyAlertPanel({ onToast }: AnomalyAlertPanelProps) {
       await api.delete(`/v1/anomalies/${alert.id}`);
       onToast('success', `Alert dismissed: ${alert.rule}`);
       setDismissedIds((prev) => new Set(prev).add(alert.id));
+      setAlerts((prev) => prev.filter((a) => a.id !== alert.id));
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to dismiss alert.';
       log.error({ err, alertId: alert.id }, 'Failed to dismiss anomaly');
@@ -86,7 +106,7 @@ export default function AnomalyAlertPanel({ onToast }: AnomalyAlertPanelProps) {
     }
   };
 
-  const visibleAlerts = (alerts ?? []).filter((a) => !dismissedIds.has(a.id));
+  const visibleAlerts = alerts.filter((a) => !dismissedIds.has(a.id));
 
   return (
     <div className="space-y-4">
@@ -103,7 +123,18 @@ export default function AnomalyAlertPanel({ onToast }: AnomalyAlertPanelProps) {
         </button>
       </div>
 
-      {isLoading ? (
+      {loadError && visibleAlerts.length === 0 ? (
+        <div className="mx-auto max-w-xl space-y-3 rounded-2xl border border-red-500/25 bg-red-500/10 p-6 text-center">
+          <p className="text-sm font-semibold text-red-500">{loadError}</p>
+          <button
+            type="button"
+            onClick={fetchAlerts}
+            className="rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-2 text-xs font-bold text-white transition-all hover:bg-zinc-750"
+          >
+            Retry Connection
+          </button>
+        </div>
+      ) : isLoading && visibleAlerts.length === 0 ? (
         <div className="space-y-3">
           {[...Array(3)].map((_, i) => (
             <div

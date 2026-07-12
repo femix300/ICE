@@ -1,3 +1,4 @@
+import React from 'react';
 import { CURRENT_MERCHANT_ID, CURRENT_VENDOR_ID } from './session';
 import { createLogger } from './logger';
 import { config } from './config';
@@ -12,9 +13,44 @@ function getCookie(name: string): string | null {
   return match && match[2] ? decodeURIComponent(match[2]) : null;
 }
 
-export function setApiKey(key: string): void {
+function getLocalStorageItem(key: string): string | null {
+  if (typeof window === 'undefined') return null;
   try {
-    // Fire and forget to our secure cookie endpoint
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function setLocalStorageItem(key: string, value: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(key, value);
+  } catch (err) {
+    log.error({ err }, 'Failed to write to localStorage');
+  }
+}
+
+export function getApiKey(): string | null {
+  return getLocalStorageItem('ice_api_key');
+}
+
+export function useApiKey(): string | null {
+  const [apiKey, setApiKeyState] = React.useState<string | null>(getApiKey());
+
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      setApiKeyState(getApiKey());
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return apiKey;
+}
+
+export function setApiKey(key: string): void {
+  setLocalStorageItem('ice_api_key', key);
+  try {
     fetch('/api/auth/session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -26,6 +62,13 @@ export function setApiKey(key: string): void {
 }
 
 export function clearApiKey(): void {
+  try {
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem('ice_api_key');
+    }
+  } catch (err) {
+    log.error({ err }, 'Failed to clear api key from localStorage');
+  }
   try {
     fetch('/api/auth/session', { method: 'DELETE' })
       .catch(err => log.error({ err }, 'Failed to clear session securely'));
