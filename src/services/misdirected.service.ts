@@ -202,14 +202,14 @@ export function createMisdirectedService(deps: MisdirectedServiceDeps) {
       const rawPayload = payment.raw_payload as
         | {
             data?: {
-              transactionId?: string;
-              senderAccountNumber?: string;
-              senderBankCode?: string;
+              transaction?: { transactionId?: string };
+              customer?: { accountNumber?: string; bankCode?: string };
             };
           }
         | null
         | undefined;
-      const transactionId = rawPayload?.data?.transactionId || `TXN-MIS-${payment.id}`;
+      const transactionId =
+        rawPayload?.data?.transaction?.transactionId || `TXN-MIS-${payment.id}`;
 
       await deps.reconciliation.create({
         transaction_id: transactionId,
@@ -226,8 +226,8 @@ export function createMisdirectedService(deps: MisdirectedServiceDeps) {
         await deps.refundQueue.add({
           transaction_id: transactionId,
           amount_kobo: difference,
-          recipient_account: rawPayload?.data?.senderAccountNumber || '',
-          recipient_bank_code: rawPayload?.data?.senderBankCode || '',
+          recipient_account: rawPayload?.data?.customer?.accountNumber || '',
+          recipient_bank_code: rawPayload?.data?.customer?.bankCode || '',
         });
       }
 
@@ -290,15 +290,13 @@ export function createMisdirectedService(deps: MisdirectedServiceDeps) {
       const rawPayload = payment.raw_payload as
         | {
             data?: {
-              transactionId?: string;
-              senderAccountNumber?: string;
-              senderBankCode?: string;
+              customer?: { accountNumber?: string; bankCode?: string };
             };
           }
         | null
         | undefined;
-      const recipientAccount = rawPayload?.data?.senderAccountNumber;
-      const recipientBankCode = rawPayload?.data?.senderBankCode;
+      const recipientAccount = rawPayload?.data?.customer?.accountNumber;
+      const recipientBankCode = rawPayload?.data?.customer?.bankCode;
 
       if (!recipientAccount || !recipientBankCode) {
         throw new AppError(400, 'BAD_REQUEST', 'Missing sender account details in raw payload');
