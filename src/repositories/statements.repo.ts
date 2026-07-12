@@ -108,8 +108,14 @@ export function createStatementsRepo(db: unknown) {
       const row = result?.rows?.[0];
       const exact = Number(row?.exact_match_count || 0);
       const total = Number(row?.total_transactions || 0);
-      const reconciliation_rate_percent = total > 0 ? Math.round((exact / total) * 10000) / 100 : 0;
-      return { ...row, reconciliation_rate_percent };
+      const reconciliation_rate = total > 0 ? Math.round((exact / total) * 10000) / 100 : 0;
+      return {
+        totalCollected: Number(row?.total_collected_kobo || 0),
+        reconciliationRate: reconciliation_rate,
+        activeVendors: Number(row?.active_vendors || 0),
+        refundsIssued: Number(row?.refunds_issued_kobo || 0),
+        pendingMisdirected: Number(row?.misdirected_count || 0),
+      };
     },
 
     getTransactionById: async (id: string) => {

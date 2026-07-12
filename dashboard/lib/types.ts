@@ -1,11 +1,11 @@
 import { z } from 'zod';
 
 export const PlatformSummarySchema = z.object({
-  total_collected_kobo: z.number(),
-  reconciliation_rate: z.number(),
-  active_vendors: z.number(),
-  total_refunds_kobo: z.number(),
-  misdirected_count: z.number(),
+  totalCollected: z.number(),
+  reconciliationRate: z.number(),
+  activeVendors: z.number(),
+  refundsIssued: z.number(),
+  pendingMisdirected: z.number(),
 });
 
 export type PlatformSummary = z.infer<typeof PlatformSummarySchema>;

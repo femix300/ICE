@@ -30,11 +30,11 @@ export default function OwnerDashboard() {
         {
           schema: PlatformSummarySchema,
           expectedShape: {
-            total_collected_kobo: 0,
-            reconciliation_rate: 0,
-            active_vendors: 0,
-            total_refunds_kobo: 0,
-            misdirected_count: 0,
+            totalCollected: 0,
+            reconciliationRate: 0,
+            activeVendors: 0,
+            refundsIssued: 0,
+            pendingMisdirected: 0,
           },
           shapeDescription: 'totalCollected, reconciliationRate, activeVendors, refundsIssued, pendingMisdirected',
         },
@@ -85,7 +85,7 @@ export default function OwnerDashboard() {
   const handleResolved = useCallback((id: string) => {
     setPayments((prev) => prev.filter((p) => p.id !== id));
     setSummary((prev) =>
-      prev ? { ...prev, misdirected_count: Math.max(0, prev.misdirected_count - 1) } : prev,
+      prev ? { ...prev, pendingMisdirected: Math.max(0, prev.pendingMisdirected - 1) } : prev,
     );
   }, []);
 
