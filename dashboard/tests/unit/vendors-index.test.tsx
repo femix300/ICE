@@ -70,7 +70,7 @@ const sampleVendors = [
 describe('VendorsIndex Page', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGet.mockResolvedValue({ rows: sampleVendors, total: 2 });
+    mockGet.mockResolvedValue({ data: sampleVendors, meta: { total: 2 } });
   });
 
   afterEach(() => {

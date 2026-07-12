@@ -6,7 +6,7 @@ import WebhookDeliveryLog, {
 import DeadLetterAlert from '../../components/DeadLetterAlert';
 import { api } from '../../lib/api';
 import { createLogger } from '../../lib/logger';
-import { WebhookListResponseSchema } from '../../lib/types';
+import { getMerchantId } from '../../lib/auth';
 
 const log = createLogger('webhook-log-page');
 
@@ -36,13 +36,12 @@ export default function WebhooksIndex() {
     setErrorMsg(null);
     try {
       const offset = (page - 1) * ITEMS_PER_PAGE;
-      const result = await api.get<WebhookListResponse>(
-        `/v1/webhook-deliveries?limit=${ITEMS_PER_PAGE}&offset=${offset}`,
-        {
-          schema: WebhookListResponseSchema,
-        },
+      const result = await api.get<WebhookDelivery[]>(
+        `/v1/merchants/${getMerchantId()}/webhook-deliveries?limit=${ITEMS_PER_PAGE}&offset=${offset}`,
       );
-      setData(result);
+      const rows = Array.isArray(result) ? result : [];
+      const deadLetterCount = rows.filter((d) => d.status === 'dead_letter').length;
+      setData({ rows, total: rows.length, deadLetterCount });
     } catch (err: unknown) {
       log.error({ err }, 'Failed to fetch webhook deliveries');
       setErrorMsg(err instanceof Error ? err.message : 'Failed to load webhook deliveries.');

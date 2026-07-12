@@ -31,12 +31,12 @@ export default function VendorsIndex() {
     setErrorMsg(null);
     try {
       const offset = (page - 1) * ITEMS_PER_PAGE;
-      const res = await api.get<{ rows: Vendor[]; total: number }>(
+      const res = await api.get<{ data: Vendor[]; meta: { total: number } }>(
         `/v1/vendors?limit=${ITEMS_PER_PAGE}&offset=${offset}`,
       );
       if (res) {
-        setVendors(res.rows);
-        setTotal(res.total);
+        setVendors(res.data);
+        setTotal(res.meta.total);
       }
     } catch (err: unknown) {
       log.error({ err }, 'Failed to fetch vendors');

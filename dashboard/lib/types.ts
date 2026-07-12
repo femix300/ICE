@@ -21,8 +21,13 @@ export const MisdirectedPaymentSchema = z.object({
 export type MisdirectedPayment = z.infer<typeof MisdirectedPaymentSchema>;
 
 export const MisdirectedListResponseSchema = z.object({
-  rows: z.array(MisdirectedPaymentSchema),
-  total: z.number(),
+  data: z.array(MisdirectedPaymentSchema),
+  pagination: z.object({
+    page: z.number(),
+    limit: z.number(),
+    total: z.number(),
+    total_pages: z.number(),
+  }),
 });
 
 export type MisdirectedListResponse = z.infer<typeof MisdirectedListResponseSchema>;
@@ -41,8 +46,13 @@ export const VendorSchema = z.object({
 export type Vendor = z.infer<typeof VendorSchema>;
 
 export const VendorListResponseSchema = z.object({
-  rows: z.array(VendorSchema),
-  total: z.number(),
+  data: z.array(VendorSchema),
+  meta: z.object({
+    page: z.number(),
+    pageSize: z.number(),
+    total: z.number(),
+    totalPages: z.number(),
+  }),
 });
 
 export type VendorListResponse = z.infer<typeof VendorListResponseSchema>;
@@ -202,14 +212,6 @@ export const WebhookDeliverySchema = z.object({
 });
 
 export type WebhookDelivery = z.infer<typeof WebhookDeliverySchema>;
-
-export const WebhookListResponseSchema = z.object({
-  rows: z.array(WebhookDeliverySchema),
-  total: z.number(),
-  deadLetterCount: z.number(),
-});
-
-export type WebhookListResponse = z.infer<typeof WebhookListResponseSchema>;
 
 export const AnomalyAlertSchema = z.object({
   id: z.string(),
