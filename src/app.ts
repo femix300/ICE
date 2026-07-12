@@ -77,12 +77,42 @@ const customersRepo = createCustomersRepo(db);
 const webhookDeliveriesRepo = createWebhookDeliveriesRepo(db);
 const refundsRepo = createRefundsRepo(db);
 const misdirectedRepo = createMisdirectedRepo(db);
+const auditRepo = createAuditRepo(db);
+
+// Adapter: misdirectedService's RefundQueue expects add(data), while the
+// underlying BullMQ Queue expects add(name, data). Wrap rather than change
+// either service's existing type.
+const misdirectedRefundQueue = {
+  add: async (data: {
+    transaction_id: string;
+    amount_kobo: number;
+    recipient_account: string;
+    recipient_bank_code: string;
+  }): Promise<void> => {
+    await refundQueue.add('refund', data);
+  },
+};
+
+// Constructed before reconciliationService (not after, as previously) so it
+// can be wired in as a real dependency below - previously reconciliationService
+// was built without `misdirected` at all, so UNMATCHED payments silently never
+// got flagged (the `if (deps.misdirected)` guard was always false, with no
+// error and no log line).
+const misdirectedService = createMisdirectedService({
+  misdirected: misdirectedRepo,
+  invoices: invoicesRepo,
+  reconciliation: reconciliationRepo,
+  audit: auditRepo,
+  refundQueue: misdirectedRefundQueue,
+  nombaTransfer: nomba,
+});
 
 const reconciliationService = createReconciliationService({
   reconciliation: reconciliationRepo,
   invoices: invoicesRepo,
   refunds: refundsRepo,
   refundQueue,
+  misdirected: misdirectedService,
 });
 
 const webhookInboundService = createWebhookInboundService({
@@ -96,7 +126,6 @@ const merchantsService = createMerchantsService({
   webhookDeliveries: webhookDeliveriesRepo,
 });
 const vendorsService = createVendorsService({ vendors: vendorsRepo, nomba });
-const auditRepo = createAuditRepo(db);
 const auditService = createAuditService({ audit: auditRepo });
 const statementsRepo = createStatementsRepo(db);
 const statementsService = createStatementsService({ repo: statementsRepo });
@@ -114,29 +143,6 @@ const customersService = createCustomersService({
   customers: customersRepo,
   vendors: vendorsRepo,
   nomba,
-});
-
-// Adapter: misdirectedService's RefundQueue expects add(data), while the
-// underlying BullMQ Queue expects add(name, data). Wrap rather than change
-// either service's existing type.
-const misdirectedRefundQueue = {
-  add: async (data: {
-    transaction_id: string;
-    amount_kobo: number;
-    recipient_account: string;
-    recipient_bank_code: string;
-  }): Promise<void> => {
-    await refundQueue.add('refund', data);
-  },
-};
-
-const misdirectedService = createMisdirectedService({
-  misdirected: misdirectedRepo,
-  invoices: invoicesRepo,
-  reconciliation: reconciliationRepo,
-  audit: auditRepo,
-  refundQueue: misdirectedRefundQueue,
-  nombaTransfer: nomba,
 });
 
 const merchantsController = createMerchantsController(merchantsService);
