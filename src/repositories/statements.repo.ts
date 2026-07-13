@@ -92,9 +92,10 @@ export function createStatementsRepo(db: unknown) {
           COALESCE(SUM(t.amount_kobo), 0)::bigint AS total_collected_kobo,
           COUNT(DISTINCT m.vendor_id) AS total_vendors,
           COUNT(DISTINCT CASE WHEN v.va_status = 'active' THEN m.vendor_id END) AS active_vendors,
-          COUNT(CASE WHEN rl.status = 'MISDIRECTED' THEN 1 END) AS misdirected_count,
-          COUNT(CASE WHEN rl.status = 'OVERPAID' THEN 1 END) AS overpayment_count,
-          COUNT(CASE WHEN rl.status = 'EXACT' THEN 1 END) AS exact_match_count,
+          COUNT(CASE WHEN rl.status = 'UNMATCHED' THEN 1 END) AS misdirected_count,
+          COUNT(CASE WHEN rl.status = 'OVERPAYMENT' THEN 1 END) AS overpayment_count,
+          COUNT(CASE WHEN rl.status = 'UNDERPAYMENT' THEN 1 END) AS underpayment_count,
+          COUNT(CASE WHEN rl.status = 'EXACT_MATCH' THEN 1 END) AS exact_match_count,
           COUNT(t.id) AS total_transactions,
           COALESCE(SUM(CASE WHEN r.status = 'COMPLETED' THEN r.amount_kobo ELSE 0 END), 0)::bigint AS refunds_issued_kobo
         FROM transactions t
