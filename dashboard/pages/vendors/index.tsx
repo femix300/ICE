@@ -35,8 +35,8 @@ export default function VendorsIndex() {
         `/v1/vendors?limit=${ITEMS_PER_PAGE}&offset=${offset}`,
       );
       if (res) {
-        setVendors(res.rows);
-        setTotal(res.total);
+        setVendors(res.rows ?? []);
+        setTotal(res.total ?? 0);
       }
     } catch (err: unknown) {
       log.error({ err }, 'Failed to fetch vendors');
