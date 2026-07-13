@@ -9,10 +9,6 @@ export interface Pagination {
   pageSize: number;
 }
 
-// transactions has no vendor_id/customer_id/merchant_id column — it only
-// has va_number. A DVA can live on vendors.nomba_va_number (vendor-level)
-// or customers.nomba_va_number (customer-level). This CTE maps va_number
-// back to vendor_id + merchant_id across both cases.
 const VA_MAP_CTE = `
   WITH va_map AS (
     SELECT id AS vendor_id, merchant_id, nomba_va_number AS va_number
@@ -109,19 +105,17 @@ export function createStatementsRepo(db: unknown) {
       const exact = Number(row?.exact_match_count || 0);
       const total = Number(row?.total_transactions || 0);
       const reconciliation_rate = total > 0 ? Math.round((exact / total) * 10000) / 100 : 0;
+      
       return {
-        totalCollected: Number(row?.total_collected_kobo || 0),
-        reconciliationRate: reconciliation_rate,
-        activeVendors: Number(row?.active_vendors || 0),
-        refundsIssued: Number(row?.refunds_issued_kobo || 0),
-        pendingMisdirected: Number(row?.misdirected_count || 0),
+        total_collected_kobo: Number(row?.total_collected_kobo || 0),
+        reconciliation_rate_percent: reconciliation_rate,
+        active_vendors: Number(row?.active_vendors || 0),
+        refunds_issued_kobo: Number(row?.refunds_issued_kobo || 0),
+        pending_misdirected_count: Number(row?.misdirected_count || 0),
       };
     },
 
     getTransactionById: async (id: string) => {
-      // Joins through va_map so the caller gets a real vendor_id back —
-      // transactions has no vendor_id column of its own, so without this
-      // join, service-layer vendor scoping on this method silently no-ops.
       const sql = `
         ${VA_MAP_CTE}
         SELECT t.*, m.vendor_id, m.merchant_id

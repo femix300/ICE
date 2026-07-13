@@ -2,7 +2,6 @@ import { z } from 'zod';
 import { config } from './config';
 import { AppError } from './errors';
 import { createLogger } from './logger';
-import { getApiKey } from './auth';
 
 const log = createLogger('api-client');
 
@@ -31,12 +30,7 @@ function buildHeaders<T>(options?: ApiRequestOptions<T>, includeJsonBody = false
   if (includeJsonBody) {
     headers['Content-Type'] = 'application/json';
   }
-
-  const apiKey = getApiKey();
-  if (apiKey) {
-    headers['Authorization'] = `Bearer ${apiKey}`;
-  }
-
+  // FIX: Removed manual Bearer token injection. Secure HttpOnly cookies handle this now.
   return headers;
 }
 
