@@ -5,8 +5,6 @@ import { createLogger } from './logger';
 
 const log = createLogger('api-client');
 
-// Give up on a backend request after this long so the UI can fall back to demo
-// data instead of hanging on a spinner forever.
 const REQUEST_TIMEOUT_MS = 10_000;
 
 const BASE = config.NEXT_PUBLIC_API_URL.replace(/\/$/, '');
@@ -21,18 +19,38 @@ export type ApiResponse = z.infer<typeof apiResponseSchema>;
 
 interface ApiRequestOptions<T> {
   schema?: z.Schema<T>;
-  key?: string;
+  expectedShape?: Record<string, unknown>;
+  shapeDescription?: string;
 }
 
-function buildHeaders(options?: ApiRequestOptions<unknown>, includeJsonBody = false): Record<string, string> {
+function buildHeaders<T>(options?: ApiRequestOptions<T>, includeJsonBody = false): Record<string, string> {
   const headers: Record<string, string> = {
     Accept: 'application/json',
   };
   if (includeJsonBody) {
     headers['Content-Type'] = 'application/json';
   }
-
+  // FIX: Removed manual Bearer token injection. Secure HttpOnly cookies handle this now.
   return headers;
+}
+
+function validateResponseShape(
+  data: unknown,
+  path: string,
+  expectedShape: Record<string, unknown> | undefined,
+  shapeDescription: string | undefined,
+): void {
+  if (!expectedShape || !shapeDescription) return;
+  const expectedKeys = Object.keys(expectedShape);
+  if (expectedKeys.length === 0) return;
+
+  const actual = data as Record<string, unknown>;
+  const missing = expectedKeys.filter((key) => !(key in actual));
+  if (missing.length > 0) {
+    const message = `Unexpected response shape from ${path} — expected { ${shapeDescription} }, got missing keys: ${missing.join(', ')}`;
+    log.error({ path, expectedKeys, missing, actual }, message);
+    throw new AppError('INVALID_RESPONSE', message);
+  }
 }
 
 function extractErrorMessage(response: Response, body: unknown): string {
@@ -56,7 +74,11 @@ function extractErrorMessage(response: Response, body: unknown): string {
   return errorMessage;
 }
 
-async function handleResponse<T>(response: Response, options?: ApiRequestOptions<T>): Promise<T> {
+async function handleResponse<T>(
+  response: Response,
+  options?: ApiRequestOptions<T>,
+  path?: string,
+): Promise<T> {
   if (response.status === 401) {
     throw new AppError('UNAUTHORIZED', 'Unauthorized');
   }
@@ -65,8 +87,6 @@ async function handleResponse<T>(response: Response, options?: ApiRequestOptions
     let errorMessage = `HTTP error! Status: ${response.status}`;
     try {
       const errorData = await response.json();
-      // Intentionally swallowed if the body is not valid JSON (e.g. an HTML
-      // gateway error page) — we fall through to a generic status error.
       errorMessage = extractErrorMessage(response, errorData);
     } catch (err) {
       log.error({ err, status: response.status }, 'Failed to parse error response JSON');
@@ -82,13 +102,14 @@ async function handleResponse<T>(response: Response, options?: ApiRequestOptions
       throw new AppError('API_ERROR', parsedEnvelope.data.error || 'API returned ok=false');
     }
     const rawData = parsedEnvelope.data.data;
+    validateResponseShape(rawData, path ?? 'unknown', options?.expectedShape, options?.shapeDescription);
     if (options?.schema) {
       return options.schema.parse(rawData);
     }
     return rawData as T;
   }
 
-  // Fallback if the envelope does not match the standard backend structure
+  validateResponseShape(result, path ?? 'unknown', options?.expectedShape, options?.shapeDescription);
   if (options?.schema) {
     return options.schema.parse(result);
   }
@@ -113,7 +134,7 @@ async function request<T>(
       body: body !== undefined ? JSON.stringify(body) : undefined,
       signal: controller.signal,
     });
-    return await handleResponse<T>(response, options);
+    return await handleResponse<T>(response, options, cleanPath);
   } finally {
     clearTimeout(timer);
   }

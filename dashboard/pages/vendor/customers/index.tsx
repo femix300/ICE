@@ -1,11 +1,11 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '../../../components/layout';
 import { api } from '../../../lib/api';
 import { createLogger } from '../../../lib/logger';
 import { formatKoboToNaira } from '../../../lib/format';
 import { getVendorId } from '../../../lib/auth';
-import { useMockFallback, mockVendorCustomerList } from '../../../lib/mockData';
+import { CustomerListResponseSchema } from '../../../lib/types';
 
 const log = createLogger('vendor-customers-page');
 
@@ -24,15 +24,37 @@ type CustomersListResponse = {
 
 export default function VendorCustomers() {
   const router = useRouter();
+  const [customers, setCustomers] = useState<CustomerListItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const { data, isLoading } = useMockFallback<CustomersListResponse>({
-    fetcher: () =>
-      api.get<CustomersListResponse>(`/v1/vendors/${getVendorId()}/customers`),
-    mock: mockVendorCustomerList,
-    isEmpty: (res) => res.rows.length === 0,
-  });
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      setIsLoading(true);
+      setErrorMsg(null);
+      try {
+        const data = await api.get<CustomersListResponse>(
+          `/v1/vendors/${getVendorId()}/customers`,
+          {
+            schema: CustomerListResponseSchema,
+          },
+        );
+        if (active) setCustomers(data.rows);
+      } catch (err: unknown) {
+        if (active) {
+          log.error({ err }, 'Failed to fetch customers');
+          setErrorMsg(err instanceof Error ? err.message : 'Failed to load customers.');
+        }
+      } finally {
+        if (active) setIsLoading(false);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
 
-  const customers = data?.rows ?? [];
   const headers = ['Customer Name', 'Last Payment Date', 'Total Paid'];
 
   return (
@@ -53,7 +75,34 @@ export default function VendorCustomers() {
           </p>
         </div>
 
-        {isLoading ? (
+        {errorMsg && customers.length === 0 && !isLoading ? (
+          <div className="mx-auto max-w-xl space-y-3 rounded-2xl border border-red-500/25 bg-red-500/10 p-6 text-center">
+            <p className="text-sm font-semibold text-red-500">{errorMsg}</p>
+            <button
+              type="button"
+              onClick={() => {
+                setErrorMsg(null);
+                setIsLoading(true);
+                void (async () => {
+                  try {
+                    const data = await api.get<CustomersListResponse>(
+                      `/v1/vendors/${getVendorId()}/customers`,
+                      { schema: CustomerListResponseSchema },
+                    );
+                    setCustomers(data.rows);
+                  } catch (err: unknown) {
+                    setErrorMsg(err instanceof Error ? err.message : 'Failed to load customers.');
+                  } finally {
+                    setIsLoading(false);
+                  }
+                })();
+              }}
+              className="rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-2 text-xs font-bold text-white transition-all hover:bg-zinc-750"
+            >
+              Retry Connection
+            </button>
+          </div>
+        ) : isLoading ? (
           <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
             <div className="animate-pulse divide-y divide-zinc-200/60 dark:divide-zinc-800/60">
               {[...Array(5)].map((_, i) => (

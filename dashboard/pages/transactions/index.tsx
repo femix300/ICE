@@ -55,18 +55,20 @@ export default function TransactionsIndex() {
 
   // Initial fetch and dependency on page change
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchTransactions(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);
 
   // Polling setup (10s auto-refresh)
   useEffect(() => {
     const intervalId = setInterval(() => {
-      // Pass false to avoid flashing loading state during background refresh
       fetchTransactions(false);
     }, REFRESH_INTERVAL_MS);
 
     return () => clearInterval(intervalId);
-  }, [page]); // Re-bind interval if page changes so we refresh the correct page
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page]);
 
   // Client-side filtering for MVP (instant visual feedback)
   const filteredTransactions = transactions.filter((tx) => {

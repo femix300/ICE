@@ -16,8 +16,6 @@ const createVendorSchema = z.object({
     .max(100, 'Vendor name must be at most 100 characters'),
 });
 
-type CreateVendorFormValues = z.infer<typeof createVendorSchema>;
-
 interface SuccessVaInfo {
   name: string;
   nomba_va_number: string;
