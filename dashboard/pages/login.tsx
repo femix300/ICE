@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
-import Layout from '../components/layout';
 import { setApiKey, getMerchantId, setMerchantId } from '../lib/auth';
 import { AppError } from '../lib/errors';
 
@@ -39,10 +38,9 @@ export default function Login() {
   };
 
   return (
-    <Layout variant="owner">
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <div className="w-full max-w-md">
-          <div className="border border-zinc-800 p-8">
+    <div className="flex min-h-screen items-center justify-center bg-black px-4 py-12">
+      <div className="w-full max-w-md">
+        <div className="border border-zinc-800 p-8">
             <div className="mb-8">
               <h1 className="text-2xl font-bold tracking-tight">Sign in to ICE</h1>
               <p className="text-zinc-400 text-sm mt-2">
@@ -89,10 +87,9 @@ export default function Login() {
               <Link href="/register" className="text-emerald-500 hover:text-emerald-400">
                 Register
               </Link>
-            </p>
-          </div>
+          </p>
         </div>
       </div>
-    </Layout>
+    </div>
   );
 }

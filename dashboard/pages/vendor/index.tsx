@@ -6,7 +6,6 @@ import { api } from '../../lib/api';
 import { createLogger } from '../../lib/logger';
 import { getVendorId } from '../../lib/auth';
 import { formatKoboToNaira, formatReconciliationRate } from '../../lib/format';
-import { useMockFallback, mockVendorStatement } from '../../lib/mockData';
 
 const log = createLogger('vendor-dashboard-page');
 
@@ -76,13 +75,33 @@ const AlertIcon = () => (
 
 export default function VendorDashboard() {
   const router = useRouter();
+  const [statement, setStatement] = useState<VendorStatement | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
-  const { data: statement, isLoading } = useMockFallback<VendorStatement>({
-    fetcher: () => api.get<VendorStatement>(`/v1/vendors/${getVendorId()}/statement`),
-    mock: mockVendorStatement as VendorStatement,
-    isEmpty: (res) => res.recent_customers.length === 0,
-  });
+  useEffect(() => {
+    let active = true;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setIsLoading(true);
+    setErrorMsg(null);
+    void (async () => {
+      try {
+        const data = await api.get<VendorStatement>(`/v1/vendors/${getVendorId()}/statement`);
+        if (active) setStatement(data);
+      } catch (err: unknown) {
+        if (active) {
+          log.error({ err }, 'Failed to fetch vendor statement');
+          setErrorMsg(err instanceof Error ? err.message : 'Failed to load vendor dashboard.');
+        }
+      } finally {
+        if (active) setIsLoading(false);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const handleCopyVa = async (vaNumber: string) => {
     try {
@@ -116,6 +135,33 @@ export default function VendorDashboard() {
             Your collections, reconciliation health, and recent customers at a glance.
           </p>
         </div>
+
+        {errorMsg && !isLoading && !statement && (
+          <div className="bg-red-500/10 border border-red-500/25 rounded-2xl p-6 text-center max-w-xl mx-auto space-y-3">
+            <p className="text-sm font-semibold text-red-500">{errorMsg}</p>
+            <button
+              type="button"
+              onClick={() => {
+                setErrorMsg(null);
+                setIsLoading(true);
+                void (async () => {
+                  try {
+                    const data = await api.get<VendorStatement>(`/v1/vendors/${getVendorId()}/statement`);
+                    setStatement(data);
+                  } catch (err: unknown) {
+                    log.error({ err }, 'Failed to fetch vendor statement');
+                    setErrorMsg(err instanceof Error ? err.message : 'Failed to load vendor dashboard.');
+                  } finally {
+                    setIsLoading(false);
+                  }
+                })();
+              }}
+              className="px-4 py-2 rounded-xl text-xs font-bold bg-zinc-800 border border-zinc-700 hover:bg-zinc-750 text-white transition-all"
+            >
+              Retry Connection
+            </button>
+          </div>
+        )}
 
         {isLoading ? (
           <div className="space-y-6">

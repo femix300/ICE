@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import Layout from '../../../components/layout';
@@ -6,7 +6,6 @@ import { api } from '../../../lib/api';
 import { createLogger } from '../../../lib/logger';
 import { formatKoboToNaira, formatTimestamp } from '../../../lib/format';
 import { getVendorId } from '../../../lib/auth';
-import { useMockFallback, mockCustomerStatementResponse } from '../../../lib/mockData';
 
 const log = createLogger('vendor-customer-statement-page');
 
@@ -80,14 +79,35 @@ export default function VendorCustomerStatement() {
   const customerId = typeof id === 'string' ? id : '';
   const isReady = router.isReady && Boolean(customerId);
 
-  const { data: statement, isLoading } = useMockFallback<CustomerStatement>({
-    fetcher: () =>
-      api.get<CustomerStatement>(
-        `/v1/vendors/${getVendorId()}/customers/${customerId}/statement`,
-      ),
-    mock: mockCustomerStatementResponse,
-    deps: [isReady, customerId],
-  });
+  const [statement, setStatement] = useState<CustomerStatement | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isReady) return;
+    let active = true;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setIsLoading(true);
+    setErrorMsg(null);
+    void (async () => {
+      try {
+        const data = await api.get<CustomerStatement>(
+          `/v1/vendors/${getVendorId()}/customers/${customerId}/statement`,
+        );
+        if (active) setStatement(data);
+      } catch (err: unknown) {
+        if (active) {
+          log.error({ err }, 'Failed to fetch customer statement');
+          setErrorMsg(err instanceof Error ? err.message : 'Failed to load customer statement.');
+        }
+      } finally {
+        if (active) setIsLoading(false);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [isReady, customerId]);
 
   const transactions = statement
     ? statement.transactions
@@ -101,6 +121,34 @@ export default function VendorCustomerStatement() {
     return (
       <Layout variant="vendor" breadcrumbs={[{ label: 'Customers', href: '/vendor/customers' }]}>
         <div className="space-y-6">
+          {errorMsg && (
+            <div className="bg-red-500/10 border border-red-500/25 rounded-2xl p-6 text-center max-w-xl mx-auto space-y-3">
+              <p className="text-sm font-semibold text-red-500">{errorMsg}</p>
+              <button
+                type="button"
+                onClick={() => {
+                  setErrorMsg(null);
+                  setIsLoading(true);
+                  void (async () => {
+                    try {
+                      const data = await api.get<CustomerStatement>(
+                        `/v1/vendors/${getVendorId()}/customers/${customerId}/statement`,
+                      );
+                      setStatement(data);
+                    } catch (err: unknown) {
+                      log.error({ err }, 'Failed to fetch customer statement');
+                      setErrorMsg(err instanceof Error ? err.message : 'Failed to load customer statement.');
+                    } finally {
+                      setIsLoading(false);
+                    }
+                  })();
+                }}
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-zinc-800 border border-zinc-700 hover:bg-zinc-750 text-white transition-all"
+              >
+                Retry Connection
+              </button>
+            </div>
+          )}
           <div className="h-20 animate-pulse rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900" />
           <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
             <div className="animate-pulse divide-y divide-zinc-200/60 dark:divide-zinc-800/60">

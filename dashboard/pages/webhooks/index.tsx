@@ -7,7 +7,6 @@ import WebhookDeliveryLog, {
 import DeadLetterAlert from '../../components/DeadLetterAlert';
 import { api } from '../../lib/api';
 import { createLogger } from '../../lib/logger';
-import { useMockFallback, mockWebhookList } from '../../lib/mockData';
 
 const log = createLogger('webhook-log-page');
 
@@ -20,7 +19,12 @@ type WebhookListResponse = {
 };
 
 export default function WebhooksIndex() {
+  const [deliveries, setDeliveries] = useState<WebhookDelivery[]>([]);
+  const [total, setTotal] = useState(0);
+  const [deadLetterCount, setDeadLetterCount] = useState(0);
   const [page, setPage] = useState(1);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [replayingId, setReplayingId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ kind: 'success' | 'error'; message: string } | null>(
     null,
@@ -28,16 +32,33 @@ export default function WebhooksIndex() {
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const deadLetterRef = useRef<HTMLDivElement | null>(null);
 
-  const { data, isLoading, refetch } = useMockFallback<WebhookListResponse>({
-    fetcher: () => {
+  const fetchDeliveries = useCallback(async () => {
+    setIsLoading(true);
+    setErrorMsg(null);
+    try {
       const offset = (page - 1) * ITEMS_PER_PAGE;
-      return api.get<WebhookListResponse>(
+      const data = await api.get<WebhookListResponse>(
         `/v1/webhook-deliveries?limit=${ITEMS_PER_PAGE}&offset=${offset}`,
       );
-    },
-    mock: mockWebhookList as WebhookListResponse,
-    deps: [page],
-  });
+      setDeliveries(data.rows);
+      setTotal(data.total);
+      setDeadLetterCount(data.deadLetterCount);
+    } catch (err: unknown) {
+      log.error({ err }, 'Failed to fetch webhook deliveries');
+      setErrorMsg(
+        err instanceof Error
+          ? err.message
+          : 'An error occurred while loading webhook deliveries. Please try again.',
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  }, [page]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void fetchDeliveries();
+  }, [fetchDeliveries]);
 
   const showToast = useCallback((kind: 'success' | 'error', message: string) => {
     if (toastTimer.current) {
@@ -75,9 +96,6 @@ export default function WebhooksIndex() {
     deadLetterRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   };
 
-  const deliveries = data?.rows ?? [];
-  const deadLetterCount = data?.deadLetterCount ?? 0;
-  const total = data?.total ?? 0;
   const totalPages = Math.ceil(total / ITEMS_PER_PAGE);
 
   return (
@@ -103,6 +121,23 @@ export default function WebhooksIndex() {
             }`}
           >
             <span>{toast.message}</span>
+          </div>
+        )}
+
+        {errorMsg && !isLoading && deliveries.length === 0 && (
+          <div className="bg-red-500/10 border border-red-500/25 rounded-2xl p-6 text-center max-w-xl mx-auto space-y-3">
+            <p className="text-sm font-semibold text-red-500">{errorMsg}</p>
+            <button
+              type="button"
+              onClick={() => {
+                setErrorMsg(null);
+                setIsLoading(true);
+                void fetchDeliveries();
+              }}
+              className="px-4 py-2 rounded-xl text-xs font-bold bg-zinc-800 border border-zinc-700 hover:bg-zinc-750 text-white transition-all"
+            >
+              Retry Connection
+            </button>
           </div>
         )}
 

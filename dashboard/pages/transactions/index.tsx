@@ -77,7 +77,7 @@ export default function TransactionsIndex() {
   const totalPages = Math.ceil(total / ITEMS_PER_PAGE);
 
   return (
-    <Layout variant="owner">
+    <Layout variant="vendor">
       <div className="space-y-6">
         {/* Top Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">

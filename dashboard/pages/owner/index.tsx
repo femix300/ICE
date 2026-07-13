@@ -9,11 +9,6 @@ import AnomalyAlertPanel from '../../components/AnomalyAlertPanel';
 import { api } from '../../lib/api';
 import { createLogger } from '../../lib/logger';
 import { getMerchantId } from '../../lib/auth';
-import {
-  useMockFallback,
-  mockPlatformSummary,
-  mockMisdirectedList,
-} from '../../lib/mockData';
 
 const log = createLogger('owner-dashboard-page');
 
@@ -25,32 +20,49 @@ type MisdirectedListResponse = {
 export default function OwnerDashboard() {
   const [summary, setSummary] = useState<PlatformSummary | null>(null);
   const [payments, setPayments] = useState<MisdirectedPayment[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [toast, setToast] = useState<{ kind: 'success' | 'error'; message: string } | null>(
     null,
   );
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const summaryHook = useMockFallback<PlatformSummary>({
-    fetcher: () =>
-      api.get<PlatformSummary>(`/v1/merchants/${getMerchantId()}/summary`),
-    mock: mockPlatformSummary,
-  });
+  const fetchSummary = useCallback(async () => {
+    try {
+      const data = await api.get<PlatformSummary>(`/v1/merchants/${getMerchantId()}/summary`);
+      setSummary(data);
+    } catch (err: unknown) {
+      log.error({ err }, 'Failed to fetch platform summary');
+      setErrorMsg(err instanceof Error ? err.message : 'Failed to load platform summary.');
+    }
+  }, []);
 
-  const paymentsHook = useMockFallback<MisdirectedListResponse>({
-    fetcher: () => api.get<MisdirectedListResponse>('/v1/payments/misdirected'),
-    mock: mockMisdirectedList,
-    isEmpty: (res) => res.rows.length === 0,
-  });
-
-  const isLoading = summaryHook.isLoading || paymentsHook.isLoading;
+  const fetchPayments = useCallback(async () => {
+    try {
+      const data = await api.get<MisdirectedListResponse>('/v1/payments/misdirected');
+      setPayments(data.rows);
+    } catch (err: unknown) {
+      log.error({ err }, 'Failed to fetch misdirected payments');
+      setErrorMsg(
+        err instanceof Error
+          ? err.message
+          : 'An error occurred while loading misdirected payments. Please try again.',
+      );
+    }
+  }, []);
 
   useEffect(() => {
-    if (summaryHook.data) setSummary(summaryHook.data);
-  }, [summaryHook.data]);
-
-  useEffect(() => {
-    if (paymentsHook.data) setPayments(paymentsHook.data.rows);
-  }, [paymentsHook.data]);
+    let active = true;
+    setIsLoading(true);
+    setErrorMsg(null);
+    void (async () => {
+      await Promise.all([fetchSummary(), fetchPayments()]);
+      if (active) setIsLoading(false);
+    })();
+    return () => {
+      active = false;
+    };
+  }, [fetchSummary, fetchPayments]);
 
   const showToast = useCallback((kind: 'success' | 'error', message: string) => {
     if (toastTimer.current) {

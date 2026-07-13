@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/router';
 import { z } from 'zod';
-import Layout from '../components/layout';
-import ApiKeyDisplay from '../components/api-key-display';
 import { api } from '../lib/api';
 import { AppError } from '../lib/errors';
+import ApiKeyDisplay from '../components/api-key-display';
 import {
   setApiKey as persistApiKey,
   setMerchantId,
@@ -126,12 +125,12 @@ export default function Register() {
   };
 
   const handleContinue = () => {
-    router.push('/');
+    router.push('/owner');
   };
 
   return (
-    <Layout variant="owner">
-      <div className="flex flex-col items-center justify-center py-6 sm:py-12">
+    <div className="flex min-h-screen items-center justify-center bg-black px-4 py-12">
+      <div className="w-full max-w-lg">
         {apiKey ? (
           /* Success Screen: ApiKeyDisplay is rendered in-place of form */
           <ApiKeyDisplay apiKey={apiKey} onContinue={handleContinue} />
@@ -290,6 +289,6 @@ export default function Register() {
           </div>
         )}
       </div>
-    </Layout>
+    </div>
   );
 }
