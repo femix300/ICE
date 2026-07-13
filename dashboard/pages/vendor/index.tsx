@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '../../components/layout';
-import StatCard from '../../components/StatCard';
+import StatCard from '../../components/stat-card';
 import { api } from '../../lib/api';
 import { createLogger } from '../../lib/logger';
 import { getVendorId } from '../../lib/auth';

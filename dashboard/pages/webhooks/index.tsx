@@ -2,8 +2,8 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Layout from '../../components/layout';
 import WebhookDeliveryLog, {
   type WebhookDelivery,
-} from '../../components/WebhookDeliveryLog';
-import DeadLetterAlert from '../../components/DeadLetterAlert';
+} from '../../components/webhook-delivery-log';
+import DeadLetterAlert from '../../components/dead-letter-alert';
 import { api } from '../../lib/api';
 import { createLogger } from '../../lib/logger';
 import { getMerchantId } from '../../lib/auth';

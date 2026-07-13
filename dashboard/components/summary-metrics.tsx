@@ -1,5 +1,5 @@
 import React from 'react';
-import StatCard from './StatCard';
+import StatCard from './stat-card';
 import { formatKoboToNaira, formatReconciliationRate } from '../lib/format';
 
 export type PlatformSummary = {

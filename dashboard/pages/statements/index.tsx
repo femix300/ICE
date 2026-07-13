@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Layout from '../../components/layout';
-import DateRangePicker from '../../components/DateRangePicker';
+import DateRangePicker from '../../components/date-range-picker';
 import StatementTable, {
   type StatementTransaction,
   type StatementStatus,
-} from '../../components/StatementTable';
+} from '../../components/statement-table';
 import { api } from '../../lib/api';
 import { createLogger } from '../../lib/logger';
 import { formatKoboToNaira, formatDate } from '../../lib/format';

@@ -1,4 +1,5 @@
 import React from 'react';
+import { formatTimestamp } from '../lib/format';
 
 export type WebhookDeliveryStatus = 'success' | 'failed' | 'pending' | 'dead_letter';
 
@@ -16,21 +17,6 @@ type WebhookDeliveryLogProps = {
   deliveries: WebhookDelivery[];
   onReplay: (id: string) => void;
   replayingId: string | null;
-};
-
-const formatTimestamp = (value: string): string => {
-  const date = new Date(value);
-  const datePart = date.toLocaleDateString('en-NG', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
-  const timePart = date.toLocaleTimeString('en-NG', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  });
-  return `${datePart} · ${timePart}`;
 };
 
 const getStatusBadgeStyle = (status: WebhookDeliveryStatus): string => {
