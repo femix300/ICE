@@ -157,7 +157,7 @@ export default function OwnerDashboard() {
                 </Link>
               </div>
 
-              {payments.length === 0 ? (
+              {(payments ?? []).length === 0 ? (
                 <div className="mx-auto max-w-lg space-y-4 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-8 text-center">
                   <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-500">
                     <svg className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
@@ -173,7 +173,7 @@ export default function OwnerDashboard() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {payments.map((payment) => (
+                  {(payments ?? []).map((payment) => (
                     <MisdirectedPaymentCard
                       key={payment.id}
                       payment={payment}
