@@ -40,7 +40,7 @@ export default function OwnerDashboard() {
   const fetchPayments = useCallback(async () => {
     try {
       const data = await api.get<MisdirectedListResponse>('/v1/payments/misdirected');
-      setPayments(data.rows);
+      setPayments(data.rows ?? []);
     } catch (err: unknown) {
       log.error({ err }, 'Failed to fetch misdirected payments');
       setErrorMsg(
