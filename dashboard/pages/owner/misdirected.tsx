@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Layout from '../../components/layout';
 import MisdirectedPaymentCard, {
   type MisdirectedPayment,
-} from '../../components/MisdirectedPaymentCard';
+} from '../../components/misdirected-payment-card';
 import { api } from '../../lib/api';
 import { createLogger } from '../../lib/logger';
 

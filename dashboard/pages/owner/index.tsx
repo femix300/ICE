@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import Layout from '../../components/layout';
-import SummaryMetrics, { type PlatformSummary } from '../../components/SummaryMetrics';
+import SummaryMetrics, { type PlatformSummary } from '../../components/summary-metrics';
 import MisdirectedPaymentCard, {
   type MisdirectedPayment,
-} from '../../components/MisdirectedPaymentCard';
-import AnomalyAlertPanel from '../../components/AnomalyAlertPanel';
+} from '../../components/misdirected-payment-card';
+import AnomalyAlertPanel from '../../components/anomaly-alert-panel';
 import { api } from '../../lib/api';
 import { createLogger } from '../../lib/logger';
 import { getMerchantId } from '../../lib/auth';

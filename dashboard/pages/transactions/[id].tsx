@@ -4,7 +4,7 @@ import Layout from '../../components/layout';
 import TransactionDetail, {
   type TransactionDetail as TransactionDetailData,
   type ReconciliationDetail,
-} from '../../components/TransactionDetail';
+} from '../../components/transaction-detail';
 import { api } from '../../lib/api';
 import { createLogger } from '../../lib/logger';
 

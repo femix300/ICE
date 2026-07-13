@@ -1,5 +1,5 @@
 import React from 'react';
-import RefundStatusBadge, { type RefundStatus } from './RefundStatusBadge';
+import RefundStatusBadge, { type RefundStatus } from './refund-status-badge';
 
 export type ReconciliationStatus =
   | 'MATCHED'

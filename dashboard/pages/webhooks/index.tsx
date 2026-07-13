@@ -3,8 +3,8 @@ import Layout from '../../components/layout';
 import WebhookDeliveryLog, {
   type WebhookDelivery,
   type WebhookDeliveryStatus,
-} from '../../components/WebhookDeliveryLog';
-import DeadLetterAlert from '../../components/DeadLetterAlert';
+} from '../../components/webhook-delivery-log';
+import DeadLetterAlert from '../../components/dead-letter-alert';
 import { api } from '../../lib/api';
 import { createLogger } from '../../lib/logger';
 
