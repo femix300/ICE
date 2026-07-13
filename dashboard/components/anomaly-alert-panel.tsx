@@ -3,6 +3,8 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { api } from '../lib/api';
 import { createLogger } from '../lib/logger';
+import { z } from 'zod';
+import { AnomalyAlertSchema } from '../lib/types';
 
 const log = createLogger('anomaly-alert-panel');
 
@@ -54,19 +56,22 @@ export default function AnomalyAlertPanel({ onToast }: AnomalyAlertPanelProps) {
   const router = useRouter();
   const [alerts, setAlerts] = useState<AnomalyAlert[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [dismissingIds, setDismissingIds] = useState<Set<string>>(new Set());
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
 
   const fetchAlerts = useCallback(async () => {
     setIsLoading(true);
-    setErrorMsg(null);
+    setLoadError(null);
     try {
-      const data = await api.get<AnomalyAlert[]>('/v1/anomalies');
+      const data = await api.get<AnomalyAlert[]>('/v1/anomalies', {
+        schema: z.array(AnomalyAlertSchema),
+      });
       setAlerts(data);
     } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to load anomalies.';
       log.error({ err }, 'Failed to fetch anomalies');
-      setErrorMsg(err instanceof Error ? err.message : 'Failed to load anomalies.');
+      setLoadError(message);
     } finally {
       setIsLoading(false);
     }
@@ -87,6 +92,7 @@ export default function AnomalyAlertPanel({ onToast }: AnomalyAlertPanelProps) {
       await api.delete(`/v1/anomalies/${alert.id}`);
       onToast('success', `Alert dismissed: ${alert.rule}`);
       setDismissedIds((prev) => new Set(prev).add(alert.id));
+      setAlerts((prev) => prev.filter((a) => a.id !== alert.id));
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to dismiss alert.';
       log.error({ err, alertId: alert.id }, 'Failed to dismiss anomaly');
@@ -100,7 +106,7 @@ export default function AnomalyAlertPanel({ onToast }: AnomalyAlertPanelProps) {
     }
   };
 
-  const visibleAlerts = (alerts ?? []).filter((a) => !dismissedIds.has(a.id));
+  const visibleAlerts = alerts.filter((a) => !dismissedIds.has(a.id));
 
   return (
     <div className="space-y-4">
@@ -117,25 +123,18 @@ export default function AnomalyAlertPanel({ onToast }: AnomalyAlertPanelProps) {
         </button>
       </div>
 
-      {errorMsg && !isLoading && visibleAlerts.length === 0 && (
-        <div className="mx-auto max-w-lg space-y-4 rounded-2xl border border-red-500/20 bg-red-500/5 p-8 text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-red-200 bg-red-50 text-red-500 dark:border-red-500/20 dark:bg-red-500/10">
-            <svg className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-          </div>
-          <div>
-            <h4 className="text-base font-bold text-zinc-900 dark:text-white">
-              Unable to load anomalies
-            </h4>
-            <p className="mx-auto mt-1 max-w-sm text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
-              {errorMsg}
-            </p>
-          </div>
+      {loadError && visibleAlerts.length === 0 ? (
+        <div className="mx-auto max-w-xl space-y-3 rounded-2xl border border-red-500/25 bg-red-500/10 p-6 text-center">
+          <p className="text-sm font-semibold text-red-500">{loadError}</p>
+          <button
+            type="button"
+            onClick={fetchAlerts}
+            className="rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-2 text-xs font-bold text-white transition-all hover:bg-zinc-750"
+          >
+            Retry Connection
+          </button>
         </div>
-      )}
-
-      {isLoading ? (
+      ) : isLoading && visibleAlerts.length === 0 ? (
         <div className="space-y-3">
           {[...Array(3)].map((_, i) => (
             <div

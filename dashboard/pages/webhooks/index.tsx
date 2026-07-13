@@ -2,11 +2,11 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Layout from '../../components/layout';
 import WebhookDeliveryLog, {
   type WebhookDelivery,
-  type WebhookDeliveryStatus,
 } from '../../components/webhook-delivery-log';
 import DeadLetterAlert from '../../components/dead-letter-alert';
 import { api } from '../../lib/api';
 import { createLogger } from '../../lib/logger';
+import { getMerchantId } from '../../lib/auth';
 
 const log = createLogger('webhook-log-page');
 
@@ -19,12 +19,7 @@ type WebhookListResponse = {
 };
 
 export default function WebhooksIndex() {
-  const [deliveries, setDeliveries] = useState<WebhookDelivery[]>([]);
-  const [total, setTotal] = useState(0);
-  const [deadLetterCount, setDeadLetterCount] = useState(0);
   const [page, setPage] = useState(1);
-  const [isLoading, setIsLoading] = useState(true);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [replayingId, setReplayingId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ kind: 'success' | 'error'; message: string } | null>(
     null,
@@ -32,24 +27,24 @@ export default function WebhooksIndex() {
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const deadLetterRef = useRef<HTMLDivElement | null>(null);
 
+  const [data, setData] = useState<WebhookListResponse | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
   const fetchDeliveries = useCallback(async () => {
     setIsLoading(true);
     setErrorMsg(null);
     try {
       const offset = (page - 1) * ITEMS_PER_PAGE;
-      const data = await api.get<WebhookListResponse>(
-        `/v1/webhook-deliveries?limit=${ITEMS_PER_PAGE}&offset=${offset}`,
+      const result = await api.get<WebhookDelivery[]>(
+        `/v1/merchants/${getMerchantId()}/webhook-deliveries?limit=${ITEMS_PER_PAGE}&offset=${offset}`,
       );
-      setDeliveries(data.rows);
-      setTotal(data.total);
-      setDeadLetterCount(data.deadLetterCount);
+      const rows = Array.isArray(result) ? result : [];
+      const deadLetterCount = rows.filter((d) => d.status === 'dead_letter').length;
+      setData({ rows, total: rows.length, deadLetterCount });
     } catch (err: unknown) {
       log.error({ err }, 'Failed to fetch webhook deliveries');
-      setErrorMsg(
-        err instanceof Error
-          ? err.message
-          : 'An error occurred while loading webhook deliveries. Please try again.',
-      );
+      setErrorMsg(err instanceof Error ? err.message : 'Failed to load webhook deliveries.');
     } finally {
       setIsLoading(false);
     }
@@ -96,6 +91,9 @@ export default function WebhooksIndex() {
     deadLetterRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   };
 
+  const deliveries = data?.rows ?? [];
+  const deadLetterCount = data?.deadLetterCount ?? 0;
+  const total = data?.total ?? 0;
   const totalPages = Math.ceil(total / ITEMS_PER_PAGE);
 
   return (
@@ -124,30 +122,18 @@ export default function WebhooksIndex() {
           </div>
         )}
 
-        {errorMsg && !isLoading && deliveries.length === 0 && (
-          <div className="bg-red-500/10 border border-red-500/25 rounded-2xl p-6 text-center max-w-xl mx-auto space-y-3">
+        {errorMsg && deliveries.length === 0 && !isLoading ? (
+          <div className="mx-auto max-w-xl space-y-3 rounded-2xl border border-red-500/25 bg-red-500/10 p-6 text-center">
             <p className="text-sm font-semibold text-red-500">{errorMsg}</p>
             <button
               type="button"
-              onClick={() => {
-                setErrorMsg(null);
-                setIsLoading(true);
-                void fetchDeliveries();
-              }}
-              className="px-4 py-2 rounded-xl text-xs font-bold bg-zinc-800 border border-zinc-700 hover:bg-zinc-750 text-white transition-all"
+              onClick={fetchDeliveries}
+              className="rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-2 text-xs font-bold text-white transition-all hover:bg-zinc-750"
             >
               Retry Connection
             </button>
           </div>
-        )}
-
-        {!isLoading && deadLetterCount > 0 && (
-          <div ref={deadLetterRef}>
-            <DeadLetterAlert count={deadLetterCount} onView={scrollToDeadLetter} />
-          </div>
-        )}
-
-        {isLoading ? (
+        ) : isLoading && deliveries.length === 0 ? (
           <div className="overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white shadow-sm dark:bg-zinc-900">
             <div className="animate-pulse divide-y divide-zinc-200/60 dark:divide-zinc-800/60">
               {[...Array(6)].map((_, i) => (
@@ -158,29 +144,14 @@ export default function WebhooksIndex() {
               ))}
             </div>
           </div>
-        ) : deliveries.length === 0 ? (
-          <div className="mx-auto max-w-lg space-y-4 rounded-2xl border border-zinc-200/60 bg-white p-8 text-center dark:border-zinc-800/60 dark:bg-zinc-900/20">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-zinc-200 bg-zinc-100 text-zinc-400 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-600">
-              <svg className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
-                />
-              </svg>
-            </div>
-            <div>
-              <h3 className="text-base font-bold text-zinc-900 dark:text-white">
-                No Webhook Deliveries Yet
-              </h3>
-              <p className="mx-auto mt-1 max-w-sm text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
-                Once Nomba events start flowing to your connected endpoint, delivery attempts and
-                their statuses will appear here.
-              </p>
-            </div>
-          </div>
         ) : (
           <>
+            {!isLoading && deadLetterCount > 0 && (
+              <div ref={deadLetterRef}>
+                <DeadLetterAlert count={deadLetterCount} onView={scrollToDeadLetter} />
+              </div>
+            )}
+
             <WebhookDeliveryLog
               deliveries={deliveries}
               onReplay={handleReplay}

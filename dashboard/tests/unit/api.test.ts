@@ -23,11 +23,11 @@ describe('API Client Utility', () => {
   });
 
   it('performs GET request and returns data', async () => {
-    const mockData = { id: '123', name: 'Test' };
+    const testData = { id: '123', name: 'Test' };
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
-      json: async () => ({ ok: true, data: mockData }),
+      json: async () => ({ ok: true, data: testData }),
     });
     vi.stubGlobal('fetch', mockFetch);
 
@@ -38,7 +38,7 @@ describe('API Client Utility', () => {
         method: 'GET',
       }),
     );
-    expect(result).toEqual(mockData);
+    expect(result).toEqual(testData);
   });
 
   it('validates envelope data with Zod schema if provided', async () => {
@@ -47,16 +47,16 @@ describe('API Client Utility', () => {
       name: z.string(),
     });
 
-    const mockData = { id: '123', name: 'Test' };
+    const testData = { id: '123', name: 'Test' };
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
-      json: async () => ({ ok: true, data: mockData }),
+      json: async () => ({ ok: true, data: testData }),
     });
     vi.stubGlobal('fetch', mockFetch);
 
     const result = await api.get('/test-route', { schema });
-    expect(result).toEqual(mockData);
+    expect(result).toEqual(testData);
   });
 
   it('throws AppError when Zod validation fails', async () => {
@@ -65,11 +65,11 @@ describe('API Client Utility', () => {
       name: z.number(), // Expect number but API returns string
     });
 
-    const mockData = { id: '123', name: 'Test' };
+    const testData = { id: '123', name: 'Test' };
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
-      json: async () => ({ ok: true, data: mockData }),
+      json: async () => ({ ok: true, data: testData }),
     });
     vi.stubGlobal('fetch', mockFetch);
 
@@ -87,7 +87,7 @@ describe('API Client Utility', () => {
     vi.stubGlobal('fetch', mockFetch);
 
     await expect(api.get('/test-route')).rejects.toThrowError(AppError);
-    // No forced navigation: the UI (e.g. useMockFallback) decides how to
+    // No forced navigation: the UI decides how to
     // degrade instead of bouncing the user to a non-existent login page.
     expect(mockRedirect.href).toBe('');
   });
@@ -105,11 +105,11 @@ describe('API Client Utility', () => {
 
   it('performs POST request with payload and returns data', async () => {
     const payload = { businessName: 'Test Biz' };
-    const mockData = { id: '456', businessName: 'Test Biz' };
+    const testData = { id: '456', businessName: 'Test Biz' };
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
-      json: async () => ({ ok: true, data: mockData }),
+      json: async () => ({ ok: true, data: testData }),
     });
     vi.stubGlobal('fetch', mockFetch);
 
@@ -121,6 +121,6 @@ describe('API Client Utility', () => {
         body: JSON.stringify(payload),
       }),
     );
-    expect(result).toEqual(mockData);
+    expect(result).toEqual(testData);
   });
 });
