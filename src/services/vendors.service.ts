@@ -134,10 +134,11 @@ export function createVendorsService(deps: { vendors: VendorsRepo; nomba: NombaC
         throw new AppError(404, 'VENDOR_NOT_FOUND', 'Vendor not found');
       }
 
-      if (data.name) {
+      if (data.name || data.callbackUrl) {
         try {
           await deps.nomba.updateVirtualAccount(`${vendor.merchant_id}_${vendor.id}`, {
-            accountName: data.name,
+            ...(data.name ? { accountName: data.name } : {}),
+            ...(data.callbackUrl ? { callbackUrl: data.callbackUrl } : {}),
           });
         } catch (err) {
           log.error({ err, id, merchantId }, 'Failed to update Nomba virtual account');

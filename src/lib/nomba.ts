@@ -133,7 +133,10 @@ export function createNombaClient() {
       }
     },
 
-    updateVirtualAccount: async (accountId: string, data: { accountName: string }) => {
+    updateVirtualAccount: async (
+      accountId: string,
+      data: { accountName?: string; callbackUrl?: string },
+    ) => {
       try {
         const res = await fetch(`${NOMBA_BASE_URL}/accounts/virtual/${accountId}`, {
           method: 'PUT',
