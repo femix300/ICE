@@ -143,10 +143,10 @@ export default function StatementsPage() {
     const data = statementHook.data;
     if (!data) return;
     setOpeningBalance(data.opening_balance_kobo);
-    setTransactions(data.transactions.map(mapTransaction));
+    setTransactions((data.transactions || []).map(mapTransaction));
     if ('vendor' in data) {
       setVendorName(data.vendor.name);
-    } else {
+    } else if (data.customer?.name) {
       setSelectedCustomerName(data.customer.name);
     }
   }, [statementHook.data]);

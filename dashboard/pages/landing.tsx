@@ -54,7 +54,8 @@ export default function Landing() {
             You scale.
           </h1>
           <p className="mt-8 text-zinc-400 text-base md:text-lg max-w-[480px] leading-relaxed">
-            Reconciliation on top of Nomba virtual accounts. Auto-match payments, resolve misdirected transfers, deliver webhooks.
+            Reconciliation on top of Nomba virtual accounts. Auto-match payments, resolve
+            misdirected transfers, deliver webhooks.
           </p>
           <div className="mt-10 flex flex-col sm:flex-row gap-4">
             <Link
@@ -120,9 +121,7 @@ export default function Landing() {
       {/* — HOW IT WORKS — */}
       <section className="py-24 px-6 border-t border-zinc-800">
         <div className="mx-auto max-w-7xl">
-          <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-16">
-            How it works
-          </h2>
+          <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-16">How it works</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
             {[
               {
@@ -213,9 +212,7 @@ export default function Landing() {
       <footer className="border-t border-zinc-800 py-8 px-6">
         <div className="mx-auto max-w-7xl flex flex-col md:flex-row items-center justify-between gap-4">
           <span className="font-bold text-white tracking-wider text-sm">ICE</span>
-          <span className="text-zinc-500 text-sm">
-            Built on Nomba · Nomba x DevCareer 2026
-          </span>
+          <span className="text-zinc-500 text-sm">Built on Nomba · Nomba x DevCareer 2026</span>
         </div>
       </footer>
     </div>
