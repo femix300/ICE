@@ -13,8 +13,6 @@ The backend API is deployed and publicly accessible on Render:
 - **ReDoc (Reading View)**: [https://ice-nomba-hackathon.onrender.com/redoc](https://ice-nomba-hackathon.onrender.com/redoc)
 - **Health Check**: [https://ice-nomba-hackathon.onrender.com/healthz](https://ice-nomba-hackathon.onrender.com/healthz)
 
-The dashboard frontend is not yet deployed (Vercel deployment planned); this section will be updated with a live dashboard URL once that's complete. Until then, the dashboard can be run locally against the deployed backend above, or the full stack can be run locally end-to-end via the Quick Start section below.
-
 ## Documentation
 - **Product Requirements**: [`ICE_PRD.md`](./ICE_PRD.md)
 - **Engineering Standards & Git Workflow**: [`ICE_ENGINEERING.md`](./ICE_ENGINEERING.md)
