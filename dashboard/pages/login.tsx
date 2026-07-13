@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { setApiKey, getMerchantId, setMerchantId } from '../lib/auth';
 import { AppError } from '../lib/errors';
+import AuthNavbar from '../components/auth-navbar';
 
 export default function Login() {
   const router = useRouter();
@@ -38,9 +39,11 @@ export default function Login() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-black px-4 py-12">
-      <div className="w-full max-w-md">
-        <div className="border border-zinc-800 p-8">
+    <div className="min-h-screen bg-black">
+      <AuthNavbar page="login" />
+      <div className="flex items-center justify-center px-4 py-12 pt-20">
+        <div className="w-full max-w-md">
+          <div className="border border-zinc-800 p-8">
             <div className="mb-8">
               <h1 className="text-2xl font-bold tracking-tight">Sign in to ICE</h1>
               <p className="text-zinc-400 text-sm mt-2">
@@ -90,6 +93,7 @@ export default function Login() {
           </p>
         </div>
       </div>
+    </div>
     </div>
   );
 }

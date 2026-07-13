@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import { z } from 'zod';
 import { api } from '../lib/api';
 import { AppError } from '../lib/errors';
+import AuthNavbar from '../components/auth-navbar';
 import ApiKeyDisplay from '../components/api-key-display';
 import {
   setApiKey as persistApiKey,
@@ -129,8 +130,10 @@ export default function Register() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-black px-4 py-12">
-      <div className="w-full max-w-lg">
+    <div className="min-h-screen bg-black">
+      <AuthNavbar page="register" />
+      <div className="flex items-center justify-center px-4 py-12 pt-20">
+        <div className="w-full max-w-lg">
         {apiKey ? (
           /* Success Screen: ApiKeyDisplay is rendered in-place of form */
           <ApiKeyDisplay apiKey={apiKey} onContinue={handleContinue} />
@@ -289,6 +292,7 @@ export default function Register() {
           </div>
         )}
       </div>
+    </div>
     </div>
   );
 }
