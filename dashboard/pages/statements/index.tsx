@@ -1,20 +1,15 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Layout from '../../components/layout';
-import DateRangePicker from '../../components/DateRangePicker';
+import DateRangePicker from '../../components/date-range-picker';
 import StatementTable, {
   type StatementTransaction,
   type StatementStatus,
-} from '../../components/StatementTable';
+} from '../../components/statement-table';
 import { api } from '../../lib/api';
 import { createLogger } from '../../lib/logger';
 import { formatKoboToNaira, formatDate } from '../../lib/format';
 import { getVendorId } from '../../lib/auth';
-import {
-  useMockFallback,
-  mockVendorStatementResponse,
-  mockCustomerStatementResponse,
-  mockCustomers,
-} from '../../lib/mockData';
+import { StatementResponseSchema, CustomerListResponseSchema } from '../../lib/types';
 
 const log = createLogger('statements-page');
 
@@ -111,47 +106,97 @@ export default function StatementsPage() {
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
   const [selectedCustomerName, setSelectedCustomerName] = useState<string>('');
 
+  const [customers, setCustomers] = useState<CustomerOption[]>([]);
+  const [isCustomersLoading, setIsCustomersLoading] = useState(true);
+  const [customersError, setCustomersError] = useState<string | null>(null);
+
+  const [statementError, setStatementError] = useState<string | null>(null);
+  const [isStatementLoading, setIsStatementLoading] = useState(true);
+
   const applyFilters = useCallback(() => {
     setApplied({ from: draftFrom, to: draftTo, status: draftStatus });
   }, [draftFrom, draftTo, draftStatus]);
 
-  const customersHook = useMockFallback<{ rows: CustomerOption[] }>({
-    fetcher: () =>
-      api.get<{ rows: CustomerOption[] }>(`/v1/vendors/${getVendorId()}/customers`),
-    mock: mockCustomers,
-    deps: [tab],
-  });
-  const customers = customersHook.data?.rows ?? [];
-
-  const statementHook = useMockFallback<StatementResponse>({
-    fetcher: () => {
-      if (tab === 'customer' && !selectedCustomerId) {
-        return Promise.resolve(mockVendorStatementResponse as StatementResponse);
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      setIsCustomersLoading(true);
+      setCustomersError(null);
+      try {
+        const data = await api.get<{ rows: CustomerOption[] }>(
+          `/v1/vendors/${getVendorId()}/customers`,
+          {
+            schema: CustomerListResponseSchema,
+          },
+        );
+        const options = data.rows.map((c) => ({ id: c.id, name: c.name }));
+        if (active) setCustomers(options);
+      } catch (err: unknown) {
+        if (active) {
+          log.error({ err }, 'Failed to fetch customers for statement page');
+          setCustomersError(err instanceof Error ? err.message : 'Failed to load customers.');
+        }
+      } finally {
+        if (active) setIsCustomersLoading(false);
       }
-      const params = buildParams(applied.from, applied.to, applied.status);
-      const path =
-        tab === 'vendor'
-          ? `/v1/vendors/${getVendorId()}/statement?${params}`
-          : `/v1/vendors/${getVendorId()}/customers/${selectedCustomerId}/statement?${params}`;
-      return api.get<StatementResponse>(path);
-    },
-    mock: tab === 'vendor' ? mockVendorStatementResponse : mockCustomerStatementResponse,
-    deps: [tab, applied.from, applied.to, applied.status, selectedCustomerId],
-  });
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
-    const data = statementHook.data;
-    if (!data) return;
-    setOpeningBalance(data.opening_balance_kobo);
-    setTransactions(data.transactions.map(mapTransaction));
-    if ('vendor' in data) {
-      setVendorName(data.vendor.name);
-    } else {
-      setSelectedCustomerName(data.customer.name);
-    }
-  }, [statementHook.data]);
+    let active = true;
+    void (async () => {
+      setIsStatementLoading(true);
+      setStatementError(null);
+      try {
+        const params = buildParams(applied.from, applied.to, applied.status);
+        const path =
+          tab === 'vendor'
+            ? `/v1/vendors/${getVendorId()}/statement?${params}`
+            : selectedCustomerId
+              ? `/v1/vendors/${getVendorId()}/customers/${selectedCustomerId}/statement?${params}`
+              : null;
 
-  const isLoading = statementHook.isLoading;
+        if (!path) {
+          if (active) {
+            setIsStatementLoading(false);
+            setOpeningBalance(0);
+            setTransactions([]);
+            setVendorName('');
+            setSelectedCustomerName('');
+          }
+          return;
+        }
+
+        const data = await api.get<StatementResponse>(path, {
+          schema: StatementResponseSchema,
+        });
+        if (active) {
+          setOpeningBalance(data.opening_balance_kobo);
+          setTransactions(data.transactions.map(mapTransaction));
+          if ('vendor' in data) {
+            setVendorName(data.vendor.name);
+          } else {
+            setSelectedCustomerName(data.customer.name);
+          }
+        }
+      } catch (err: unknown) {
+        if (active) {
+          log.error({ err, tab, selectedCustomerId }, 'Failed to fetch statement');
+          setStatementError(err instanceof Error ? err.message : 'Failed to load statement.');
+        }
+      } finally {
+        if (active) setIsStatementLoading(false);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [tab, applied, selectedCustomerId]);
+
+  const isLoading = isStatementLoading;
   const netChange = transactions.reduce((sum, tx) => sum + tx.amount_kobo, 0);
   const closingBalance = openingBalance + netChange;
 
@@ -216,7 +261,11 @@ export default function StatementsPage() {
           <div className="inline-flex rounded-xl border border-zinc-200 bg-zinc-100 p-1 dark:border-zinc-800 dark:bg-zinc-900/60">
             <button
               type="button"
-              onClick={() => setTab('vendor')}
+              onClick={() => {
+                setTab('vendor');
+                setSelectedCustomerId(null);
+                setSelectedCustomerName('');
+              }}
               className={`px-4 py-1.5 rounded-lg text-xs font-semibold tracking-wide transition-all ${
                 tab === 'vendor'
                   ? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-white'
@@ -316,13 +365,59 @@ export default function StatementsPage() {
                 </option>
               ))}
             </select>
-            {customers.length === 0 && (
+            {isCustomersLoading && (
+              <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">Loading customers…</p>
+            )}
+            {customersError && (
+              <p className="mt-2 text-xs text-red-500">{customersError}</p>
+            )}
+            {!isCustomersLoading && customers.length === 0 && (
               <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
                 No customers found for this vendor.
               </p>
             )}
           </div>
-        ) : isLoading ? (
+        ) : statementError && transactions.length === 0 && !isLoading ? (
+          <div className="mx-auto max-w-xl space-y-3 rounded-2xl border border-red-500/25 bg-red-500/10 p-6 text-center">
+            <p className="text-sm font-semibold text-red-500">{statementError}</p>
+            <button
+              type="button"
+              onClick={() => {
+                setStatementError(null);
+                setIsStatementLoading(true);
+                void (async () => {
+                  try {
+                    const params = buildParams(applied.from, applied.to, applied.status);
+                    const path =
+                      tab === 'vendor'
+                        ? `/v1/vendors/${getVendorId()}/statement?${params}`
+                        : selectedCustomerId
+                          ? `/v1/vendors/${getVendorId()}/customers/${selectedCustomerId}/statement?${params}`
+                          : null;
+                    if (!path) return;
+                    const data = await api.get<StatementResponse>(path, {
+                      schema: StatementResponseSchema,
+                    });
+                    setOpeningBalance(data.opening_balance_kobo);
+                    setTransactions(data.transactions.map(mapTransaction));
+                    if ('vendor' in data) {
+                      setVendorName(data.vendor.name);
+                    } else {
+                      setSelectedCustomerName(data.customer.name);
+                    }
+                  } catch (err: unknown) {
+                    setStatementError(err instanceof Error ? err.message : 'Failed to load statement.');
+                  } finally {
+                    setIsStatementLoading(false);
+                  }
+                })();
+              }}
+              className="rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-2 text-xs font-bold text-white transition-all hover:bg-zinc-750"
+            >
+              Retry Connection
+            </button>
+          </div>
+        ) : isLoading && transactions.length === 0 ? (
           <div className="space-y-3">
             {[...Array(6)].map((_, i) => (
               <div

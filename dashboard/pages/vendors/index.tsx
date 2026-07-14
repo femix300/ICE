@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '../../components/layout';
 import VendorCard, { Vendor } from '../../components/vendor-card';
@@ -26,17 +26,17 @@ export default function VendorsIndex() {
   const [generatedKey, setGeneratedKey] = useState<string | null>(null);
   const [copiedKey, setCopiedKey] = useState(false);
 
-  const fetchVendors = async () => {
+  const fetchVendors = useCallback(async () => {
     setIsLoading(true);
     setErrorMsg(null);
     try {
       const offset = (page - 1) * ITEMS_PER_PAGE;
-      const res = await api.get<{ rows: Vendor[]; total: number }>(
+      const res = await api.get<{ data: Vendor[]; meta: { total: number } }>(
         `/v1/vendors?limit=${ITEMS_PER_PAGE}&offset=${offset}`,
       );
       if (res) {
-        setVendors(res.rows);
-        setTotal(res.total);
+        setVendors(res.data);
+        setTotal(res.meta.total);
       }
     } catch (err: unknown) {
       log.error({ err }, 'Failed to fetch vendors');
@@ -48,11 +48,12 @@ export default function VendorsIndex() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [page]);
 
   useEffect(() => {
-    fetchVendors();
-  }, [page]);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void fetchVendors();
+  }, [fetchVendors]);
 
   // Filtering on frontend (in a real app this would be backend query parameters, but frontend filter gives instant feedback for MVP)
   const filteredVendors = vendors.filter((v) => {
@@ -292,10 +293,10 @@ export default function VendorsIndex() {
                   <h3 id="modal-title" className="text-base font-bold text-white tracking-tight">
                     Suspend Vendor Account?
                   </h3>
-                  <p className="text-xs text-zinc-400 mt-1 leading-relaxed font-medium">
-                    This will disable the vendor's Nomba Dedicated Virtual Account immediately. Any
-                    transfers sent to this account will fail or be rejected.
-                  </p>
+                   <p className="text-xs text-zinc-400 mt-1 leading-relaxed font-medium">
+                     This will disable the vendor&#39;s Nomba Dedicated Virtual Account immediately. Any
+                     transfers sent to this account will fail or be rejected.
+                   </p>
                 </div>
               </div>
               <div className="flex gap-3">

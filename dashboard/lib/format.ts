@@ -3,15 +3,19 @@ const nairaFormatter = new Intl.NumberFormat('en-NG', {
   currency: 'NGN',
 });
 
-export const formatKoboToNaira = (kobo: number): string => nairaFormatter.format(kobo / 100);
+export const formatKoboToNaira = (kobo: number | undefined | null): string =>
+  nairaFormatter.format((kobo ?? 0) / 100);
 
 export const formatReconciliationRate = (rate: number | undefined | null): string => {
   if (rate == null || Number.isNaN(rate)) return '—';
   return `${rate.toFixed(1)}%`;
 };
 
-export const formatTimestamp = (value: string): string => {
-  const date = new Date(value);
+export const formatTimestamp = (value: string | undefined | null): string => {
+  const date = value ? new Date(value) : new Date();
+  if (Number.isNaN(date.getTime())) {
+    return '—';
+  }
   const datePart = date.toLocaleDateString('en-NG', {
     month: 'short',
     day: 'numeric',
@@ -25,8 +29,12 @@ export const formatTimestamp = (value: string): string => {
   return `${datePart} · ${timePart}`;
 };
 
-export const formatDate = (value: Date | string): string => {
-  const date = typeof value === 'string' ? new Date(value) : value;
+export const formatDate = (value: Date | string | undefined | null): string => {
+  const date =
+    typeof value === 'string' && value ? new Date(value) : value ? new Date(value) : new Date();
+  if (Number.isNaN(date.getTime())) {
+    return '—';
+  }
   return date.toLocaleDateString('en-NG', {
     day: '2-digit',
     month: 'short',

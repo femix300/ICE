@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import Layout from '../../../components/layout';
@@ -6,7 +6,7 @@ import { api } from '../../../lib/api';
 import { createLogger } from '../../../lib/logger';
 import { formatKoboToNaira, formatTimestamp } from '../../../lib/format';
 import { getVendorId } from '../../../lib/auth';
-import { useMockFallback, mockCustomerStatementResponse } from '../../../lib/mockData';
+import { CustomerStatementSchema } from '../../../lib/types';
 
 const log = createLogger('vendor-customer-statement-page');
 
@@ -80,14 +80,37 @@ export default function VendorCustomerStatement() {
   const customerId = typeof id === 'string' ? id : '';
   const isReady = router.isReady && Boolean(customerId);
 
-  const { data: statement, isLoading } = useMockFallback<CustomerStatement>({
-    fetcher: () =>
-      api.get<CustomerStatement>(
-        `/v1/vendors/${getVendorId()}/customers/${customerId}/statement`,
-      ),
-    mock: mockCustomerStatementResponse,
-    deps: [isReady, customerId],
-  });
+  const [statement, setStatement] = useState<CustomerStatement | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isReady) return;
+    let active = true;
+    void (async () => {
+      setIsLoading(true);
+      setErrorMsg(null);
+      try {
+        const data = await api.get<CustomerStatement>(
+          `/v1/vendors/${getVendorId()}/customers/${customerId}/statement`,
+          {
+            schema: CustomerStatementSchema,
+          },
+        );
+        if (active) setStatement(data);
+      } catch (err: unknown) {
+        if (active) {
+          log.error({ err, customerId }, 'Failed to fetch customer statement');
+          setErrorMsg(err instanceof Error ? err.message : 'Failed to load customer statement.');
+        }
+      } finally {
+        if (active) setIsLoading(false);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [isReady, customerId]);
 
   const transactions = statement
     ? statement.transactions
@@ -97,7 +120,7 @@ export default function VendorCustomerStatement() {
 
   const customerName = statement?.customer.name ?? 'Customer';
 
-  if (!isReady || isLoading) {
+  if (!isReady || (isLoading && !statement)) {
     return (
       <Layout variant="vendor" breadcrumbs={[{ label: 'Customers', href: '/vendor/customers' }]}>
         <div className="space-y-6">
@@ -112,6 +135,39 @@ export default function VendorCustomerStatement() {
               ))}
             </div>
           </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (errorMsg && !statement) {
+    return (
+      <Layout variant="vendor" breadcrumbs={[{ label: 'Customers', href: '/vendor/customers' }]}>
+        <div className="mx-auto max-w-xl space-y-3 rounded-2xl border border-red-500/25 bg-red-500/10 p-6 text-center">
+          <p className="text-sm font-semibold text-red-500">{errorMsg}</p>
+          <button
+            type="button"
+            onClick={() => {
+              setErrorMsg(null);
+              setIsLoading(true);
+              void (async () => {
+                try {
+                  const data = await api.get<CustomerStatement>(
+                    `/v1/vendors/${getVendorId()}/customers/${customerId}/statement`,
+                    { schema: CustomerStatementSchema },
+                  );
+                  setStatement(data);
+                } catch (err: unknown) {
+                  setErrorMsg(err instanceof Error ? err.message : 'Failed to load customer statement.');
+                } finally {
+                  setIsLoading(false);
+                }
+              })();
+            }}
+            className="rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-2 text-xs font-bold text-white transition-all hover:bg-zinc-750"
+          >
+            Retry Connection
+          </button>
         </div>
       </Layout>
     );

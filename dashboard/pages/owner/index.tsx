@@ -1,56 +1,78 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import Layout from '../../components/layout';
-import SummaryMetrics, { type PlatformSummary } from '../../components/SummaryMetrics';
+import SummaryMetrics, { type PlatformSummary } from '../../components/summary-metrics';
 import MisdirectedPaymentCard, {
   type MisdirectedPayment,
-} from '../../components/MisdirectedPaymentCard';
-import AnomalyAlertPanel from '../../components/AnomalyAlertPanel';
+} from '../../components/misdirected-payment-card';
+import AnomalyAlertPanel from '../../components/anomaly-alert-panel';
 import { api } from '../../lib/api';
 import { createLogger } from '../../lib/logger';
 import { getMerchantId } from '../../lib/auth';
-import {
-  useMockFallback,
-  mockPlatformSummary,
-  mockMisdirectedList,
-} from '../../lib/mockData';
+import { PlatformSummarySchema, MisdirectedListResponseSchema, type MisdirectedListResponse } from '../../lib/types';
 
 const log = createLogger('owner-dashboard-page');
-
-type MisdirectedListResponse = {
-  rows: MisdirectedPayment[];
-  total: number;
-};
 
 export default function OwnerDashboard() {
   const [summary, setSummary] = useState<PlatformSummary | null>(null);
   const [payments, setPayments] = useState<MisdirectedPayment[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [toast, setToast] = useState<{ kind: 'success' | 'error'; message: string } | null>(
     null,
   );
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const summaryHook = useMockFallback<PlatformSummary>({
-    fetcher: () =>
-      api.get<PlatformSummary>(`/v1/merchants/${getMerchantId()}/summary`),
-    mock: mockPlatformSummary,
-  });
+  const fetchSummary = useCallback(async () => {
+    try {
+      const data = await api.get<PlatformSummary>(
+        `/v1/merchants/${getMerchantId()}/summary`,
+        {
+          schema: PlatformSummarySchema,
+          expectedShape: {
+            totalCollected: 0,
+            reconciliationRate: 0,
+            activeVendors: 0,
+            refundsIssued: 0,
+            pendingMisdirected: 0,
+          },
+          shapeDescription: 'totalCollected, reconciliationRate, activeVendors, refundsIssued, pendingMisdirected',
+        },
+      );
+      setSummary(data);
+    } catch (err: unknown) {
+      log.error({ err }, 'Failed to fetch platform summary');
+      setErrorMsg(err instanceof Error ? err.message : 'Failed to load platform summary.');
+    }
+  }, []);
 
-  const paymentsHook = useMockFallback<MisdirectedListResponse>({
-    fetcher: () => api.get<MisdirectedListResponse>('/v1/payments/misdirected'),
-    mock: mockMisdirectedList,
-    isEmpty: (res) => res.rows.length === 0,
-  });
-
-  const isLoading = summaryHook.isLoading || paymentsHook.isLoading;
+  const fetchPayments = useCallback(async () => {
+    try {
+      const data = await api.get<MisdirectedListResponse>(
+        '/v1/payments/misdirected',
+        {
+          schema: MisdirectedListResponseSchema,
+        },
+      );
+      setPayments(data.data);
+    } catch (err: unknown) {
+      log.error({ err }, 'Failed to fetch misdirected payments');
+      setErrorMsg(err instanceof Error ? err.message : 'Failed to load misdirected payments.');
+    }
+  }, []);
 
   useEffect(() => {
-    if (summaryHook.data) setSummary(summaryHook.data);
-  }, [summaryHook.data]);
-
-  useEffect(() => {
-    if (paymentsHook.data) setPayments(paymentsHook.data.rows);
-  }, [paymentsHook.data]);
+    let active = true;
+    void (async () => {
+      setIsLoading(true);
+      setErrorMsg(null);
+      await Promise.all([fetchSummary(), fetchPayments()]);
+      if (active) setIsLoading(false);
+    })();
+    return () => {
+      active = false;
+    };
+  }, [fetchSummary, fetchPayments]);
 
   const showToast = useCallback((kind: 'success' | 'error', message: string) => {
     if (toastTimer.current) {
@@ -63,18 +85,9 @@ export default function OwnerDashboard() {
   const handleResolved = useCallback((id: string) => {
     setPayments((prev) => prev.filter((p) => p.id !== id));
     setSummary((prev) =>
-      prev ? { ...prev, misdirected_count: Math.max(0, prev.misdirected_count - 1) } : prev,
+      prev ? { ...prev, pendingMisdirected: Math.max(0, prev.pendingMisdirected - 1) } : prev,
     );
   }, []);
-
-  // DEMO: Fire a one-time system toast on first load so reviewers see the live
-  // alerting surface. Remove before production.
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      showToast('success', 'System online — 2 misdirected payments require review.');
-    }, 2000);
-    return () => clearTimeout(timer);
-  }, [showToast]);
 
   useEffect(() => {
     return () => {
@@ -109,7 +122,22 @@ export default function OwnerDashboard() {
           </div>
         )}
 
-        {isLoading ? (
+        {errorMsg && !summary && !isLoading ? (
+          <div className="mx-auto max-w-xl space-y-3 rounded-2xl border border-red-500/25 bg-red-500/10 p-6 text-center">
+            <p className="text-sm font-semibold text-red-500">{errorMsg}</p>
+            <button
+              type="button"
+              onClick={() => {
+                setErrorMsg(null);
+                setIsLoading(true);
+                void Promise.all([fetchSummary(), fetchPayments()]).then(() => setIsLoading(false));
+              }}
+              className="rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-2 text-xs font-bold text-white transition-all hover:bg-zinc-750"
+            >
+              Retry Connection
+            </button>
+          </div>
+        ) : isLoading ? (
           <div className="space-y-6">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
               {[...Array(5)].map((_, i) => (

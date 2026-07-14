@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '../../components/layout';
-import StatCard from '../../components/StatCard';
+import StatCard from '../../components/stat-card';
 import { api } from '../../lib/api';
 import { createLogger } from '../../lib/logger';
 import { getVendorId } from '../../lib/auth';
 import { formatKoboToNaira, formatReconciliationRate } from '../../lib/format';
-import { useMockFallback, mockVendorStatement } from '../../lib/mockData';
+import { VendorStatementSchema } from '../../lib/types';
 
 const log = createLogger('vendor-dashboard-page');
 
@@ -77,12 +77,36 @@ const AlertIcon = () => (
 export default function VendorDashboard() {
   const router = useRouter();
   const [copied, setCopied] = useState(false);
+  const [statement, setStatement] = useState<VendorStatement | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const { data: statement, isLoading } = useMockFallback<VendorStatement>({
-    fetcher: () => api.get<VendorStatement>(`/v1/vendors/${getVendorId()}/statement`),
-    mock: mockVendorStatement as VendorStatement,
-    isEmpty: (res) => res.recent_customers.length === 0,
-  });
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      setIsLoading(true);
+      setErrorMsg(null);
+      try {
+        const data = await api.get<VendorStatement>(
+          `/v1/vendors/${getVendorId()}/statement`,
+          {
+            schema: VendorStatementSchema,
+          },
+        );
+        if (active) setStatement(data);
+      } catch (err: unknown) {
+        if (active) {
+          log.error({ err }, 'Failed to fetch vendor statement');
+          setErrorMsg(err instanceof Error ? err.message : 'Failed to load vendor dashboard.');
+        }
+      } finally {
+        if (active) setIsLoading(false);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const handleCopyVa = async (vaNumber: string) => {
     try {
@@ -117,7 +141,34 @@ export default function VendorDashboard() {
           </p>
         </div>
 
-        {isLoading ? (
+        {errorMsg && !statement && !isLoading ? (
+          <div className="mx-auto max-w-xl space-y-3 rounded-2xl border border-red-500/25 bg-red-500/10 p-6 text-center">
+            <p className="text-sm font-semibold text-red-500">{errorMsg}</p>
+            <button
+              type="button"
+              onClick={() => {
+                setErrorMsg(null);
+                setIsLoading(true);
+                void (async () => {
+                  try {
+                    const data = await api.get<VendorStatement>(
+                      `/v1/vendors/${getVendorId()}/statement`,
+                      { schema: VendorStatementSchema },
+                    );
+                    setStatement(data);
+                  } catch (err: unknown) {
+                    setErrorMsg(err instanceof Error ? err.message : 'Failed to load vendor dashboard.');
+                  } finally {
+                    setIsLoading(false);
+                  }
+                })();
+              }}
+              className="rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-2 text-xs font-bold text-white transition-all hover:bg-zinc-750"
+            >
+              Retry Connection
+            </button>
+          </div>
+        ) : isLoading ? (
           <div className="space-y-6">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {[...Array(4)].map((_, i) => (
