@@ -122,7 +122,7 @@ export default function OwnerMisdirected() {
 
   // Local date-range filtering as a safety net so the filter is visible even
   // before the backend honours the from/to query params.
-  const filtered = payments.filter((p) => {
+  const filtered = (payments ?? []).filter((p) => {
     const date = new Date(p.created_at);
     if (from && date < new Date(from)) return false;
     if (to) {
