@@ -4,7 +4,7 @@ import { formatKoboToNaira, formatReconciliationRate } from '../lib/format';
 
 export type PlatformSummary = {
   total_collected_kobo: number;
-  reconciliation_rate: number;
+  reconciliation_rate?: number;
   active_vendors: number;
   total_refunds_kobo: number;
   misdirected_count: number;

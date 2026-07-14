@@ -5,7 +5,10 @@ const nairaFormatter = new Intl.NumberFormat('en-NG', {
 
 export const formatKoboToNaira = (kobo: number): string => nairaFormatter.format(kobo / 100);
 
-export const formatReconciliationRate = (rate: number): string => `${rate.toFixed(1)}%`;
+export const formatReconciliationRate = (rate: number | undefined | null): string => {
+  if (rate == null || Number.isNaN(rate)) return '—';
+  return `${rate.toFixed(1)}%`;
+};
 
 export const formatTimestamp = (value: string): string => {
   const date = new Date(value);
