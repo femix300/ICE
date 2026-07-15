@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
-import { setApiKey, getMerchantId, setMerchantId } from '../lib/auth';
+import { setApiKey, getMerchantId, setMerchantId, setVendorId } from '../lib/auth';
+import { config } from '../lib/config';
 import { AppError } from '../lib/errors';
 import AuthNavbar from '../components/auth-navbar';
 
@@ -17,19 +18,49 @@ export default function Login() {
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/auth/session', {
+      const BASE = config.NEXT_PUBLIC_API_URL.replace(/\/$/, '');
+      
+      // 1. Validate against backend and get merchant data
+      const meRes = await fetch(`${BASE}/v1/auth/me`, {
+        headers: {
+          'Authorization': `Bearer ${apiKey.trim()}`,
+          'Accept': 'application/json'
+        }
+      });
+
+      if (!meRes.ok) {
+        throw new AppError('LOGIN_FAILED', 'Invalid API key. Please check and try again.');
+      }
+
+      const meData = await meRes.json();
+      const user = meData?.merchant;
+
+      if (!user) {
+        throw new AppError('LOGIN_FAILED', 'Failed to retrieve user profile.');
+      }
+
+      // 2. Set the secure session cookie
+      const sessionRes = await fetch('/api/auth/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ apiKey: apiKey.trim() }),
       });
 
-      if (!response.ok) {
-        throw new AppError('LOGIN_FAILED', 'Invalid API key. Please check and try again.');
+      if (!sessionRes.ok) {
+        throw new AppError('LOGIN_FAILED', 'Failed to initialize secure session.');
       }
 
+      // 3. Persist state and redirect based on tier
       setApiKey(apiKey.trim());
-      setMerchantId(getMerchantId());
-      router.push('/owner');
+
+      if (user.tier === 'vendor') {
+        setMerchantId(user.merchantId);
+        setVendorId(user.id);
+        router.push('/vendor');
+      } else {
+        setMerchantId(user.id);
+        router.push('/owner');
+      }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'An unexpected error occurred.';
       setError(message);

@@ -171,7 +171,7 @@ const simulateController = createSimulateController(reconciliationRepo, merchant
 const simulateRouter = createSimulateRouter(simulateController, authMiddleware);
 
 const vendorsRouter = createVendorsRouter(vendorsController, authMiddleware, customersRouter);
-setupV1Router({ merchantsRouter, vendorsRouter });
+setupV1Router({ authMiddleware: authMiddleware,  merchantsRouter, vendorsRouter });
 
 // Assign a request ID for tracing
 app.use((_req, res, next) => {
