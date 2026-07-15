@@ -167,7 +167,7 @@ const webhookDeliveriesRouter = createWebhookDeliveriesRouter(
   authMiddleware,
 );
 
-const simulateController = createSimulateController(reconciliationRepo);
+const simulateController = createSimulateController(reconciliationRepo, merchantsRepo);
 const simulateRouter = createSimulateRouter(simulateController, authMiddleware);
 
 const vendorsRouter = createVendorsRouter(vendorsController, authMiddleware, customersRouter);

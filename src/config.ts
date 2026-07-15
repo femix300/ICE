@@ -14,6 +14,7 @@ const configSchema = z.object({
   NOMBA_CLIENT_ID: z.string().min(1, 'NOMBA_CLIENT_ID is required'),
   NOMBA_CLIENT_SECRET: z.string().min(1, 'NOMBA_CLIENT_SECRET is required'),
   REDIS_URL: z.string().url().default('redis://localhost:6379'),
+  SIMULATOR_TARGET_URL: z.string().url().default('https://ice-nomba-hackathon.onrender.com'),
 });
 
 const parsed = configSchema.safeParse(process.env);

@@ -7,6 +7,7 @@ import { AppError } from '../lib/errors.js';
 import { ok } from '../lib/respond.js';
 import { createLogger } from '../lib/logger.js';
 import type { ReconciliationRepo } from '../repositories/reconciliation.repo.js';
+import type { MerchantsRepo } from '../repositories/merchants.repo.js';
 
 const log = createLogger('simulate-controller');
 
@@ -32,12 +33,37 @@ const simulateWebhookBody = z.object({
   merchantId: z.string().min(1),
 });
 
-export function createSimulateController(reconciliationRepo: ReconciliationRepo) {
+export function createSimulateController(
+  reconciliationRepo: ReconciliationRepo,
+  merchantsRepo: MerchantsRepo,
+) {
   return {
     async simulateWebhook(req: Request, res: Response, next: NextFunction) {
       // DEMO: Webhook simulator endpoint — remove before production
       try {
+        if (process.env.SIMULATOR_ENABLED === 'false') {
+          throw new AppError(404, 'NOT_FOUND', 'Simulator is disabled');
+        }
+
         const body = simulateWebhookBody.parse(req.body);
+
+        // Best-effort merchant lookup - deliberately does not hard-fail if
+        // missing. The dashboard's session layer isn't fully wired yet
+        // (see dashboard/lib/session.ts), so anyone visiting the simulator
+        // without having logged in first falls back to a placeholder
+        // merchantId. Blocking on that would break the demo for exactly
+        // the audience it's meant to work for (e.g. judges clicking around
+        // without registering first). We still use the real id when it
+        // resolves, for merchant-scoped identity in the payload below.
+        const merchant = await merchantsRepo.byId(body.merchantId);
+        if (!merchant) {
+          log.warn(
+            { merchantId: body.merchantId },
+            'simulator: merchantId did not resolve to a real merchant, proceeding with unverified id',
+          );
+        }
+        const effectiveMerchantId = merchant?.id ?? body.merchantId;
+
         const transactionId = body.transactionId || `TXN-${crypto.randomUUID()}`;
         const requestId = `req-${crypto.randomUUID()}`;
         const timestamp = String(Date.now());
@@ -46,22 +72,25 @@ export function createSimulateController(reconciliationRepo: ReconciliationRepo)
         const bankCode = BANK_CODES[body.senderBank] || body.senderBank || '058';
 
         // 1. Build the Nomba-shaped payload
+        // NOTE: userId/walletId are derived from the real merchant id, not
+        // stored per-merchant Nomba wallet identifiers - ICE doesn't track
+        // those. This is enough to make simulated payloads merchant-scoped
+        // (two different merchants testing won't collide) without pretending
+        // we have real Nomba wallet data we don't actually have.
         const payload = {
           event_type: 'payment_success',
           requestId,
           data: {
             merchant: {
-              userId: 'user-1',
-              walletId: 'wallet-1',
+              userId: `sim-user-${effectiveMerchantId}`,
+              walletId: `sim-wallet-${effectiveMerchantId}`,
             },
             transaction: {
               transactionId,
-              type: 'credit',
+              type: 'vact_transfer',
               time,
               transactionAmount: body.amount / 100, // Naira
               aliasAccountNumber: body.virtualAccountNumber,
-              currency: 'NGN',
-              status: 'SUCCESS',
             },
             customer: {
               senderName: body.senderName,
@@ -89,8 +118,10 @@ export function createSimulateController(reconciliationRepo: ReconciliationRepo)
           .update(signedString)
           .digest('base64');
 
-        // 3. POST the signed payload to POST /v1/webhooks/nomba internally
-        const webhookUrl = `http://localhost:${config.PORT}/v1/webhooks/nomba`;
+        // 3. POST the signed payload to the live, public webhook endpoint -
+        // deliberately not an internal localhost shortcut, so this exercises
+        // the exact same public-facing path a real Nomba webhook would use.
+        const webhookUrl = `${config.SIMULATOR_TARGET_URL}/v1/webhooks/nomba`;
         log.info({ transactionId, webhookUrl }, 'firing simulated webhook internally');
 
         try {
