@@ -65,6 +65,16 @@ const FileTextIcon = () => (
   </svg>
 );
 
+const TerminalIcon = () => (
+  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+    />
+  </svg>
+);
+
 export default function Sidebar({ variant, isOpen = false, onClose }: SidebarProps) {
   const router = useRouter();
   const currentPath = router.pathname;
@@ -73,6 +83,7 @@ export default function Sidebar({ variant, isOpen = false, onClose }: SidebarPro
     { name: 'Dashboard', path: '/owner', icon: <HomeIcon /> },
     { name: 'All Vendors', path: '/vendors', icon: <UsersIcon /> },
     { name: 'Webhook Log', path: '/webhooks', icon: <RefreshCwIcon /> },
+    { name: 'Webhook Simulator', path: '/simulator', icon: <TerminalIcon /> },
     { name: 'Misdirected Payments', path: '/misdirected', icon: <AlertCircleIcon /> },
   ];
 

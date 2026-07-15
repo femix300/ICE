@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import Link from 'next/link';
 import Layout from '../../components/layout';
 import WebhookDeliveryLog, {
   type WebhookDelivery,
@@ -99,14 +100,22 @@ export default function WebhooksIndex() {
   return (
     <Layout variant="owner" breadcrumbs={[{ label: 'Webhook Delivery Log' }]}>
       <div className="space-y-6">
-        <div className="flex flex-col gap-1">
-          <h2 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">
-            Webhook Delivery Log
-          </h2>
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">
-            Outbound webhook deliveries to your registered merchant endpoint, with retry and
-            dead-letter status.
-          </p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex flex-col gap-1">
+            <h2 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">
+              Webhook Delivery Log
+            </h2>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">
+              Outbound webhook deliveries to your registered merchant endpoint, with retry and
+              dead-letter status.
+            </p>
+          </div>
+          <Link
+            href="/simulator"
+            className="inline-flex items-center justify-center rounded-xl border border-zinc-200 bg-white hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:bg-zinc-800 px-4 py-2.5 text-sm font-bold text-zinc-700 dark:text-zinc-200 transition-all self-start sm:self-center"
+          >
+            Simulate Webhook &rarr;
+          </Link>
         </div>
 
         {toast && (

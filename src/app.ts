@@ -10,7 +10,6 @@ import swaggerUi from 'swagger-ui-express';
 import YAML from 'yamljs';
 
 import { config } from './config.js';
-import { createLogger } from './lib/logger.js';
 import { createDbPool } from './db/client.js';
 import { createTransactionsRepo } from './repositories/transactions.repo.js';
 import { createWebhookInboundService } from './services/webhook-inbound.service.js';
@@ -58,6 +57,8 @@ import { createStatementsController } from './controllers/statements.controller.
 import { createStatementsRouter } from './routes/statements.routes.js';
 import { createWebhookDeliveriesController } from './controllers/webhook-deliveries.controller.js';
 import { createWebhookDeliveriesRouter } from './routes/webhook-deliveries.routes.js';
+import { createSimulateController } from './controllers/simulate.controller.js';
+import { createSimulateRouter } from './routes/simulate.routes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -166,6 +167,9 @@ const webhookDeliveriesRouter = createWebhookDeliveriesRouter(
   authMiddleware,
 );
 
+const simulateController = createSimulateController(reconciliationRepo);
+const simulateRouter = createSimulateRouter(simulateController, authMiddleware);
+
 const vendorsRouter = createVendorsRouter(vendorsController, authMiddleware, customersRouter);
 setupV1Router({ merchantsRouter, vendorsRouter });
 
@@ -244,6 +248,7 @@ v1Router.use('/invoices', invoicesRouter);
 // Mount misdirected payments router
 v1Router.use('/payments', misdirectedRouter);
 v1Router.use('/webhook-deliveries', webhookDeliveriesRouter);
+v1Router.use('/webhooks/simulate', simulateRouter);
 v1Router.use('/', statementsRouter);
 
 // API Routes

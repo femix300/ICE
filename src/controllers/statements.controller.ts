@@ -1,11 +1,8 @@
 import type { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { createLogger } from '../lib/logger.js';
 import { ok } from '../lib/respond.js';
 import { AppError } from '../lib/errors.js';
 import type { StatementsService } from '../services/statements.service.js';
-
-const log = createLogger('statements-controller');
 
 export const StatementsQuerySchema = z.object({
   page: z.coerce.number().min(1).default(1),
