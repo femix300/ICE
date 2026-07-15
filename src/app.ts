@@ -233,6 +233,12 @@ app.get('/redoc', (req, res) => {
   `);
 });
 
+// Human-readable API reference (markdown) - for the dashboard/frontend to
+// fetch and render, or for anyone testing to read directly in a browser.
+app.get('/api-reference', (req, res) => {
+  res.sendFile(path.join(__dirname, '../docs/api-reference.md'));
+});
+
 // Mount invoices router
 v1Router.use('/invoices', invoicesRouter);
 // Mount misdirected payments router
