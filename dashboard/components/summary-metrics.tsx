@@ -3,11 +3,11 @@ import StatCard from './stat-card';
 import { formatKoboToNaira, formatReconciliationRate } from '../lib/format';
 
 export type PlatformSummary = {
-  totalCollected: number;
-  reconciliationRate: number;
-  activeVendors: number;
-  refundsIssued: number;
-  pendingMisdirected: number;
+  total_collected_kobo: number;
+  reconciliation_rate_percent: number;
+  active_vendors: number;
+  refunds_issued_kobo: number;
+  pending_misdirected_count: number;
 };
 
 type SummaryMetricsProps = {
@@ -65,35 +65,35 @@ const AlertIcon = () => (
 );
 
 export default function SummaryMetrics({ summary }: SummaryMetricsProps) {
-  const hasMisdirected = summary.pendingMisdirected > 0;
+  const hasMisdirected = summary.pending_misdirected_count > 0;
 
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
       <StatCard
         label="Total Collected"
-        value={formatKoboToNaira(summary.totalCollected)}
+        value={formatKoboToNaira(summary.total_collected_kobo)}
         subtext="Across all vendors"
         trend="This month"
         icon={<WalletIcon />}
       />
       <StatCard
         label="Reconciliation Rate"
-        value={formatReconciliationRate(summary.reconciliationRate)}
+        value={formatReconciliationRate(summary.reconciliation_rate_percent)}
         subtext="Payments matched to invoices"
         trend="This month"
         icon={<ChartIcon />}
-        tone={summary.reconciliationRate >= 90 ? 'success' : 'warning'}
+        tone={summary.reconciliation_rate_percent >= 90 ? 'success' : 'warning'}
       />
       <StatCard
         label="Active Vendors"
-        value={summary.activeVendors}
+        value={summary.active_vendors}
         subtext="Collecting payments"
         trend="Live"
         icon={<UsersIcon />}
       />
       <StatCard
         label="Total Refunds Issued"
-        value={formatKoboToNaira(summary.refundsIssued)}
+        value={formatKoboToNaira(summary.refunds_issued_kobo)}
         subtext="Returned to payers"
         trend="This month"
         icon={<RefundIcon />}
@@ -101,7 +101,7 @@ export default function SummaryMetrics({ summary }: SummaryMetricsProps) {
       />
       <StatCard
         label="Pending Misdirected"
-        value={summary.pendingMisdirected}
+        value={summary.pending_misdirected_count}
         subtext={hasMisdirected ? 'Needs review' : 'All clear'}
         trend="Requires action"
         icon={<AlertIcon />}

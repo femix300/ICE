@@ -28,7 +28,12 @@ export default function Login() {
       }
 
       setApiKey(apiKey.trim());
-      setMerchantId(getMerchantId());
+      const data = await response.json().catch(() => ({}));
+      if (data?.merchant?.id) {
+        setMerchantId(data.merchant.id);
+      } else if (data?.merchantId) {
+        setMerchantId(data.merchantId);
+      }
       router.push('/owner');
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'An unexpected error occurred.';

@@ -84,7 +84,7 @@ export default function Sidebar({ variant, isOpen = false, onClose }: SidebarPro
     { name: 'All Vendors', path: '/vendors', icon: <UsersIcon /> },
     { name: 'Webhook Log', path: '/webhooks', icon: <RefreshCwIcon /> },
     { name: 'Webhook Simulator', path: '/simulator', icon: <TerminalIcon /> },
-    { name: 'Misdirected Payments', path: '/misdirected', icon: <AlertCircleIcon /> },
+    { name: 'Misdirected Payments', path: '/owner/misdirected', icon: <AlertCircleIcon /> },
   ];
 
   const vendorLinks: NavItem[] = [
