@@ -12,3 +12,4 @@ dashboard/build
 
 # Git internal file accidentally tracked in a past commit
 FETCH_HEAD
+kilo.jsonc
