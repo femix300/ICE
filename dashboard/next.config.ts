@@ -18,6 +18,10 @@ const nextConfig: NextConfig = {
         source: "/api/:path*",
         destination: `${target}/:path*`,
       },
+      {
+        source: "/openapi.yaml",
+        destination: `${target}/openapi.yaml`,
+      },
     ];
   },
 };
