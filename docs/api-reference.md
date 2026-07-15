@@ -276,7 +276,7 @@ The entire signature verification, payload validation, reconciliation, and misdi
 
 ## 9. Testing Tools
 
-- Postman collection: covers every endpoint above with pre-configured auth headers, auto-saving IDs between requests via test scripts (register a merchant, and merchant_id / master_api_key populate automatically for every subsequent request).
+- Postman collection: [docs/LATEST_ICE_COLLECTION_ON_POSTMAN.json](./LATEST_ICE_COLLECTION_ON_POSTMAN.json) - covers every endpoint above with pre-configured auth headers, auto-saving IDs between requests via test scripts (register a merchant, and merchant_id / master_api_key populate automatically for every subsequent request). Import into Postman via File > Import.
 - Swagger UI (/api-docs): interactive, supports "Try it out" directly in the browser.
 - ReDoc (/redoc): clean reading view of the same OpenAPI spec, better for reference than live testing.
 
