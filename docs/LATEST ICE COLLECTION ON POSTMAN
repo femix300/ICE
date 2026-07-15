@@ -1,0 +1,1178 @@
+{
+  "info": {
+    "_postman_id": "74f405db-ca3c-4293-86c4-2365274fa17a",
+    "name": "Latest ICE - Infrastructure for Collections & Exchange Copy",
+    "description": "Nomba Hackathon 2026 - Infrastructure Track. Two-tier auth: merchant (master) key and vendor (scoped) key, both sent as `Authorization: Bearer <key>`. The webhook endpoint uses HMAC-SHA256 signature verification instead of Bearer auth (see the pre-request script on that request).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "34178422"
+  },
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/healthz",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "healthz"
+              ]
+            }
+          },
+          "response": []
+        }
+      ],
+      "description": "Basic liveness check for the deployed service. No auth required. Useful as a first sanity check before running anything else in this collection."
+    },
+    {
+      "name": "Merchants",
+      "item": [
+        {
+          "name": "Register Merchant (no auth)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.ok && json.data) {",
+                  "    pm.collectionVariables.set('master_api_key', json.data.api_key);",
+                  "    pm.collectionVariables.set('merchant_id', json.data.merchant.id);",
+                  "    console.log('Saved master_api_key and merchant_id');",
+                  "} else {",
+                  "    console.warn('Register Merchant: unexpected response shape, nothing saved', json);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"businessName\": \"StyleHub Marketplace\",\n  \"email\": \"owner@stylehub.test\",\n  \"webhookUrl\": \"https://example.com/webhooks/ice\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/v1/merchants/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "merchants",
+                "register"
+              ]
+            },
+            "description": "Returns { data: { merchant: {...}, api_key } }. The test script auto-saves master_api_key and merchant_id - the api_key is only ever shown once, exactly like on rotate."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Merchant by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{master_api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/merchants/{{merchant_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "merchants",
+                "{{merchant_id}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Webhook URL",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{master_api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"webhookUrl\": \"https://example.com/webhooks/ice-v2\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/v1/merchants/{{merchant_id}}/webhook-url",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "merchants",
+                "{{merchant_id}}",
+                "webhook-url"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Rotate API Key",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.ok && json.data && json.data.api_key) {",
+                  "    pm.collectionVariables.set('master_api_key', json.data.api_key);",
+                  "    console.log('master_api_key rotated and saved');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{master_api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/merchants/{{merchant_id}}/api-keys/rotate",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "merchants",
+                "{{merchant_id}}",
+                "api-keys",
+                "rotate"
+              ]
+            },
+            "description": "Old master_api_key is invalidated immediately. The test script auto-saves the new key."
+          },
+          "response": []
+        },
+        {
+          "name": "List Webhook Deliveries",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{master_api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/merchants/{{merchant_id}}/webhook-deliveries",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "merchants",
+                "{{merchant_id}}",
+                "webhook-deliveries"
+              ]
+            }
+          },
+          "response": []
+        }
+      ],
+      "description": "Top-level platform owner account. Register once to get a master_api_key (shown only at creation and on rotate - save it immediately). The master key is required for anything merchant-scoped: managing vendors, viewing webhook deliveries, and merchant-tier-only endpoints like the misdirected payments list."
+    },
+    {
+      "name": "Vendors",
+      "item": [
+        {
+          "name": "Create Vendor",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.ok && json.data && json.data.id) {",
+                  "    pm.collectionVariables.set('vendor_id', json.data.id);",
+                  "    console.log('Saved vendor_id:', json.data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{master_api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Adunola Fabrics\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/v1/vendors",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "vendors"
+              ]
+            },
+            "description": "Provisions a Nomba DVA server-side. Requires master_api_key - vendor keys get a 403 here. The test script auto-saves vendor_id."
+          },
+          "response": []
+        },
+        {
+          "name": "List Vendors",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{master_api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/vendors?page=1&pageSize=20",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "vendors"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                },
+                {
+                  "key": "status",
+                  "value": "active",
+                  "description": "one of: pending, active, suspended",
+                  "disabled": true
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Vendor by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{master_api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/vendors/{{vendor_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "vendors",
+                "{{vendor_id}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Generate Vendor API Key",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.ok && json.data && json.data.api_key) {",
+                  "    pm.collectionVariables.set('vendor_api_key', json.data.api_key);",
+                  "    console.log('Saved vendor_api_key');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{master_api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/vendors/{{vendor_id}}/api-keys",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "vendors",
+                "{{vendor_id}}",
+                "api-keys"
+              ]
+            },
+            "description": "Requires master_api_key (only merchants can generate vendor keys). Returns the scoped vendor key ONCE - the test script auto-saves it into vendor_api_key."
+          },
+          "response": []
+        },
+        {
+          "name": "Suspend Vendor Account",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{master_api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/vendors/{{vendor_id}}/account/suspend",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "vendors",
+                "{{vendor_id}}",
+                "account",
+                "suspend"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Vendor Account",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{master_api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Adunola Fabrics Ltd\",\n  \"callbackUrl\": \"https://example.com/callbacks/adunola\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/v1/vendors/{{vendor_id}}/account",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "vendors",
+                "{{vendor_id}}",
+                "account"
+              ]
+            },
+            "description": "Requires master_api_key - the controller checks req.principal.tier !== 'merchant' and 403s vendor keys here, even though it's a vendor-scoped resource. callbackUrl must start with https://. Both fields optional individually."
+          },
+          "response": []
+        }
+      ],
+      "description": "Sub-accounts under a merchant, each with their own Nomba Dedicated Virtual Account (DVA) for receiving payments. Created and managed with the master_api_key. Vendor API keys (scoped, generated here) are used for vendor-level operations like creating invoices and customers."
+    },
+    {
+      "name": "Customers (nested under vendors)",
+      "item": [
+        {
+          "name": "Create Customer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.ok && json.data && json.data.id) {",
+                  "    pm.collectionVariables.set('customer_id', json.data.id);",
+                  "    console.log('Saved customer_id:', json.data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{vendor_api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Chidinma Okafor\",\n  \"email\": \"chidinma@example.com\",\n  \"provisionDva\": false\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/v1/vendors/{{vendor_id}}/customers",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "vendors",
+                "{{vendor_id}}",
+                "customers"
+              ]
+            },
+            "description": "Set provisionDva true to also get a customer-level DVA immediately. The test script auto-saves customer_id."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Customer by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{vendor_api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/vendors/{{vendor_id}}/customers/{{customer_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "vendors",
+                "{{vendor_id}}",
+                "customers",
+                "{{customer_id}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Provision Customer DVA",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{vendor_api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/vendors/{{vendor_id}}/customers/{{customer_id}}/account",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "vendors",
+                "{{vendor_id}}",
+                "customers",
+                "{{customer_id}}",
+                "account"
+              ]
+            },
+            "description": "Use when the customer was created with provisionDva=false and you now want a dedicated VA for them."
+          },
+          "response": []
+        }
+      ],
+      "description": "End customers of a vendor, optionally provisioned with their own DVA for isolated payment tracking. Nested under /v1/vendors/:id/customers - a vendor_id must be set first."
+    },
+    {
+      "name": "Invoices",
+      "item": [
+        {
+          "name": "Create Invoice",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.ok && json.data && json.data.id) {",
+                  "    pm.collectionVariables.set('invoice_id', json.data.id);",
+                  "    console.log('Saved invoice_id:', json.data.id, '- status:', json.data.status);",
+                  "}"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{vendor_api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vendor_id\": \"{{vendor_id}}\",\n  \"customer_id\": \"{{customer_id}}\",\n  \"amount_kobo\": 1500000\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/v1/invoices",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "invoices"
+              ]
+            },
+            "description": "amount_kobo is an integer - 1500000 kobo = NGN 15,000.00. customer_id is optional. Note: the controller calls createInvoice then immediately issueInvoice, so this returns status ISSUED, not DRAFT, despite the schema's draft->issued transition table. The test script auto-saves invoice_id."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Invoice by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{vendor_api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/invoices/{{invoice_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "invoices",
+                "{{invoice_id}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Invoices by Vendor",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{vendor_api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/invoices/vendor/{{vendor_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "invoices",
+                "vendor",
+                "{{vendor_id}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Issue Invoice",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{vendor_api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/invoices/{{invoice_id}}/issue",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "invoices",
+                "{{invoice_id}}",
+                "issue"
+              ]
+            },
+            "description": "Transitions DRAFT -> ISSUED. Note: POST /v1/invoices already auto-issues on creation (create() calls issueInvoice() internally), so calling this again on that same invoice will 400 with INVALID_TRANSITION since 'issued' has no self-transition. This endpoint is only useful if an invoice can otherwise be left in DRAFT - worth checking with the team whether that's still a real path in the current build."
+          },
+          "response": []
+        },
+        {
+          "name": "Mark Invoice Paid (manual override)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{master_api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/invoices/{{invoice_id}}/mark-paid",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "invoices",
+                "{{invoice_id}}",
+                "mark-paid"
+              ]
+            },
+            "description": "PRD marks this as platform-owner-only and audit-logged. No body schema confirmed for this route yet - check invoices.controller.ts if the deployed version expects one."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Invoice Reconciliation Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{vendor_api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/invoices/{{invoice_id}}/reconciliation",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "invoices",
+                "{{invoice_id}}",
+                "reconciliation"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Reconciliation Logs",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{master_api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/invoices/reconciliation/logs",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "invoices",
+                "reconciliation",
+                "logs"
+              ]
+            }
+          },
+          "response": []
+        }
+      ],
+      "description": "Core billing objects. Created in draft, issued to generate a payment reference, then reconciled automatically against inbound Nomba webhooks (exact match, overpayment, underpayment) or manually overridden via Mark Paid."
+    },
+    {
+      "name": "Misdirected Payments",
+      "item": [
+        {
+          "name": "List Misdirected Payments",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{master_api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/payments/misdirected?page=1&limit=20",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "payments",
+                "misdirected"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "New in PR #70 - was previously in the PRD but not wired up (reconciliation's UNMATCHED branch never called flagMisdirected(), so nothing ever landed here). Merchant-tier only (vendor keys get a 403). Pagination follows the same page/limit convention as Get Reconciliation Logs."
+          },
+          "response": []
+        },
+        {
+          "name": "Match Misdirected Payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{master_api_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"invoiceId\": \"{{invoice_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/v1/payments/{{misdirected_id}}/match",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "payments",
+                "{{misdirected_id}}",
+                "match"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Refund Misdirected Payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{master_api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/payments/{{misdirected_id}}/refund",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "payments",
+                "{{misdirected_id}}",
+                "refund"
+              ]
+            },
+            "description": "Refunds a misdirected payment back to the original sender via Nomba transfer. Use List Misdirected Payments above to find the misdirected_id first."
+          },
+          "response": []
+        }
+      ],
+      "description": "Payments that arrive via webhook but can't be matched to any invoice or customer DVA (e.g. wrong/expired virtual account). Flagged automatically by reconciliation's UNMATCHED path (fix landed in PR #70) rather than silently dropped. List them here, then either match one to the correct invoice retroactively or refund it back to the sender."
+    },
+    {
+      "name": "Webhook Deliveries",
+      "item": [
+        {
+          "name": "Replay Webhook Delivery",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{master_api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/webhook-deliveries/{{webhook_delivery_id}}/replay",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "webhook-deliveries",
+                "{{webhook_delivery_id}}",
+                "replay"
+              ]
+            }
+          },
+          "response": []
+        }
+      ],
+      "description": "Outbound webhooks ICE sends to a merchant's own webhookUrl (e.g. for payment.overpayment.refunded events). Use Replay to manually re-trigger a delivery that failed or that you want to re-test locally."
+    },
+    {
+      "name": "Statements & Reporting",
+      "item": [
+        {
+          "name": "Get Vendor Statement",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{vendor_api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/vendors/{{vendor_id}}/statement",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "vendors",
+                "{{vendor_id}}",
+                "statement"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Customer Statement",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{vendor_api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/vendors/{{vendor_id}}/customers/{{customer_id}}/statement",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "vendors",
+                "{{vendor_id}}",
+                "customers",
+                "{{customer_id}}",
+                "statement"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Vendor Transactions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{vendor_api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/vendors/{{vendor_id}}/transactions",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "vendors",
+                "{{vendor_id}}",
+                "transactions"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Platform Summary (master key only)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{master_api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/merchants/{{merchant_id}}/summary",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "merchants",
+                "{{merchant_id}}",
+                "summary"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Transaction by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{vendor_api_key}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/transactions/{{transaction_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "transactions",
+                "{{transaction_id}}"
+              ]
+            }
+          },
+          "response": []
+        }
+      ],
+      "description": "Read-only rollups for vendors, customers, and the platform owner - running balances, transaction history, and summary figures. All require the appropriate tier's API key; the platform summary is master-key only."
+    },
+    {
+      "name": "Webhooks (Nomba Inbound)",
+      "item": [
+        {
+          "name": "Simulate payment_success Webhook",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Generates a valid nomba-signature and nomba-timestamp for the request body below.",
+                  "// Mirrors the exact signing logic in src/lib/hmac.ts - keep both in sync if that file changes.",
+                  "const secret = pm.collectionVariables.get('nomba_webhook_secret');",
+                  "",
+                  "let payload;",
+                  "try {",
+                  "    payload = JSON.parse(pm.request.body.raw);",
+                  "} catch (e) {",
+                  "    throw new Error('Webhook body is not valid JSON: ' + e.message);",
+                  "}",
+                  "",
+                  "const timestamp = Math.floor(Date.now() / 1000).toString();",
+                  "const m = payload.data.merchant;",
+                  "const t = payload.data.transaction;",
+                  "",
+                  "const signedString = [",
+                  "    payload.event_type,",
+                  "    payload.requestId,",
+                  "    m.userId,",
+                  "    m.walletId,",
+                  "    t.transactionId,",
+                  "    t.type,",
+                  "    t.time,",
+                  "    t.responseCode || '',",
+                  "    timestamp",
+                  "].join(':');",
+                  "",
+                  "const signature = CryptoJS.HmacSHA256(signedString, secret).toString(CryptoJS.enc.Base64);",
+                  "",
+                  "pm.request.headers.upsert({ key: 'nomba-signature', value: signature });",
+                  "pm.request.headers.upsert({ key: 'nomba-timestamp', value: timestamp });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"event_type\": \"payment_success\",\n  \"requestId\": \"req_{{$randomUUID}}\",\n  \"data\": {\n    \"merchant\": {\n      \"userId\": \"user_12345\",\n      \"walletId\": \"wallet_67890\"\n    },\n    \"transaction\": {\n      \"transactionId\": \"txn_{{$randomUUID}}\",\n      \"type\": \"bank_transfer\",\n      \"time\": \"2026-07-08T12:00:00Z\",\n      \"responseCode\": \"00\",\n      \"amount\": 1500000,\n      \"accountNumber\": \"1234567890\"\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/v1/webhooks/nomba",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "webhooks",
+                "nomba"
+              ]
+            },
+            "description": "No Bearer auth - authenticated via nomba-signature/nomba-timestamp headers, generated automatically by the pre-request script from nomba_webhook_secret. Set that variable to match the deployed NOMBA_WEBHOOK_SECRET before sending, or verification will fail with 401 UNAUTHORIZED. amount/accountNumber fields are unconfirmed guesses per the schema's own comment - passthrough() means they won't break validation either way."
+          },
+          "response": []
+        },
+        {
+          "name": "Non-POST (expect 405)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/v1/webhooks/nomba",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "v1",
+                "webhooks",
+                "nomba"
+              ]
+            },
+            "description": "Sanity check for the router.all('/', ...) 405 handler."
+          },
+          "response": []
+        }
+      ],
+      "description": "Simulates Nomba sending ICE a webhook (payment_success events, DVA inbound transfers). The pre-request script signs the body with HMAC-SHA256 using nomba_webhook_secret, matching src/lib/hmac.ts's corrected scheme (nomba-signature + nomba-timestamp headers, colon-joined field string, base64 digest - see PR #71). The Non-POST request checks the 405 fallthrough fix for the routing bug where non-POST methods used to hit an auth-gated router and return a misleading 401."
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "requests": {},
+        "exec": [
+          ""
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "requests": {},
+        "exec": [
+          ""
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "https://ice-nomba-hackathon.onrender.com"
+    },
+    {
+      "key": "master_api_key",
+      "value": "",
+      "description": "Returned once from POST /v1/merchants/register - paste the raw key here"
+    },
+    {
+      "key": "vendor_api_key",
+      "value": "",
+      "description": "Returned once from POST /v1/vendors/:id/api-keys"
+    },
+    {
+      "key": "nomba_webhook_secret",
+      "value": "dev-webhook-secret",
+      "description": "Must match NOMBA_WEBHOOK_SECRET on the deployed service, not this default"
+    },
+    {
+      "key": "merchant_id",
+      "value": ""
+    },
+    {
+      "key": "vendor_id",
+      "value": ""
+    },
+    {
+      "key": "customer_id",
+      "value": ""
+    },
+    {
+      "key": "invoice_id",
+      "value": ""
+    },
+    {
+      "key": "misdirected_id",
+      "value": ""
+    },
+    {
+      "key": "webhook_delivery_id",
+      "value": ""
+    },
+    {
+      "key": "transaction_id",
+      "value": ""
+    },
+    {
+      "value": ""
+    }
+  ]
+}
