@@ -17,6 +17,7 @@ The backend API is deployed and publicly accessible on Render:
 - **Product Requirements**: [`ICE_PRD.md`](./ICE_PRD.md)
 - **Engineering Standards & Git Workflow**: [`ICE_ENGINEERING.md`](./ICE_ENGINEERING.md)
 - **Webhook Integration & Testing Strategy**: [`docs/webhook-integration.md`](./docs/webhook-integration.md) — see this if evaluating live webhook delivery
+- **API Reference**: [`docs/api-reference.md`](./docs/api-reference.md), also served live at `/api-reference` — every endpoint, auth tiers, real Nomba webhook payload shape, and known implementation gotchas
 
 ## Tech Stack
 - **Language**: TypeScript (strict mode)
