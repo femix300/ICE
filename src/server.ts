@@ -10,8 +10,7 @@ try {
   await nomba.authenticate();
   log.info('Nomba client authenticated successfully');
 } catch (err) {
-  log.error({ err }, 'Failed to authenticate with Nomba on startup - exiting');
-  process.exit(1);
+  log.warn({ err }, 'Failed to authenticate with Nomba on startup - running in degraded mode for portfolio docs');
 }
 
 const server = app.listen(port, '0.0.0.0', () => {
